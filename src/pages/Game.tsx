@@ -37,7 +37,10 @@ const Game = () => {
   }, [game?.outsider_player_id, currentPlayer?.id, isOutsider]);
 
   useEffect(() => {
-    if (!game) return;
+    if (!game || !currentPlayer) return;
+
+    // Only host handles round transitions to prevent race conditions
+    if (!currentPlayer.is_host) return;
 
     // Check if all clues submitted for current round
     if (currentRound && !currentRound.is_complete && clues.length === players.length) {
@@ -48,7 +51,7 @@ const Game = () => {
     if (game.status === 'voting' && votes.length === players.length) {
       moveToResults();
     }
-  }, [clues.length, votes.length, players.length, currentRound, game]);
+  }, [clues.length, votes.length, players.length, currentRound, game, currentPlayer]);
 
   const checkRoundComplete = async () => {
     if (!currentRound || !game) return;
