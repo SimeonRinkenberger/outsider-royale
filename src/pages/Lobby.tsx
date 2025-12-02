@@ -69,6 +69,11 @@ const Lobby = () => {
 
       // Pick random outsider
       const randomOutsider = players[Math.floor(Math.random() * players.length)];
+      console.log('Starting game with outsider:', {
+        outsiderName: randomOutsider.display_name,
+        outsiderId: randomOutsider.id,
+        allPlayers: players.map(p => ({ name: p.display_name, id: p.id }))
+      });
 
       // Create game
       const { data: game, error: gameError } = await supabase

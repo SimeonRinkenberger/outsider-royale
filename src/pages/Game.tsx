@@ -23,6 +23,19 @@ const Game = () => {
   const hasSubmittedClue = clues.some(c => c.player_id === currentPlayer?.id);
   const hasVoted = votes.some(v => v.voter_player_id === currentPlayer?.id);
 
+  // Debug logging
+  useEffect(() => {
+    if (game && currentPlayer) {
+      console.log('Game outsider check:', {
+        outsiderPlayerId: game.outsider_player_id,
+        currentPlayerId: currentPlayer.id,
+        currentPlayerName: currentPlayer.display_name,
+        isOutsider,
+        match: game.outsider_player_id === currentPlayer.id
+      });
+    }
+  }, [game?.outsider_player_id, currentPlayer?.id, isOutsider]);
+
   useEffect(() => {
     if (!game) return;
 
