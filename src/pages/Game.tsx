@@ -42,15 +42,20 @@ const Game = () => {
     // Only host handles round transitions to prevent race conditions
     if (!currentPlayer.is_host) return;
 
-    // Check if all clues submitted for current round
-    if (currentRound && !currentRound.is_complete && clues.length === players.length) {
-      checkRoundComplete();
-    }
+    // Add delay to ensure all clients receive real-time updates before transitioning
+    const timer = setTimeout(() => {
+      // Check if all clues submitted for current round
+      if (currentRound && !currentRound.is_complete && clues.length === players.length) {
+        checkRoundComplete();
+      }
 
-    // Check if all votes submitted
-    if (game.status === 'voting' && votes.length === players.length) {
-      moveToResults();
-    }
+      // Check if all votes submitted
+      if (game.status === 'voting' && votes.length === players.length) {
+        moveToResults();
+      }
+    }, 500); // 500ms delay for sync
+
+    return () => clearTimeout(timer);
   }, [clues.length, votes.length, players.length, currentRound, game, currentPlayer]);
 
   const checkRoundComplete = async () => {
