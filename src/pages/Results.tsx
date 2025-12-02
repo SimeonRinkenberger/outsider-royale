@@ -18,6 +18,20 @@ const Results = () => {
   const isHost = lobby?.host_user_id === userId;
   const outsider = players.find(p => p.id === game?.outsider_player_id);
   
+  // When a new game is started (play again), navigate everyone to the new game
+  useEffect(() => {
+    console.log('Results lobby state changed:', {
+      status: lobby?.status,
+      currentGameId: lobby?.current_game_id,
+      lobbyId,
+    });
+
+    if (lobby?.status === 'in_progress' && lobby.current_game_id) {
+      console.log('Results: navigating to new game for lobby', lobbyId);
+      navigate(`/game/${lobbyId}`);
+    }
+  }, [lobby?.status, lobby?.current_game_id, lobbyId, navigate]);
+  
   // Calculate vote results
   const votesByPlayer = players.map(player => {
     const votesReceived = votes.filter(v => v.suspected_outsider_player_id === player.id).length;
