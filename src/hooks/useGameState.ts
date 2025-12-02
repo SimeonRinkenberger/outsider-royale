@@ -14,6 +14,8 @@ export const useGameState = (lobbyId: string | null) => {
   useEffect(() => {
     if (!lobbyId) return;
 
+    console.log('useGameState: Setting up for lobby', lobbyId);
+
     // Fetch initial data
     const fetchData = async () => {
       const { data: lobbyData } = await supabase
@@ -91,9 +93,12 @@ export const useGameState = (lobbyId: string | null) => {
 
     fetchData();
 
-    // Set up real-time subscriptions
+    // Set up real-time subscriptions with unique channel ID
+    const channelId = `lobby-${lobbyId}-${Math.random().toString(36).substr(2, 9)}`;
+    console.log('Creating channel:', channelId);
+    
     const lobbyChannel = supabase
-      .channel(`lobby-${lobbyId}`)
+      .channel(channelId)
       .on(
         'postgres_changes',
         {
@@ -103,6 +108,7 @@ export const useGameState = (lobbyId: string | null) => {
           filter: `id=eq.${lobbyId}`
         },
         (payload) => {
+          console.log('Lobby update received:', payload);
           if (payload.eventType === 'UPDATE') {
             setLobby(payload.new as Lobby);
           }
@@ -116,16 +122,22 @@ export const useGameState = (lobbyId: string | null) => {
           table: 'lobby_players',
           filter: `lobby_id=eq.${lobbyId}`
         },
-        async () => {
+        async (payload) => {
+          console.log('Lobby player change received:', payload.eventType);
           const { data } = await supabase
             .from('lobby_players')
             .select('*')
             .eq('lobby_id', lobbyId)
             .order('joined_at');
-          if (data) setPlayers(data as LobbyPlayer[]);
+          if (data) {
+            console.log('Updated players:', data.length);
+            setPlayers(data as LobbyPlayer[]);
+          }
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        console.log('Lobby subscription status:', status);
+      });
 
     return () => {
       supabase.removeChannel(lobbyChannel);
@@ -136,8 +148,11 @@ export const useGameState = (lobbyId: string | null) => {
   useEffect(() => {
     if (!game?.id) return;
 
+    console.log('useGameState: Setting up game subscriptions for', game.id);
+    
+    const channelId = `game-${game.id}-${Math.random().toString(36).substr(2, 9)}`;
     const gameChannel = supabase
-      .channel(`game-${game.id}`)
+      .channel(channelId)
       .on(
         'postgres_changes',
         {
@@ -147,6 +162,7 @@ export const useGameState = (lobbyId: string | null) => {
           filter: `id=eq.${game.id}`
         },
         async (payload) => {
+          console.log('Game update received:', payload.eventType);
           if (payload.eventType === 'UPDATE') {
             const updatedGame = payload.new as Game;
             setGame(updatedGame);
@@ -175,7 +191,8 @@ export const useGameState = (lobbyId: string | null) => {
           schema: 'public',
           table: 'clues'
         },
-        async () => {
+        async (payload) => {
+          console.log('Clue change received:', payload.eventType);
           if (currentRound) {
             const { data } = await supabase
               .from('clues')
@@ -194,7 +211,8 @@ export const useGameState = (lobbyId: string | null) => {
           table: 'votes',
           filter: `game_id=eq.${game.id}`
         },
-        async () => {
+        async (payload) => {
+          console.log('Vote change received:', payload.eventType);
           const { data } = await supabase
             .from('votes')
             .select('*')
@@ -202,7 +220,9 @@ export const useGameState = (lobbyId: string | null) => {
           if (data) setVotes(data as Vote[]);
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        console.log('Game subscription status:', status);
+      });
 
     return () => {
       supabase.removeChannel(gameChannel);
