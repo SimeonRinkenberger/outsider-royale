@@ -19,10 +19,17 @@ const Lobby = () => {
   const canStart = players.length >= 3;
 
   useEffect(() => {
-    if (lobby?.status !== 'waiting' && lobby?.current_game_id) {
+    console.log('Lobby state changed:', { 
+      status: lobby?.status, 
+      gameId: lobby?.current_game_id,
+      willNavigate: !!lobby?.current_game_id 
+    });
+    
+    if (lobby?.current_game_id) {
+      console.log('Navigating to game:', lobby.current_game_id);
       navigate(`/game/${lobbyId}`);
     }
-  }, [lobby?.status, lobby?.current_game_id, lobbyId, navigate]);
+  }, [lobby?.current_game_id, lobbyId, navigate]);
 
   const copyCode = () => {
     if (lobby?.code) {
