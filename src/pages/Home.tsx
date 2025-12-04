@@ -137,7 +137,7 @@ const Home = () => {
               <User className="h-3 w-3 sm:h-4 sm:w-4" />
               <span className="truncate max-w-[60px] sm:max-w-[100px]">{displayName}</span>
             </div>
-            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={handleLogout} title="Logout">
+            <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={handleLogout} title="Logout">
               <LogOut className="h-4 w-4" />
             </Button>
           </div>
