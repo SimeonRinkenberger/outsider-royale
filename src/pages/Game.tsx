@@ -9,7 +9,7 @@ import { getStoredUserId } from '@/lib/gameUtils';
 import { toast } from 'sonner';
 import { Send, Eye, EyeOff, Users, CheckCircle2 } from 'lucide-react';
 
-// Seeded random shuffle - ensures all clients get the same order for a given game
+// Seeded random shuffle - ensures all clients get the same order for a given seed
 const seededShuffle = <T,>(array: T[], seed: string): T[] => {
   const shuffled = [...array];
   let hash = 0;
@@ -27,6 +27,11 @@ const seededShuffle = <T,>(array: T[], seed: string): T[] => {
   return shuffled;
 };
 
+// Get shuffled players for a specific round
+const getShuffledPlayersForRound = <T,>(players: T[], gameId: string, roundNumber: number): T[] => {
+  return seededShuffle(players, `${gameId}-round-${roundNumber}`);
+};
+
 const Game = () => {
   const { lobbyId } = useParams();
   const navigate = useNavigate();
@@ -36,19 +41,19 @@ const Game = () => {
   const [selectedVote, setSelectedVote] = useState<string | null>(null);
   const userId = getStoredUserId();
 
-  // Shuffle players based on game ID for random turn order
+  // Shuffle players based on game ID AND round number for different order each round
   const shuffledPlayers = useMemo(() => {
-    if (!game?.id || players.length === 0) return players;
-    return seededShuffle(players, game.id);
-  }, [game?.id, players]);
+    if (!game?.id || players.length === 0 || !currentRound) return players;
+    return getShuffledPlayersForRound(players, game.id, currentRound.round_number);
+  }, [game?.id, players, currentRound?.round_number]);
 
   const currentPlayer = players.find(p => p.user_id === userId);
   const isOutsider = game?.outsider_player_id === currentPlayer?.id;
   const hasSubmittedClue = clues.some(c => c.player_id === currentPlayer?.id);
   const hasVoted = votes.some(v => v.voter_player_id === currentPlayer?.id);
 
-  // Calculate whose turn it is based on total clues submitted
-  const currentTurnIndex = allClues.length % shuffledPlayers.length;
+  // Calculate whose turn it is based on clues submitted THIS ROUND
+  const currentTurnIndex = clues.length;
   const currentTurnPlayer = shuffledPlayers[currentTurnIndex];
   const isMyTurn = currentTurnPlayer?.id === currentPlayer?.id;
 
@@ -150,25 +155,20 @@ const Game = () => {
 
     setIsSubmitting(true);
     try {
-      // Server-side validation: get current clue count to verify turn order
-      const { data: allRounds } = await supabase
-        .from('rounds')
-        .select('id')
-        .eq('game_id', game.id);
-      
-      if (!allRounds) throw new Error('Failed to fetch rounds');
-      
-      const roundIds = allRounds.map(r => r.id);
+      // Server-side validation: get clue count for CURRENT ROUND ONLY
       const { count } = await supabase
         .from('clues')
         .select('*', { count: 'exact', head: true })
-        .in('round_id', roundIds);
+        .eq('round_id', currentRound.id);
       
-      const currentTurn = (count || 0) % shuffledPlayers.length;
-      const expectedPlayer = shuffledPlayers[currentTurn];
+      // Get shuffled order for this specific round
+      const roundShuffledPlayers = getShuffledPlayersForRound(players, game.id, currentRound.round_number);
+      const currentTurn = count || 0;
+      const expectedPlayer = roundShuffledPlayers[currentTurn];
       
       if (expectedPlayer?.id !== currentPlayer.id) {
         toast.error("It's not your turn!");
+        setIsSubmitting(false);
         return;
       }
 
