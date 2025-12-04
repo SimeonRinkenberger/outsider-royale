@@ -257,8 +257,9 @@ const Game = () => {
                 {isMyTurn && !hasSubmittedClue ? "Your Turn!" : "Submit Your Clue"}
               </h1>
             </div>
-            <Button variant="ghost" size="icon" onClick={leaveLobby} title="Leave Lobby">
+            <Button variant="ghost" size="sm" onClick={leaveLobby} className="gap-1 text-muted-foreground">
               <DoorOpen className="h-4 w-4" />
+              <span className="hidden sm:inline">Leave</span>
             </Button>
           </div>
         </header>
@@ -401,8 +402,9 @@ const Game = () => {
                 Who didn't know: "{secretWord.text}"?
               </p>
             </div>
-            <Button variant="ghost" size="icon" onClick={leaveLobby} title="Leave Lobby">
+            <Button variant="ghost" size="sm" onClick={leaveLobby} className="gap-1 text-muted-foreground">
               <DoorOpen className="h-4 w-4" />
+              <span className="hidden sm:inline">Leave</span>
             </Button>
           </div>
         </header>

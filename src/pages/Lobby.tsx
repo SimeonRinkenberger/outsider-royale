@@ -2,21 +2,35 @@ import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { supabase } from '@/integrations/supabase/client';
 import { useGameState } from '@/hooks/useGameState';
 import { getStoredUserId } from '@/lib/gameUtils';
 import { toast } from 'sonner';
 import { Copy, Users, Crown, ArrowLeft, Play, X } from 'lucide-react';
 
+const CATEGORIES = [
+  { value: 'all', label: 'All Categories' },
+  { value: 'animal', label: 'Animals' },
+  { value: 'brand', label: 'Brands' },
+  { value: 'food', label: 'Food' },
+  { value: 'movie', label: 'Movies' },
+  { value: 'person', label: 'People' },
+  { value: 'place', label: 'Places' },
+  { value: 'thing', label: 'Things' },
+];
+
 const Lobby = () => {
   const { lobbyId } = useParams();
   const navigate = useNavigate();
   const { lobby, players } = useGameState(lobbyId || null);
   const [isStarting, setIsStarting] = useState(false);
+  const [selectedCategory, setSelectedCategory] = useState('all');
   const userId = getStoredUserId();
 
   const isHost = lobby?.host_user_id === userId;
   const canStart = players.length >= 3;
+
 
   useEffect(() => {
     console.log('Lobby state changed:', { 
@@ -78,13 +92,15 @@ const Lobby = () => {
 
     setIsStarting(true);
     try {
-      // Get random word
-      const { data: words } = await supabase
-        .from('words')
-        .select('*');
+      // Get words (filtered by category if selected)
+      let query = supabase.from('words').select('*');
+      if (selectedCategory !== 'all') {
+        query = query.eq('category', selectedCategory as 'animal' | 'brand' | 'food' | 'movie' | 'person' | 'place' | 'thing');
+      }
+      const { data: words } = await query;
       
       if (!words || words.length === 0) {
-        toast.error('No words available');
+        toast.error('No words available for this category');
         setIsStarting(false);
         return;
       }
@@ -245,7 +261,19 @@ const Lobby = () => {
         </div>
 
         {isHost && (
-          <div className="fixed bottom-6 left-0 right-0 px-4 max-w-md mx-auto">
+          <div className="fixed bottom-6 left-0 right-0 px-4 max-w-md mx-auto space-y-3">
+            <Select value={selectedCategory} onValueChange={setSelectedCategory}>
+              <SelectTrigger className="w-full h-12 bg-card">
+                <SelectValue placeholder="Select category" />
+              </SelectTrigger>
+              <SelectContent>
+                {CATEGORIES.map((cat) => (
+                  <SelectItem key={cat.value} value={cat.value}>
+                    {cat.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
             <Button
               onClick={startGame}
               disabled={!canStart || isStarting}
@@ -256,7 +284,7 @@ const Lobby = () => {
               {isStarting ? 'Starting...' : 'Start Game'}
             </Button>
             {!canStart && (
-              <p className="text-center text-sm text-muted-foreground mt-2">
+              <p className="text-center text-sm text-muted-foreground">
                 At least 3 players needed (4+ recommended)
               </p>
             )}
