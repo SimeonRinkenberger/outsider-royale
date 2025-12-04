@@ -127,17 +127,17 @@ const Home = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      <header className="bg-card border-b border-border p-4 pl-28">
-        <div className="max-w-md mx-auto flex items-center justify-between gap-2">
-          <h1 className="text-xl sm:text-2xl font-bold bg-gradient-primary bg-clip-text text-transparent truncate">
+      <header className="bg-card border-b border-border p-4">
+        <div className="max-w-md mx-auto flex items-center justify-center relative">
+          <h1 className="text-xl sm:text-2xl font-bold bg-gradient-primary bg-clip-text text-transparent">
             Word Game
           </h1>
-          <div className="flex items-center gap-2 shrink-0">
-            <div className="flex items-center gap-1 text-sm text-muted-foreground">
-              <User className="h-4 w-4 hidden sm:block" />
-              <span className="truncate max-w-[80px] sm:max-w-none">{displayName}</span>
+          <div className="absolute right-0 flex items-center gap-1 sm:gap-2">
+            <div className="flex items-center gap-1 text-xs sm:text-sm text-muted-foreground">
+              <User className="h-3 w-3 sm:h-4 sm:w-4" />
+              <span className="truncate max-w-[60px] sm:max-w-[100px]">{displayName}</span>
             </div>
-            <Button variant="ghost" size="icon" onClick={handleLogout} title="Logout">
+            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={handleLogout} title="Logout">
               <LogOut className="h-4 w-4" />
             </Button>
           </div>
