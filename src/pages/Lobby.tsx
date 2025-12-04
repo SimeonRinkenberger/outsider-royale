@@ -13,6 +13,7 @@ const CATEGORIES = [
   { value: 'all', label: 'All Categories' },
   { value: 'animal', label: 'Animals' },
   { value: 'brand', label: 'Brands' },
+  { value: 'degenerate', label: 'Degenerate' },
   { value: 'food', label: 'Food' },
   { value: 'movie', label: 'Movies' },
   { value: 'person', label: 'People' },
@@ -95,7 +96,7 @@ const Lobby = () => {
       // Get words (filtered by category if selected)
       let query = supabase.from('words').select('*');
       if (selectedCategory !== 'all') {
-        query = query.eq('category', selectedCategory as 'animal' | 'brand' | 'food' | 'movie' | 'person' | 'place' | 'thing');
+        query = query.eq('category', selectedCategory as 'animal' | 'brand' | 'degenerate' | 'food' | 'movie' | 'person' | 'place' | 'thing');
       }
       const { data: words } = await query;
       
