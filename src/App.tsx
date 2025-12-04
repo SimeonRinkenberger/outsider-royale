@@ -5,6 +5,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { getStoredUserId } from './lib/gameUtils';
+import RefreshButton from './components/RefreshButton';
 import Onboarding from './pages/Onboarding';
 import Home from './pages/Home';
 import Lobby from './pages/Lobby';
@@ -40,6 +41,7 @@ const App = () => (
     <TooltipProvider>
       <Toaster />
       <Sonner />
+      <RefreshButton />
       <BrowserRouter>
         <Routes>
           <Route path="/" element={<Onboarding />} />

@@ -6,7 +6,7 @@ import { Card } from '@/components/ui/card';
 import { supabase } from '@/integrations/supabase/client';
 import { generateLobbyCode, getStoredUserId, getStoredDisplayName } from '@/lib/gameUtils';
 import { toast } from 'sonner';
-import { Plus, LogIn, User, RefreshCw } from 'lucide-react';
+import { Plus, LogIn, User } from 'lucide-react';
 
 const Home = () => {
   const [joinCode, setJoinCode] = useState('');
@@ -125,19 +125,9 @@ const Home = () => {
           <h1 className="text-2xl font-bold bg-gradient-primary bg-clip-text text-transparent">
             Word Game
           </h1>
-          <div className="flex items-center gap-3">
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => window.location.reload()}
-              className="h-8 w-8"
-            >
-              <RefreshCw className="h-4 w-4" />
-            </Button>
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <User className="h-4 w-4" />
-              <span>{displayName}</span>
-            </div>
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <User className="h-4 w-4" />
+            <span>{displayName}</span>
           </div>
         </div>
       </header>
