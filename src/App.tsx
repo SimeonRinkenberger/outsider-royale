@@ -6,7 +6,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { ThemeProvider } from "next-themes";
 import { getStoredUserId } from './lib/gameUtils';
-import RefreshButton from './components/RefreshButton';
+
 import ThemeToggle from './components/ThemeToggle';
 import Onboarding from './pages/Onboarding';
 import Home from './pages/Home';
@@ -46,7 +46,7 @@ const App = () => (
         <Sonner />
         <BrowserRouter>
           <ThemeToggle />
-          <RefreshButton />
+          
           <Routes>
             <Route path="/" element={<Onboarding />} />
             <Route
