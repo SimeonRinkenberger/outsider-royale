@@ -7,7 +7,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useGameState } from '@/hooks/useGameState';
 import { getStoredUserId } from '@/lib/gameUtils';
 import { toast } from 'sonner';
-import { Send, Eye, EyeOff, Users, CheckCircle2, LogOut } from 'lucide-react';
+import { Send, Eye, EyeOff, Users, CheckCircle2, DoorOpen } from 'lucide-react';
 
 // Seeded random shuffle - ensures all clients get the same order for a given seed
 const seededShuffle = <T,>(array: T[], seed: string): T[] => {
@@ -41,11 +41,19 @@ const Game = () => {
   const [selectedVote, setSelectedVote] = useState<string | null>(null);
   const userId = getStoredUserId();
 
-  const handleLogout = () => {
-    localStorage.removeItem('wordgame_user_id');
-    localStorage.removeItem('wordgame_display_name');
-    toast.success('Logged out');
-    navigate('/');
+  const leaveLobby = async () => {
+    if (!userId || !lobbyId) return;
+    try {
+      await supabase
+        .from('lobby_players')
+        .delete()
+        .eq('lobby_id', lobbyId)
+        .eq('user_id', userId);
+      navigate('/home');
+    } catch (error) {
+      console.error('Error leaving lobby:', error);
+      toast.error('Failed to leave lobby');
+    }
   };
 
   // Shuffle players based on game ID - same order for all rounds
@@ -249,8 +257,8 @@ const Game = () => {
                 {isMyTurn && !hasSubmittedClue ? "Your Turn!" : "Submit Your Clue"}
               </h1>
             </div>
-            <Button variant="ghost" size="icon" onClick={handleLogout} title="Logout">
-              <LogOut className="h-4 w-4" />
+            <Button variant="ghost" size="icon" onClick={leaveLobby} title="Leave Lobby">
+              <DoorOpen className="h-4 w-4" />
             </Button>
           </div>
         </header>
@@ -393,8 +401,8 @@ const Game = () => {
                 Who didn't know: "{secretWord.text}"?
               </p>
             </div>
-            <Button variant="ghost" size="icon" onClick={handleLogout} title="Logout">
-              <LogOut className="h-4 w-4" />
+            <Button variant="ghost" size="icon" onClick={leaveLobby} title="Leave Lobby">
+              <DoorOpen className="h-4 w-4" />
             </Button>
           </div>
         </header>

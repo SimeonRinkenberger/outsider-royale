@@ -6,7 +6,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useGameState } from '@/hooks/useGameState';
 import { getStoredUserId } from '@/lib/gameUtils';
 import { toast } from 'sonner';
-import { Copy, Users, Crown, ArrowLeft, Play, X, LogOut } from 'lucide-react';
+import { Copy, Users, Crown, ArrowLeft, Play, X } from 'lucide-react';
 
 const Lobby = () => {
   const { lobbyId } = useParams();
@@ -56,12 +56,6 @@ const Lobby = () => {
     }
   };
 
-  const handleLogout = () => {
-    localStorage.removeItem('wordgame_user_id');
-    localStorage.removeItem('wordgame_display_name');
-    toast.success('Logged out');
-    navigate('/');
-  };
 
   const kickPlayer = async (playerId: string, playerName: string) => {
     if (!isHost || !lobbyId) return;
@@ -167,9 +161,7 @@ const Lobby = () => {
             <ArrowLeft className="h-5 w-5" />
           </Button>
           <h1 className="text-xl font-bold">Lobby</h1>
-          <Button variant="ghost" size="icon" onClick={handleLogout} title="Logout">
-            <LogOut className="h-4 w-4" />
-          </Button>
+          <div className="w-10" />
         </div>
       </header>
 
