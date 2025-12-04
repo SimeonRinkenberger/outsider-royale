@@ -158,8 +158,9 @@ const Results = () => {
         <div className="max-w-md mx-auto flex items-center justify-between">
           <div className="w-10" />
           <h1 className="text-xl font-bold">Game Results</h1>
-          <Button variant="ghost" size="icon" onClick={goHome} title="Leave Lobby">
+          <Button variant="ghost" size="sm" onClick={goHome} className="gap-1 text-muted-foreground">
             <DoorOpen className="h-4 w-4" />
+            <span className="hidden sm:inline">Leave</span>
           </Button>
         </div>
       </header>
