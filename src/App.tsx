@@ -8,6 +8,7 @@ import { ThemeProvider } from "next-themes";
 import { getStoredUserId } from './lib/gameUtils';
 
 import ThemeToggle from './components/ThemeToggle';
+import ForceUpdateButton from './components/ForceUpdateButton';
 import Onboarding from './pages/Onboarding';
 import Home from './pages/Home';
 import Lobby from './pages/Lobby';
@@ -46,6 +47,7 @@ const App = () => (
         <Sonner />
         <BrowserRouter>
           <ThemeToggle />
+          <ForceUpdateButton />
           
           <Routes>
             <Route path="/" element={<Onboarding />} />
