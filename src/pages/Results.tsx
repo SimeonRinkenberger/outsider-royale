@@ -39,7 +39,7 @@ const Results = () => {
   });
 
   const correctVotes = votes.filter(v => v.suspected_outsider_player_id === game?.outsider_player_id).length;
-  const groupWins = correctVotes > players.length / 2;
+  const groupWins = correctVotes >= players.length / 2;
 
   const playAgain = async () => {
     if (!isHost || !lobbyId) return;
