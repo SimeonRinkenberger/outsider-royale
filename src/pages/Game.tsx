@@ -12,7 +12,7 @@ import { Send, Eye, EyeOff, Users, CheckCircle2 } from 'lucide-react';
 const Game = () => {
   const { lobbyId } = useParams();
   const navigate = useNavigate();
-  const { lobby, players, game, currentRound, clues, votes, secretWord } = useGameState(lobbyId || null);
+  const { lobby, players, game, currentRound, clues, allClues, votes, secretWord } = useGameState(lobbyId || null);
   const [clueInput, setClueInput] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [selectedVote, setSelectedVote] = useState<string | null>(null);
@@ -22,6 +22,11 @@ const Game = () => {
   const isOutsider = game?.outsider_player_id === currentPlayer?.id;
   const hasSubmittedClue = clues.some(c => c.player_id === currentPlayer?.id);
   const hasVoted = votes.some(v => v.voter_player_id === currentPlayer?.id);
+
+  // Calculate whose turn it is based on total clues submitted
+  const currentTurnIndex = allClues.length % players.length;
+  const currentTurnPlayer = players[currentTurnIndex];
+  const isMyTurn = currentTurnPlayer?.id === currentPlayer?.id;
 
   // Debug logging
   useEffect(() => {
@@ -44,7 +49,7 @@ const Game = () => {
 
     // Add delay to ensure all clients receive real-time updates before transitioning
     const timer = setTimeout(() => {
-      // Check if all clues submitted for current round
+      // Check if all clues submitted for current round (each player has submitted once this round)
       if (currentRound && !currentRound.is_complete && clues.length === players.length) {
         checkRoundComplete();
       }
@@ -185,7 +190,9 @@ const Game = () => {
             <p className="text-sm text-muted-foreground">
               Round {game.current_round_number} of {game.total_rounds}
             </p>
-            <h1 className="text-xl font-bold">Submit Your Clue</h1>
+            <h1 className="text-xl font-bold">
+              {isMyTurn && !hasSubmittedClue ? "Your Turn!" : "Submit Your Clue"}
+            </h1>
           </div>
         </header>
 
@@ -213,7 +220,22 @@ const Game = () => {
             </Card>
           )}
 
-          {!hasSubmittedClue ? (
+          {/* Turn indicator */}
+          {!hasSubmittedClue && currentTurnPlayer && (
+            <Card className={`p-4 ${isMyTurn ? 'bg-primary/10 border-primary' : 'bg-muted/50 border-border'}`}>
+              <div className="text-center">
+                {isMyTurn ? (
+                  <p className="font-semibold text-primary">It's your turn to give a clue!</p>
+                ) : (
+                  <p className="text-muted-foreground">
+                    Waiting for <span className="font-semibold text-foreground">{currentTurnPlayer.display_name}</span> to submit their clue...
+                  </p>
+                )}
+              </div>
+            </Card>
+          )}
+
+          {!hasSubmittedClue && isMyTurn ? (
             <div className="space-y-4">
               <div className="space-y-2">
                 <label className="text-sm font-medium">Your Clue</label>
@@ -238,32 +260,55 @@ const Game = () => {
                 {isSubmitting ? 'Submitting...' : 'Submit Clue'}
               </Button>
             </div>
-          ) : (
+          ) : hasSubmittedClue ? (
             <Card className="p-6 bg-gradient-card border-border text-center">
               <CheckCircle2 className="h-12 w-12 text-primary mx-auto mb-2" />
               <h3 className="font-bold text-lg mb-1">Clue Submitted!</h3>
               <p className="text-sm text-muted-foreground">
-                Waiting for {players.length - clues.length} other player(s)...
+                {clues.length === players.length 
+                  ? "All clues submitted! Moving to next round..."
+                  : `Waiting for ${players.length - clues.length} other player(s)...`}
               </p>
             </Card>
-          )}
+          ) : null}
 
           <div className="space-y-3">
             <h3 className="text-sm font-semibold text-muted-foreground px-1 flex items-center gap-2">
               <Users className="h-4 w-4" />
-              Clues Submitted ({clues.length}/{players.length})
+              Turn Order ({clues.length}/{players.length} this round)
             </h3>
             <div className="space-y-2">
-              {players.map((player) => {
+              {players.map((player, index) => {
                 const playerClue = clues.find(c => c.player_id === player.id);
+                const isCurrentTurn = index === currentTurnIndex && !playerClue;
                 return (
-                  <Card key={player.id} className="p-4 bg-gradient-card border-border">
+                  <Card 
+                    key={player.id} 
+                    className={`p-4 border transition-colors ${
+                      isCurrentTurn 
+                        ? 'bg-primary/10 border-primary' 
+                        : 'bg-gradient-card border-border'
+                    }`}
+                  >
                     <div className="flex items-center justify-between">
-                      <span className="font-medium">{player.display_name}</span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs text-muted-foreground w-6">{index + 1}.</span>
+                        <span className="font-medium">
+                          {player.display_name}
+                          {player.id === currentPlayer?.id && ' (You)'}
+                        </span>
+                        {isCurrentTurn && (
+                          <span className="text-xs bg-primary text-primary-foreground px-2 py-0.5 rounded-full">
+                            Turn
+                          </span>
+                        )}
+                      </div>
                       {playerClue ? (
                         <span className="text-primary font-medium">"{playerClue.clue_text}"</span>
                       ) : (
-                        <span className="text-muted-foreground text-sm">Thinking...</span>
+                        <span className="text-muted-foreground text-sm">
+                          {isCurrentTurn ? 'Thinking...' : 'Waiting...'}
+                        </span>
                       )}
                     </div>
                   </Card>

@@ -7,7 +7,8 @@ export const useGameState = (lobbyId: string | null) => {
   const [players, setPlayers] = useState<LobbyPlayer[]>([]);
   const [game, setGame] = useState<Game | null>(null);
   const [currentRound, setCurrentRound] = useState<Round | null>(null);
-  const [clues, setClues] = useState<Clue[]>([]);
+  const [clues, setClues] = useState<Clue[]>([]); // Current round clues
+  const [allClues, setAllClues] = useState<Clue[]>([]); // All clues for the game
   const [votes, setVotes] = useState<Vote[]>([]);
   const [secretWord, setSecretWord] = useState<Word | null>(null);
 
@@ -75,6 +76,23 @@ export const useGameState = (lobbyId: string | null) => {
                 .order('created_at');
               
               if (cluesData) setClues(cluesData as Clue[]);
+            }
+
+            // Fetch ALL clues for the game (for turn calculation)
+            const { data: allRounds } = await supabase
+              .from('rounds')
+              .select('id')
+              .eq('game_id', gameData.id);
+            
+            if (allRounds) {
+              const roundIds = allRounds.map(r => r.id);
+              const { data: allCluesData } = await supabase
+                .from('clues')
+                .select('*')
+                .in('round_id', roundIds)
+                .order('created_at');
+              
+              if (allCluesData) setAllClues(allCluesData as Clue[]);
             }
 
             // Fetch votes if in voting phase
@@ -201,6 +219,24 @@ export const useGameState = (lobbyId: string | null) => {
               .order('created_at');
             if (data) setClues(data as Clue[]);
           }
+          // Also fetch all clues for turn calculation
+          if (game?.id) {
+            const { data: allRounds } = await supabase
+              .from('rounds')
+              .select('id')
+              .eq('game_id', game.id);
+            
+            if (allRounds) {
+              const roundIds = allRounds.map(r => r.id);
+              const { data: allCluesData } = await supabase
+                .from('clues')
+                .select('*')
+                .in('round_id', roundIds)
+                .order('created_at');
+              
+              if (allCluesData) setAllClues(allCluesData as Clue[]);
+            }
+          }
         }
       )
       .on(
@@ -235,6 +271,7 @@ export const useGameState = (lobbyId: string | null) => {
     game,
     currentRound,
     clues,
+    allClues,
     votes,
     secretWord
   };
