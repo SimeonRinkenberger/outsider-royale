@@ -6,7 +6,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useGameState } from '@/hooks/useGameState';
 import { getStoredUserId } from '@/lib/gameUtils';
 import { toast } from 'sonner';
-import { Copy, Users, Crown, ArrowLeft, Play } from 'lucide-react';
+import { Copy, Users, Crown, ArrowLeft, Play, X } from 'lucide-react';
 
 const Lobby = () => {
   const { lobbyId } = useParams();
@@ -53,6 +53,22 @@ const Lobby = () => {
     } catch (error) {
       console.error('Error leaving lobby:', error);
       toast.error('Failed to leave lobby');
+    }
+  };
+
+  const kickPlayer = async (playerId: string, playerName: string) => {
+    if (!isHost || !lobbyId) return;
+
+    try {
+      await supabase
+        .from('lobby_players')
+        .delete()
+        .eq('id', playerId);
+
+      toast.success(`${playerName} was kicked`);
+    } catch (error) {
+      console.error('Error kicking player:', error);
+      toast.error('Failed to kick player');
     }
   };
 
@@ -204,11 +220,23 @@ const Lobby = () => {
                       )}
                     </div>
                   </div>
-                  {player.is_connected ? (
-                    <div className="w-2 h-2 rounded-full bg-green-500" />
-                  ) : (
-                    <div className="w-2 h-2 rounded-full bg-gray-400" />
-                  )}
+                  <div className="flex items-center gap-2">
+                    {isHost && !player.is_host && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => kickPlayer(player.id, player.display_name)}
+                        className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    )}
+                    {player.is_connected ? (
+                      <div className="w-2 h-2 rounded-full bg-green-500" />
+                    ) : (
+                      <div className="w-2 h-2 rounded-full bg-gray-400" />
+                    )}
+                  </div>
                 </div>
               </Card>
             ))}
