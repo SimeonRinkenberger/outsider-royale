@@ -27,9 +27,9 @@ const seededShuffle = <T,>(array: T[], seed: string): T[] => {
   return shuffled;
 };
 
-// Get shuffled players for a specific round
-const getShuffledPlayersForRound = <T,>(players: T[], gameId: string, roundNumber: number): T[] => {
-  return seededShuffle(players, `${gameId}-round-${roundNumber}`);
+// Get shuffled players for a game (same order all rounds)
+const getShuffledPlayersForGame = <T,>(players: T[], gameId: string): T[] => {
+  return seededShuffle(players, gameId);
 };
 
 const Game = () => {
@@ -41,11 +41,11 @@ const Game = () => {
   const [selectedVote, setSelectedVote] = useState<string | null>(null);
   const userId = getStoredUserId();
 
-  // Shuffle players based on game ID AND round number for different order each round
+  // Shuffle players based on game ID - same order for all rounds
   const shuffledPlayers = useMemo(() => {
-    if (!game?.id || players.length === 0 || !currentRound) return players;
-    return getShuffledPlayersForRound(players, game.id, currentRound.round_number);
-  }, [game?.id, players, currentRound?.round_number]);
+    if (!game?.id || players.length === 0) return players;
+    return getShuffledPlayersForGame(players, game.id);
+  }, [game?.id, players]);
 
   const currentPlayer = players.find(p => p.user_id === userId);
   const isOutsider = game?.outsider_player_id === currentPlayer?.id;
@@ -161,10 +161,10 @@ const Game = () => {
         .select('*', { count: 'exact', head: true })
         .eq('round_id', currentRound.id);
       
-      // Get shuffled order for this specific round
-      const roundShuffledPlayers = getShuffledPlayersForRound(players, game.id, currentRound.round_number);
+      // Get shuffled order for this game (same for all rounds)
+      const gameShuffledPlayers = getShuffledPlayersForGame(players, game.id);
       const currentTurn = count || 0;
-      const expectedPlayer = roundShuffledPlayers[currentTurn];
+      const expectedPlayer = gameShuffledPlayers[currentTurn];
       
       if (expectedPlayer?.id !== currentPlayer.id) {
         toast.error("It's not your turn!");
