@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -9,6 +9,24 @@ import { getStoredUserId } from '@/lib/gameUtils';
 import { toast } from 'sonner';
 import { Send, Eye, EyeOff, Users, CheckCircle2 } from 'lucide-react';
 
+// Seeded random shuffle - ensures all clients get the same order for a given game
+const seededShuffle = <T,>(array: T[], seed: string): T[] => {
+  const shuffled = [...array];
+  let hash = 0;
+  for (let i = 0; i < seed.length; i++) {
+    hash = ((hash << 5) - hash) + seed.charCodeAt(i);
+    hash |= 0;
+  }
+  
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    hash = ((hash << 5) - hash) + i;
+    hash |= 0;
+    const j = Math.abs(hash) % (i + 1);
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+  return shuffled;
+};
+
 const Game = () => {
   const { lobbyId } = useParams();
   const navigate = useNavigate();
@@ -18,14 +36,20 @@ const Game = () => {
   const [selectedVote, setSelectedVote] = useState<string | null>(null);
   const userId = getStoredUserId();
 
+  // Shuffle players based on game ID for random turn order
+  const shuffledPlayers = useMemo(() => {
+    if (!game?.id || players.length === 0) return players;
+    return seededShuffle(players, game.id);
+  }, [game?.id, players]);
+
   const currentPlayer = players.find(p => p.user_id === userId);
   const isOutsider = game?.outsider_player_id === currentPlayer?.id;
   const hasSubmittedClue = clues.some(c => c.player_id === currentPlayer?.id);
   const hasVoted = votes.some(v => v.voter_player_id === currentPlayer?.id);
 
   // Calculate whose turn it is based on total clues submitted
-  const currentTurnIndex = allClues.length % players.length;
-  const currentTurnPlayer = players[currentTurnIndex];
+  const currentTurnIndex = allClues.length % shuffledPlayers.length;
+  const currentTurnPlayer = shuffledPlayers[currentTurnIndex];
   const isMyTurn = currentTurnPlayer?.id === currentPlayer?.id;
 
   // Debug logging
@@ -50,18 +74,18 @@ const Game = () => {
     // Add delay to ensure all clients receive real-time updates before transitioning
     const timer = setTimeout(() => {
       // Check if all clues submitted for current round (each player has submitted once this round)
-      if (currentRound && !currentRound.is_complete && clues.length === players.length) {
+      if (currentRound && !currentRound.is_complete && clues.length === shuffledPlayers.length) {
         checkRoundComplete();
       }
 
       // Check if all votes submitted
-      if (game.status === 'voting' && votes.length === players.length) {
+      if (game.status === 'voting' && votes.length === shuffledPlayers.length) {
         moveToResults();
       }
     }, 500); // 500ms delay for sync
 
     return () => clearTimeout(timer);
-  }, [clues.length, votes.length, players.length, currentRound, game, currentPlayer]);
+  }, [clues.length, votes.length, shuffledPlayers.length, currentRound, game, currentPlayer]);
 
   const checkRoundComplete = async () => {
     if (!currentRound || !game) return;
@@ -140,8 +164,8 @@ const Game = () => {
         .select('*', { count: 'exact', head: true })
         .in('round_id', roundIds);
       
-      const currentTurn = (count || 0) % players.length;
-      const expectedPlayer = players[currentTurn];
+      const currentTurn = (count || 0) % shuffledPlayers.length;
+      const expectedPlayer = shuffledPlayers[currentTurn];
       
       if (expectedPlayer?.id !== currentPlayer.id) {
         toast.error("It's not your turn!");
@@ -286,10 +310,10 @@ const Game = () => {
             <Card className="p-6 bg-gradient-card border-border text-center">
               <CheckCircle2 className="h-12 w-12 text-primary mx-auto mb-2" />
               <h3 className="font-bold text-lg mb-1">Clue Submitted!</h3>
-              <p className="text-sm text-muted-foreground">
-                {clues.length === players.length 
+            <p className="text-sm text-muted-foreground">
+                {clues.length === shuffledPlayers.length 
                   ? "All clues submitted! Moving to next round..."
-                  : `Waiting for ${players.length - clues.length} other player(s)...`}
+                  : `Waiting for ${shuffledPlayers.length - clues.length} other player(s)...`}
               </p>
             </Card>
           ) : null}
@@ -297,10 +321,10 @@ const Game = () => {
           <div className="space-y-3">
             <h3 className="text-sm font-semibold text-muted-foreground px-1 flex items-center gap-2">
               <Users className="h-4 w-4" />
-              Turn Order ({clues.length}/{players.length} this round)
+              Turn Order ({clues.length}/{shuffledPlayers.length} this round)
             </h3>
             <div className="space-y-2">
-              {players.map((player, index) => {
+              {shuffledPlayers.map((player, index) => {
                 const playerClue = clues.find(c => c.player_id === player.id);
                 const isCurrentTurn = index === currentTurnIndex && !playerClue;
                 return (
@@ -387,7 +411,7 @@ const Game = () => {
               <CheckCircle2 className="h-12 w-12 text-primary mx-auto mb-2" />
               <h3 className="font-bold text-lg mb-1">Vote Submitted!</h3>
               <p className="text-sm text-muted-foreground">
-                Waiting for {players.length - votes.length} other vote(s)...
+                Waiting for {shuffledPlayers.length - votes.length} other vote(s)...
               </p>
             </Card>
           )}
