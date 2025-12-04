@@ -3,8 +3,9 @@ import { Home } from 'lucide-react';
 
 const RefreshButton = () => {
   const goHome = () => {
-    // Force full page reload to pick up any updates
-    window.location.replace('/home');
+    // Force hard reload with cache bust to pick up any published updates
+    window.location.href = '/home?v=' + Date.now();
+    window.location.reload();
   };
 
   return (
