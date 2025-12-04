@@ -6,7 +6,7 @@ import { Card } from '@/components/ui/card';
 import { supabase } from '@/integrations/supabase/client';
 import { generateLobbyCode, getStoredUserId, getStoredDisplayName } from '@/lib/gameUtils';
 import { toast } from 'sonner';
-import { Plus, LogIn, User } from 'lucide-react';
+import { Plus, LogIn, User, LogOut } from 'lucide-react';
 
 const Home = () => {
   const [joinCode, setJoinCode] = useState('');
@@ -14,6 +14,13 @@ const Home = () => {
   const [isJoining, setIsJoining] = useState(false);
   const navigate = useNavigate();
   const displayName = getStoredDisplayName();
+
+  const handleLogout = () => {
+    localStorage.removeItem('wordgame_user_id');
+    localStorage.removeItem('wordgame_display_name');
+    toast.success('Logged out');
+    navigate('/');
+  };
 
   const createLobby = async () => {
     const userId = getStoredUserId();
@@ -120,14 +127,19 @@ const Home = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      <header className="bg-card border-b border-border p-4">
-        <div className="max-w-md mx-auto flex items-center justify-between">
-          <h1 className="text-2xl font-bold bg-gradient-primary bg-clip-text text-transparent">
+      <header className="bg-card border-b border-border p-4 pl-28">
+        <div className="max-w-md mx-auto flex items-center justify-between gap-2">
+          <h1 className="text-xl sm:text-2xl font-bold bg-gradient-primary bg-clip-text text-transparent truncate">
             Word Game
           </h1>
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <User className="h-4 w-4" />
-            <span>{displayName}</span>
+          <div className="flex items-center gap-2 shrink-0">
+            <div className="flex items-center gap-1 text-sm text-muted-foreground">
+              <User className="h-4 w-4 hidden sm:block" />
+              <span className="truncate max-w-[80px] sm:max-w-none">{displayName}</span>
+            </div>
+            <Button variant="ghost" size="icon" onClick={handleLogout} title="Logout">
+              <LogOut className="h-4 w-4" />
+            </Button>
           </div>
         </div>
       </header>
