@@ -7,7 +7,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useGameState } from '@/hooks/useGameState';
 import { getStoredUserId } from '@/lib/gameUtils';
 import { toast } from 'sonner';
-import { Send, Eye, EyeOff, Users, CheckCircle2 } from 'lucide-react';
+import { Send, Eye, EyeOff, Users, CheckCircle2, LogOut } from 'lucide-react';
 
 // Seeded random shuffle - ensures all clients get the same order for a given seed
 const seededShuffle = <T,>(array: T[], seed: string): T[] => {
@@ -40,6 +40,13 @@ const Game = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [selectedVote, setSelectedVote] = useState<string | null>(null);
   const userId = getStoredUserId();
+
+  const handleLogout = () => {
+    localStorage.removeItem('wordgame_user_id');
+    localStorage.removeItem('wordgame_display_name');
+    toast.success('Logged out');
+    navigate('/');
+  };
 
   // Shuffle players based on game ID - same order for all rounds
   const shuffledPlayers = useMemo(() => {
@@ -232,13 +239,19 @@ const Game = () => {
     return (
       <div className="min-h-screen bg-background pb-24">
         <header className="bg-card border-b border-border p-4 sticky top-0 z-10">
-          <div className="max-w-md mx-auto text-center">
-            <p className="text-sm text-muted-foreground">
-              Round {game.current_round_number} of {game.total_rounds}
-            </p>
-            <h1 className="text-xl font-bold">
-              {isMyTurn && !hasSubmittedClue ? "Your Turn!" : "Submit Your Clue"}
-            </h1>
+          <div className="max-w-md mx-auto flex items-center justify-between">
+            <div className="w-10" />
+            <div className="text-center">
+              <p className="text-sm text-muted-foreground">
+                Round {game.current_round_number} of {game.total_rounds}
+              </p>
+              <h1 className="text-xl font-bold">
+                {isMyTurn && !hasSubmittedClue ? "Your Turn!" : "Submit Your Clue"}
+              </h1>
+            </div>
+            <Button variant="ghost" size="icon" onClick={handleLogout} title="Logout">
+              <LogOut className="h-4 w-4" />
+            </Button>
           </div>
         </header>
 
@@ -372,11 +385,17 @@ const Game = () => {
     return (
       <div className="min-h-screen bg-background pb-24">
         <header className="bg-card border-b border-border p-4 sticky top-0 z-10">
-          <div className="max-w-md mx-auto text-center">
-            <h1 className="text-xl font-bold">Vote for the Outsider</h1>
-            <p className="text-sm text-muted-foreground">
-              Who didn't know: "{secretWord.text}"?
-            </p>
+          <div className="max-w-md mx-auto flex items-center justify-between">
+            <div className="w-10" />
+            <div className="text-center">
+              <h1 className="text-xl font-bold">Vote for the Outsider</h1>
+              <p className="text-sm text-muted-foreground">
+                Who didn't know: "{secretWord.text}"?
+              </p>
+            </div>
+            <Button variant="ghost" size="icon" onClick={handleLogout} title="Logout">
+              <LogOut className="h-4 w-4" />
+            </Button>
           </div>
         </header>
 
