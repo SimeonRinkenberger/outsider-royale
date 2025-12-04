@@ -4,8 +4,10 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { ThemeProvider } from "next-themes";
 import { getStoredUserId } from './lib/gameUtils';
 import RefreshButton from './components/RefreshButton';
+import ThemeToggle from './components/ThemeToggle';
 import Onboarding from './pages/Onboarding';
 import Home from './pages/Home';
 import Lobby from './pages/Lobby';
@@ -38,49 +40,52 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <BrowserRouter>
-        <RefreshButton />
-        <Routes>
-          <Route path="/" element={<Onboarding />} />
-          <Route
-            path="/home"
-            element={
-              <ProtectedRoute>
-                <Home />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/lobby/:lobbyId"
-            element={
-              <ProtectedRoute>
-                <Lobby />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/game/:lobbyId"
-            element={
-              <ProtectedRoute>
-                <Game />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/results/:lobbyId"
-            element={
-              <ProtectedRoute>
-                <Results />
-              </ProtectedRoute>
-            }
-          />
-          <Route path="*" element={<NotFound />} />
-        </Routes>
-      </BrowserRouter>
-    </TooltipProvider>
+    <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+      <TooltipProvider>
+        <Toaster />
+        <Sonner />
+        <BrowserRouter>
+          <ThemeToggle />
+          <RefreshButton />
+          <Routes>
+            <Route path="/" element={<Onboarding />} />
+            <Route
+              path="/home"
+              element={
+                <ProtectedRoute>
+                  <Home />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/lobby/:lobbyId"
+              element={
+                <ProtectedRoute>
+                  <Lobby />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/game/:lobbyId"
+              element={
+                <ProtectedRoute>
+                  <Game />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/results/:lobbyId"
+              element={
+                <ProtectedRoute>
+                  <Results />
+                </ProtectedRoute>
+              }
+            />
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </BrowserRouter>
+      </TooltipProvider>
+    </ThemeProvider>
   </QueryClientProvider>
 );
 
