@@ -6,7 +6,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useGameState } from '@/hooks/useGameState';
 import { getStoredUserId } from '@/lib/gameUtils';
 import { toast } from 'sonner';
-import { Trophy, XCircle, Home, RotateCcw, UserMinus } from 'lucide-react';
+import { Trophy, XCircle, Home, RotateCcw, UserMinus, LogOut } from 'lucide-react';
 
 const Results = () => {
   const { lobbyId } = useParams();
@@ -17,6 +17,13 @@ const Results = () => {
 
   const isHost = lobby?.host_user_id === userId;
   const outsider = players.find(p => p.id === game?.outsider_player_id);
+
+  const handleLogout = () => {
+    localStorage.removeItem('wordgame_user_id');
+    localStorage.removeItem('wordgame_display_name');
+    toast.success('Logged out');
+    navigate('/');
+  };
   
   // When a new game is started (play again), navigate everyone to the new game
   useEffect(() => {
@@ -154,8 +161,12 @@ const Results = () => {
   return (
     <div className="min-h-screen bg-background pb-24">
       <header className="bg-card border-b border-border p-4 sticky top-0 z-10">
-        <div className="max-w-md mx-auto text-center">
+        <div className="max-w-md mx-auto flex items-center justify-between">
+          <div className="w-10" />
           <h1 className="text-xl font-bold">Game Results</h1>
+          <Button variant="ghost" size="icon" onClick={handleLogout} title="Logout">
+            <LogOut className="h-4 w-4" />
+          </Button>
         </div>
       </header>
 
