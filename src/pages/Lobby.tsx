@@ -172,13 +172,12 @@ const Lobby = () => {
 
   return (
     <div className="min-h-screen bg-background pb-24">
-      <header className="bg-card border-b border-border p-4 sticky top-0 z-10">
-        <div className="max-w-md mx-auto flex items-center justify-between">
-          <Button variant="ghost" size="icon" onClick={leaveLobby}>
+      <header className="bg-card border-b border-border p-4 pl-28 sticky top-0 z-10">
+        <div className="max-w-md mx-auto flex items-center justify-center relative">
+          <Button variant="ghost" size="icon" className="absolute left-0" onClick={leaveLobby}>
             <ArrowLeft className="h-5 w-5" />
           </Button>
           <h1 className="text-xl font-bold">Lobby</h1>
-          <div className="w-10" />
         </div>
       </header>
 
