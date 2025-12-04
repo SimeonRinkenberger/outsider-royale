@@ -122,10 +122,32 @@ const Game = () => {
   };
 
   const submitClue = async () => {
-    if (!currentPlayer || !currentRound || !clueInput.trim()) return;
+    if (!currentPlayer || !currentRound || !clueInput.trim() || !game) return;
 
     setIsSubmitting(true);
     try {
+      // Server-side validation: get current clue count to verify turn order
+      const { data: allRounds } = await supabase
+        .from('rounds')
+        .select('id')
+        .eq('game_id', game.id);
+      
+      if (!allRounds) throw new Error('Failed to fetch rounds');
+      
+      const roundIds = allRounds.map(r => r.id);
+      const { count } = await supabase
+        .from('clues')
+        .select('*', { count: 'exact', head: true })
+        .in('round_id', roundIds);
+      
+      const currentTurn = (count || 0) % players.length;
+      const expectedPlayer = players[currentTurn];
+      
+      if (expectedPlayer?.id !== currentPlayer.id) {
+        toast.error("It's not your turn!");
+        return;
+      }
+
       await supabase
         .from('clues')
         .insert({
