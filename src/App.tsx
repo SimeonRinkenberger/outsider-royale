@@ -41,8 +41,8 @@ const App = () => (
     <TooltipProvider>
       <Toaster />
       <Sonner />
-      <RefreshButton />
       <BrowserRouter>
+        <RefreshButton />
         <Routes>
           <Route path="/" element={<Onboarding />} />
           <Route
