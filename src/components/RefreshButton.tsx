@@ -3,7 +3,8 @@ import { Home } from 'lucide-react';
 
 const RefreshButton = () => {
   const goHome = () => {
-    window.location.href = '/home';
+    // Force full page reload to pick up any updates
+    window.location.replace('/home');
   };
 
   return (
