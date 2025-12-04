@@ -69,15 +69,16 @@ const Home = () => {
 
     setIsJoining(true);
     try {
+      // Allow joining lobbies that are waiting or showing results (between games)
       const { data: lobby, error: lobbyError } = await supabase
         .from('lobbies')
         .select('*')
         .eq('code', joinCode.toUpperCase())
-        .eq('status', 'waiting')
+        .in('status', ['waiting', 'results'])
         .single();
 
       if (lobbyError || !lobby) {
-        toast.error('Lobby not found or already started');
+        toast.error('Lobby not found or game in progress');
         setIsJoining(false);
         return;
       }
