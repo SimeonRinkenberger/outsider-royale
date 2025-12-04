@@ -140,6 +140,8 @@ const Home = () => {
           </p>
         </Card>
 
+        <p className="text-center text-muted-foreground">Test text v1 - delete me later</p>
+
         <div className="space-y-4">
           <Button
             onClick={createLobby}
