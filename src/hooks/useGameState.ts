@@ -162,6 +162,77 @@ export const useGameState = (lobbyId: string | null) => {
     };
   }, [lobbyId]);
 
+  // Watch for new game when lobby's current_game_id changes
+  useEffect(() => {
+    if (!lobby?.current_game_id) return;
+
+    const fetchNewGame = async () => {
+      console.log('useGameState: Fetching game for current_game_id', lobby.current_game_id);
+      
+      const { data: gameData } = await supabase
+        .from('games')
+        .select('*')
+        .eq('id', lobby.current_game_id)
+        .single();
+      
+      if (gameData) {
+        setGame(gameData as Game);
+
+        // Fetch secret word
+        const { data: wordData } = await supabase
+          .from('words')
+          .select('*')
+          .eq('id', gameData.secret_word_id)
+          .single();
+        
+        if (wordData) setSecretWord(wordData as Word);
+
+        // Fetch current round
+        const { data: roundData } = await supabase
+          .from('rounds')
+          .select('*')
+          .eq('game_id', gameData.id)
+          .eq('round_number', gameData.current_round_number)
+          .single();
+        
+        if (roundData) {
+          setCurrentRound(roundData as Round);
+
+          // Fetch clues for current round
+          const { data: cluesData } = await supabase
+            .from('clues')
+            .select('*')
+            .eq('round_id', roundData.id)
+            .order('created_at');
+          
+          if (cluesData) setClues(cluesData as Clue[]);
+        }
+
+        // Fetch ALL clues for the game (for turn calculation)
+        const { data: allRounds } = await supabase
+          .from('rounds')
+          .select('id')
+          .eq('game_id', gameData.id);
+        
+        if (allRounds) {
+          const roundIds = allRounds.map(r => r.id);
+          const { data: allCluesData } = await supabase
+            .from('clues')
+            .select('*')
+            .in('round_id', roundIds)
+            .order('created_at');
+          
+          if (allCluesData) setAllClues(allCluesData as Clue[]);
+        }
+
+        // Reset votes for new game
+        setVotes([]);
+      }
+    };
+
+    fetchNewGame();
+  }, [lobby?.current_game_id]);
+
   // Subscribe to game changes
   useEffect(() => {
     if (!game?.id) return;
