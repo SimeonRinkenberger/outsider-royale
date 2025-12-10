@@ -86,7 +86,9 @@ export type Database = {
         Row: {
           created_at: string
           current_round_number: number
+          game_mode: Database["public"]["Enums"]["game_mode"]
           id: string
+          imposter_word_id: string | null
           lobby_id: string
           outsider_player_id: string
           secret_word_id: string
@@ -96,7 +98,9 @@ export type Database = {
         Insert: {
           created_at?: string
           current_round_number?: number
+          game_mode?: Database["public"]["Enums"]["game_mode"]
           id?: string
+          imposter_word_id?: string | null
           lobby_id: string
           outsider_player_id: string
           secret_word_id: string
@@ -106,7 +110,9 @@ export type Database = {
         Update: {
           created_at?: string
           current_round_number?: number
+          game_mode?: Database["public"]["Enums"]["game_mode"]
           id?: string
+          imposter_word_id?: string | null
           lobby_id?: string
           outsider_player_id?: string
           secret_word_id?: string
@@ -114,6 +120,13 @@ export type Database = {
           total_rounds?: number
         }
         Relationships: [
+          {
+            foreignKeyName: "games_imposter_word_id_fkey"
+            columns: ["imposter_word_id"]
+            isOneToOne: false
+            referencedRelation: "words"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "games_lobby_id_fkey"
             columns: ["lobby_id"]
@@ -185,6 +198,7 @@ export type Database = {
           id: string
           is_connected: boolean
           is_host: boolean
+          is_spectator: boolean
           joined_at: string
           lobby_id: string
           user_id: string
@@ -194,6 +208,7 @@ export type Database = {
           id?: string
           is_connected?: boolean
           is_host?: boolean
+          is_spectator?: boolean
           joined_at?: string
           lobby_id: string
           user_id: string
@@ -203,6 +218,7 @@ export type Database = {
           id?: string
           is_connected?: boolean
           is_host?: boolean
+          is_spectator?: boolean
           joined_at?: string
           lobby_id?: string
           user_id?: string
@@ -346,6 +362,7 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
+      game_mode: "classic" | "elimination" | "hidden_imposter"
       game_status: "clue_round" | "voting" | "results" | "finished"
       lobby_status: "waiting" | "in_progress" | "voting" | "results"
       word_category:
@@ -484,6 +501,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      game_mode: ["classic", "elimination", "hidden_imposter"],
       game_status: ["clue_round", "voting", "results", "finished"],
       lobby_status: ["waiting", "in_progress", "voting", "results"],
       word_category: [

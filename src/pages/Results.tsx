@@ -39,8 +39,14 @@ const Results = () => {
     return { player, votesReceived };
   });
 
-  const correctVotes = votes.filter(v => outsiders.some(o => o.player_id === v.suspected_outsider_player_id)).length;
-  const groupWins = correctVotes >= players.length / 2;
+  // For elimination mode: check if all outsiders are spectators (group wins) or if outsiders have majority
+  const isEliminationMode = game?.game_mode === 'elimination';
+  const activePlayers = players.filter(p => !p.is_spectator);
+  const activeOutsiders = outsiders.filter(o => activePlayers.some(p => p.id === o.player_id));
+  
+  const groupWins = isEliminationMode 
+    ? activeOutsiders.length === 0 // All outsiders eliminated
+    : votes.filter(v => outsiders.some(o => o.player_id === v.suspected_outsider_player_id)).length >= players.length / 2;
 
   const playAgain = async () => {
     if (!isHost || !lobbyId) return;
