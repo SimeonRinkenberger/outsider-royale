@@ -7,7 +7,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useGameState } from '@/hooks/useGameState';
 import { getStoredUserId } from '@/lib/gameUtils';
 import { toast } from 'sonner';
-import { Send, Eye, EyeOff, Users, CheckCircle2, DoorOpen } from 'lucide-react';
+import { Send, Eye, EyeOff, Users, CheckCircle2, DoorOpen, FastForward } from 'lucide-react';
 
 // Seeded random shuffle - ensures all clients get the same order for a given seed
 const seededShuffle = <T,>(array: T[], seed: string): T[] => {
@@ -165,6 +165,29 @@ const Game = () => {
     }
   };
 
+  const skipToVoting = async () => {
+    if (!game || !currentPlayer?.is_host || !currentRound) return;
+
+    try {
+      // Mark current round as complete
+      await supabase
+        .from('rounds')
+        .update({ is_complete: true })
+        .eq('id', currentRound.id);
+
+      // Skip directly to voting
+      await supabase
+        .from('games')
+        .update({ status: 'voting' })
+        .eq('id', game.id);
+
+      toast.success('Skipped to voting!');
+    } catch (error) {
+      console.error('Error skipping to voting:', error);
+      toast.error('Failed to skip to voting');
+    }
+  };
+
   const submitClue = async () => {
     if (!currentPlayer || !currentRound || !clueInput.trim() || !game) return;
 
@@ -257,10 +280,18 @@ const Game = () => {
                 {isMyTurn && !hasSubmittedClue ? "Your Turn!" : "Submit Your Clue"}
               </h1>
             </div>
-            <Button variant="ghost" size="sm" onClick={leaveLobby} className="gap-1 text-muted-foreground">
-              <DoorOpen className="h-4 w-4" />
-              <span className="hidden sm:inline">Leave</span>
-            </Button>
+            <div className="flex items-center gap-2">
+              {currentPlayer?.is_host && (
+                <Button variant="ghost" size="sm" onClick={skipToVoting} className="gap-1 text-muted-foreground">
+                  <FastForward className="h-4 w-4" />
+                  <span className="hidden sm:inline">Skip</span>
+                </Button>
+              )}
+              <Button variant="ghost" size="sm" onClick={leaveLobby} className="gap-1 text-muted-foreground">
+                <DoorOpen className="h-4 w-4" />
+                <span className="hidden sm:inline">Leave</span>
+              </Button>
+            </div>
           </div>
         </header>
 
