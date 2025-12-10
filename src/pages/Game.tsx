@@ -8,7 +8,7 @@ import { useGameState } from '@/hooks/useGameState';
 import { useTurnChime } from '@/hooks/useTurnChime';
 import { getStoredUserId } from '@/lib/gameUtils';
 import { toast } from 'sonner';
-import { Send, Eye, EyeOff, Users, CheckCircle2, DoorOpen, FastForward } from 'lucide-react';
+import { Send, Eye, EyeOff, Users, CheckCircle2, DoorOpen, FastForward, ArrowRight } from 'lucide-react';
 
 // Seeded random shuffle - ensures all clients get the same order for a given seed
 const seededShuffle = <T,>(array: T[], seed: string): T[] => {
@@ -91,38 +91,36 @@ const Game = () => {
     }
   }, [outsiders, currentPlayer?.id, isOutsider]);
 
+  // Track if all clues are submitted for this round
+  const allCluesSubmitted = clues.length === shuffledPlayers.length;
+  const isLastRound = game?.current_round_number === game?.total_rounds;
+
   useEffect(() => {
     if (!game || !currentPlayer) return;
 
-    // Only host handles round transitions to prevent race conditions
+    // Only host handles vote results transition
     if (!currentPlayer.is_host) return;
 
-    // Add delay to ensure all clients receive real-time updates before transitioning
     const timer = setTimeout(() => {
-      // Check if all clues submitted for current round (each player has submitted once this round)
-      if (currentRound && !currentRound.is_complete && clues.length === shuffledPlayers.length) {
-        checkRoundComplete();
-      }
-
       // Check if all votes submitted
       if (game.status === 'voting' && votes.length === shuffledPlayers.length) {
         moveToResults();
       }
-    }, 500); // 500ms delay for sync
+    }, 500);
 
     return () => clearTimeout(timer);
-  }, [clues.length, votes.length, shuffledPlayers.length, currentRound, game, currentPlayer]);
+  }, [votes.length, shuffledPlayers.length, game, currentPlayer]);
 
-  const checkRoundComplete = async () => {
-    if (!currentRound || !game) return;
+  const startNextRound = async () => {
+    if (!currentRound || !game || !currentPlayer?.is_host) return;
 
     try {
+      // Mark current round as complete
       await supabase
         .from('rounds')
         .update({ is_complete: true })
         .eq('id', currentRound.id);
 
-      // Move to next round or voting
       if (game.current_round_number < game.total_rounds) {
         const nextRound = game.current_round_number + 1;
         
@@ -142,14 +140,17 @@ const Game = () => {
             .update({ current_round_number: nextRound })
             .eq('id', game.id);
         }
+        toast.success(`Round ${nextRound} started!`);
       } else {
         await supabase
           .from('games')
           .update({ status: 'voting' })
           .eq('id', game.id);
+        toast.success('Moving to voting!');
       }
     } catch (error) {
-      console.error('Error completing round:', error);
+      console.error('Error starting next round:', error);
+      toast.error('Failed to start next round');
     }
   };
 
@@ -366,14 +367,22 @@ const Game = () => {
               </Button>
             </div>
           ) : hasSubmittedClue ? (
-            <Card className="p-6 bg-gradient-card border-border text-center">
-              <CheckCircle2 className="h-12 w-12 text-primary mx-auto mb-2" />
-              <h3 className="font-bold text-lg mb-1">Clue Submitted!</h3>
-            <p className="text-sm text-muted-foreground">
-                {clues.length === shuffledPlayers.length 
-                  ? "All clues submitted! Moving to next round..."
-                  : `Waiting for ${shuffledPlayers.length - clues.length} other player(s)...`}
-              </p>
+            <Card className="p-6 bg-gradient-card border-border text-center space-y-4">
+              <div>
+                <CheckCircle2 className="h-12 w-12 text-primary mx-auto mb-2" />
+                <h3 className="font-bold text-lg mb-1">Clue Submitted!</h3>
+                <p className="text-sm text-muted-foreground">
+                  {allCluesSubmitted 
+                    ? "All clues submitted! Waiting for host..."
+                    : `Waiting for ${shuffledPlayers.length - clues.length} other player(s)...`}
+                </p>
+              </div>
+              {currentPlayer?.is_host && allCluesSubmitted && (
+                <Button onClick={startNextRound} className="w-full h-12">
+                  <ArrowRight className="h-4 w-4 mr-2" />
+                  {isLastRound ? 'Go to Voting' : 'Next Round'}
+                </Button>
+              )}
             </Card>
           ) : null}
 
