@@ -104,13 +104,16 @@ const Home = () => {
         return;
       }
 
+      // Check if this user is the original host
+      const isOriginalHost = lobby.host_user_id === userId;
+
       const { error: playerError } = await supabase
         .from('lobby_players')
         .insert({
           lobby_id: lobby.id,
           user_id: userId,
           display_name: displayName,
-          is_host: false
+          is_host: isOriginalHost
         });
 
       if (playerError) throw playerError;
