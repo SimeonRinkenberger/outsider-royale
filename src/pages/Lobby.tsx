@@ -118,10 +118,17 @@ const Lobby = () => {
     if (!isHost || !lobbyId) return;
 
     try {
-      await supabase
+      const { error } = await supabase
         .from('lobby_players')
         .delete()
-        .eq('id', playerId);
+        .eq('id', playerId)
+        .eq('lobby_id', lobbyId);
+
+      if (error) {
+        console.error('Error kicking player:', error);
+        toast.error('Failed to kick player');
+        return;
+      }
 
       toast.success(`${playerName} was kicked`);
     } catch (error) {
