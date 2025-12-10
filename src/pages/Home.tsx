@@ -148,18 +148,18 @@ const Home = () => {
       </header>
 
       <main className="p-4 max-w-md mx-auto space-y-6 py-8">
-        <Card className="p-6 bg-gradient-primary text-white shadow-card border-0">
+        <Card className="p-6 bg-gradient-primary text-white shadow-card border-0 animate-fade-in-up hover:scale-[1.02] transition-transform duration-300">
           <h2 className="text-2xl font-bold mb-2">Find the Imposter!</h2>
           <p className="text-white/90">
             One player doesn't know the secret word. Can the group find them?
           </p>
         </Card>
 
-        <div className="space-y-4">
+        <div className="space-y-4 animate-fade-in" style={{ animationDelay: '0.1s' }}>
           <Button
             onClick={createLobby}
             disabled={isCreating}
-            className="w-full h-14 text-lg"
+            className="w-full h-14 text-lg transition-all duration-200 hover:scale-[1.02] active:scale-95"
             size="lg"
           >
             <Plus className="h-5 w-5 mr-2" />
@@ -181,14 +181,14 @@ const Home = () => {
               value={joinCode}
               onChange={(e) => setJoinCode(e.target.value.toUpperCase())}
               maxLength={6}
-              className="h-12 text-base text-center text-lg font-mono"
+              className="h-12 text-base text-center text-lg font-mono transition-all duration-200 focus:scale-[1.02]"
               onKeyDown={(e) => e.key === 'Enter' && joinLobby()}
             />
             <Button
               onClick={joinLobby}
               disabled={isJoining || !joinCode.trim()}
               variant="secondary"
-              className="w-full h-14 text-lg"
+              className="w-full h-14 text-lg transition-all duration-200 hover:scale-[1.02] active:scale-95"
               size="lg"
             >
               <LogIn className="h-5 w-5 mr-2" />

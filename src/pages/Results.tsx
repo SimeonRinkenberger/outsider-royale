@@ -7,12 +7,14 @@ import { useGameState } from '@/hooks/useGameState';
 import { getStoredUserId } from '@/lib/gameUtils';
 import { toast } from 'sonner';
 import { Trophy, XCircle, Home, RotateCcw, UserMinus, DoorOpen } from 'lucide-react';
+import Confetti from '@/components/Confetti';
 
 const Results = () => {
   const { lobbyId } = useParams();
   const navigate = useNavigate();
   const { lobby, players, game, votes, secretWord, outsiders } = useGameState(lobbyId || null);
   const [isResetting, setIsResetting] = useState(false);
+  const [showConfetti, setShowConfetti] = useState(false);
   const userId = getStoredUserId();
 
   const isHost = lobby?.host_user_id === userId;
@@ -158,8 +160,17 @@ const Results = () => {
     );
   }
 
+  // Trigger confetti on group win
+  useEffect(() => {
+    if (groupWins && game && secretWord) {
+      setShowConfetti(true);
+    }
+  }, [groupWins, game, secretWord]);
+
   return (
     <div className="min-h-screen bg-background pb-24">
+      <Confetti isActive={showConfetti} />
+      
       <header className="bg-card border-b border-border p-4 sticky top-0 z-10">
         <div className="max-w-md mx-auto flex items-center justify-between">
           <div className="w-10" />
@@ -172,23 +183,23 @@ const Results = () => {
       </header>
 
       <main className="p-4 max-w-md mx-auto space-y-6 py-6">
-        <Card className={`p-6 shadow-card border-0 text-center ${
+        <Card className={`p-6 shadow-card border-0 text-center animate-bounce-in ${
           groupWins ? 'bg-gradient-primary text-white' : 'bg-destructive/10 border-destructive/20'
         }`}>
           {groupWins ? (
             <>
-              <Trophy className="h-16 w-16 mx-auto mb-3 text-white" />
+              <Trophy className="h-16 w-16 mx-auto mb-3 text-white animate-float" />
               <h2 className="text-2xl font-bold mb-2">Group Wins!</h2>
               <p className="text-white/90">
-                You found the outsider! Great job detectives!
+                You found the imposter! Great job detectives!
               </p>
             </>
           ) : (
             <>
-              <XCircle className="h-16 w-16 text-destructive mx-auto mb-3" />
-              <h2 className="text-2xl font-bold text-destructive mb-2">Outsider Wins!</h2>
+              <XCircle className="h-16 w-16 text-destructive mx-auto mb-3 animate-shake" />
+              <h2 className="text-2xl font-bold text-destructive mb-2">Imposter Wins!</h2>
               <p className="text-muted-foreground">
-                The outsider fooled everyone!
+                The imposter fooled everyone!
               </p>
             </>
           )}
