@@ -199,10 +199,11 @@ const Game = () => {
   const processEliminationVotes = async () => {
     if (!game || !currentPlayer?.is_host) return;
 
-    // Count votes for each player (excluding "skip" votes)
+    // Count votes for each player (excluding skip votes - where voter voted for themselves)
     const voteCounts: Record<string, number> = {};
     votes.forEach(v => {
-      if (v.suspected_outsider_player_id !== 'skip') {
+      // Skip votes are marked by voting for yourself
+      if (v.suspected_outsider_player_id !== v.voter_player_id) {
         voteCounts[v.suspected_outsider_player_id] = (voteCounts[v.suspected_outsider_player_id] || 0) + 1;
       }
     });
@@ -378,16 +379,21 @@ const Game = () => {
 
     setIsSubmitting(true);
     try {
+      // For skip votes in elimination mode, insert with voter's own ID as a marker
+      // This will be filtered out in vote counting since you can't vote for yourself normally
+      const voteTarget = suspectedPlayerId === 'skip' ? currentPlayer.id : suspectedPlayerId;
+      
       await supabase
         .from('votes')
         .insert({
           game_id: game.id,
           voter_player_id: currentPlayer.id,
-          suspected_outsider_player_id: suspectedPlayerId
+          suspected_outsider_player_id: voteTarget
         });
 
       setSelectedVote(suspectedPlayerId);
-      toast.success('Vote submitted!');
+      setSkipVote(suspectedPlayerId === 'skip');
+      toast.success(suspectedPlayerId === 'skip' ? 'Vote skipped!' : 'Vote submitted!');
     } catch (error) {
       console.error('Error submitting vote:', error);
       toast.error('Failed to submit vote');
