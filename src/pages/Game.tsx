@@ -491,10 +491,10 @@ const Game = () => {
 
           {/* Turn indicator */}
           {!hasSubmittedClue && currentTurnPlayer && (
-            <Card className={`p-4 ${isMyTurn ? 'bg-primary/10 border-primary' : 'bg-muted/50 border-border'}`}>
+            <Card className={`p-4 transition-all duration-300 ${isMyTurn ? 'bg-primary/10 border-primary animate-pulse-glow' : 'bg-muted/50 border-border'}`}>
               <div className="text-center">
                 {isMyTurn ? (
-                  <p className="font-semibold text-primary">It's your turn to give a clue!</p>
+                  <p className="font-semibold text-primary animate-bounce-in">It's your turn to give a clue!</p>
                 ) : (
                   <p className="text-muted-foreground">
                     Waiting for <span className="font-semibold text-foreground">{currentTurnPlayer.display_name}</span> to submit their clue...
