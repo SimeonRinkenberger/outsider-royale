@@ -66,7 +66,7 @@ const Onboarding = () => {
               onKeyDown={(e) => e.key === 'Enter' && handleContinue()}
             />
             <p className="text-xs text-muted-foreground">
-              {displayName.length}/16 characters
+              {displayName.length}/24 characters
             </p>
           </div>
 
