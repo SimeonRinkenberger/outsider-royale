@@ -18,6 +18,7 @@ export const useGameState = (lobbyId: string | null) => {
   const [allClues, setAllClues] = useState<Clue[]>([]); // All clues for the game
   const [votes, setVotes] = useState<Vote[]>([]);
   const [secretWord, setSecretWord] = useState<Word | null>(null);
+  const [imposterWord, setImposterWord] = useState<Word | null>(null);
   const [outsiders, setOutsiders] = useState<GameOutsider[]>([]);
 
   useEffect(() => {
@@ -64,6 +65,19 @@ export const useGameState = (lobbyId: string | null) => {
               .single();
             
             if (wordData) setSecretWord(wordData as Word);
+
+            // Fetch imposter word if exists (for hidden_imposter mode)
+            if (gameData.imposter_word_id) {
+              const { data: imposterWordData } = await supabase
+                .from('words')
+                .select('*')
+                .eq('id', gameData.imposter_word_id)
+                .single();
+              
+              if (imposterWordData) setImposterWord(imposterWordData as Word);
+            } else {
+              setImposterWord(null);
+            }
 
             // Fetch current round
             const { data: roundData } = await supabase
@@ -194,6 +208,19 @@ export const useGameState = (lobbyId: string | null) => {
           .single();
         
         if (wordData) setSecretWord(wordData as Word);
+
+        // Fetch imposter word if exists (for hidden_imposter mode)
+        if (gameData.imposter_word_id) {
+          const { data: imposterWordData } = await supabase
+            .from('words')
+            .select('*')
+            .eq('id', gameData.imposter_word_id)
+            .single();
+          
+          if (imposterWordData) setImposterWord(imposterWordData as Word);
+        } else {
+          setImposterWord(null);
+        }
 
         // Fetch current round
         const { data: roundData } = await supabase
@@ -372,6 +399,7 @@ export const useGameState = (lobbyId: string | null) => {
     allClues,
     votes,
     secretWord,
+    imposterWord,
     outsiders
   };
 };

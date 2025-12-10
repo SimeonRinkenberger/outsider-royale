@@ -9,7 +9,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { useGameState } from '@/hooks/useGameState';
 import { getStoredUserId } from '@/lib/gameUtils';
 import { toast } from 'sonner';
-import { Copy, Users, Crown, ArrowLeft, Play, X, Settings } from 'lucide-react';
+import { Copy, Users, Crown, ArrowLeft, Play, X, Settings, Gamepad2 } from 'lucide-react';
+import { GameMode } from '@/types/game';
 
 const CATEGORIES = [
   { value: 'animal', label: 'Animals' },
@@ -22,6 +23,12 @@ const CATEGORIES = [
   { value: 'thing', label: 'Things' },
 ];
 
+const GAME_MODES: { value: GameMode; label: string; description: string }[] = [
+  { value: 'classic', label: 'Classic', description: 'Vote after all rounds. Find the imposter!' },
+  { value: 'elimination', label: 'Elimination', description: 'Vote each round. Eliminated players become spectators.' },
+  { value: 'hidden_imposter', label: 'Hidden Imposter', description: 'Nobody knows they are the imposter. Imposters get a different word.' },
+];
+
 const Lobby = () => {
   const { lobbyId } = useParams();
   const navigate = useNavigate();
@@ -30,6 +37,7 @@ const Lobby = () => {
   const [selectedCategories, setSelectedCategories] = useState<string[]>(['animal', 'brand', 'food', 'movie', 'person', 'place', 'thing']);
   const [imposterCount, setImposterCount] = useState(1);
   const [roundCount, setRoundCount] = useState(3);
+  const [gameMode, setGameMode] = useState<GameMode>('classic');
   const userId = getStoredUserId();
 
   const isHost = lobby?.host_user_id === userId;
@@ -139,6 +147,21 @@ const Lobby = () => {
       }
 
       const randomWord = words[Math.floor(Math.random() * words.length)];
+      
+      // For hidden_imposter mode, get a different word from the same category
+      let imposterWordId = null;
+      if (gameMode === 'hidden_imposter') {
+        const sameCategory = words.filter(w => w.category === randomWord.category && w.id !== randomWord.id);
+        if (sameCategory.length > 0) {
+          imposterWordId = sameCategory[Math.floor(Math.random() * sameCategory.length)].id;
+        } else {
+          // Fallback: use any different word
+          const differentWords = words.filter(w => w.id !== randomWord.id);
+          if (differentWords.length > 0) {
+            imposterWordId = differentWords[Math.floor(Math.random() * differentWords.length)].id;
+          }
+        }
+      }
 
       // Pick random outsiders
       const shuffledPlayers = [...players].sort(() => Math.random() - 0.5);
@@ -146,7 +169,8 @@ const Lobby = () => {
       
       console.log('Starting game with outsiders:', {
         outsiders: selectedOutsiders.map(p => ({ name: p.display_name, id: p.id })),
-        allPlayers: players.map(p => ({ name: p.display_name, id: p.id }))
+        allPlayers: players.map(p => ({ name: p.display_name, id: p.id })),
+        gameMode
       });
 
       // Create game (using first outsider for backward compatibility)
@@ -155,10 +179,12 @@ const Lobby = () => {
         .insert({
           lobby_id: lobbyId,
           secret_word_id: randomWord.id,
-          outsider_player_id: selectedOutsiders[0].id,
-          total_rounds: roundCount,
+          outsider_player_id: selectedOutsiders[0]?.id || players[0].id,
+          imposter_word_id: imposterWordId,
+          total_rounds: gameMode === 'elimination' ? 99 : roundCount, // Elimination has unlimited rounds
           current_round_number: 1,
-          status: 'clue_round'
+          status: 'clue_round',
+          game_mode: gameMode
         })
         .select()
         .single();
@@ -166,16 +192,18 @@ const Lobby = () => {
       if (gameError) throw gameError;
 
       // Insert all outsiders into game_outsiders table
-      const outsiderInserts = selectedOutsiders.map(outsider => ({
-        game_id: game.id,
-        player_id: outsider.id
-      }));
+      if (selectedOutsiders.length > 0) {
+        const outsiderInserts = selectedOutsiders.map(outsider => ({
+          game_id: game.id,
+          player_id: outsider.id
+        }));
 
-      const { error: outsidersError } = await supabase
-        .from('game_outsiders')
-        .insert(outsiderInserts);
+        const { error: outsidersError } = await supabase
+          .from('game_outsiders')
+          .insert(outsiderInserts);
 
-      if (outsidersError) throw outsidersError;
+        if (outsidersError) throw outsidersError;
+      }
 
       // Create first round
       const { error: roundError } = await supabase
@@ -308,44 +336,81 @@ const Lobby = () => {
         {isHost && (
           <Card className="p-4 bg-gradient-card border-border space-y-5">
             <div className="flex items-center gap-2 text-sm font-semibold text-muted-foreground">
+              <Gamepad2 className="h-4 w-4" />
+              Game Mode
+            </div>
+
+            <div className="space-y-2">
+              {GAME_MODES.map((mode) => (
+                <div 
+                  key={mode.value}
+                  onClick={() => setGameMode(mode.value)}
+                  className={`p-3 rounded-lg border cursor-pointer transition-colors ${
+                    gameMode === mode.value 
+                      ? 'border-primary bg-primary/10' 
+                      : 'border-border hover:bg-muted/50'
+                  }`}
+                >
+                  <div className="flex items-center gap-2">
+                    <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${
+                      gameMode === mode.value ? 'border-primary' : 'border-muted-foreground'
+                    }`}>
+                      {gameMode === mode.value && <div className="w-2 h-2 rounded-full bg-primary" />}
+                    </div>
+                    <span className="font-medium">{mode.label}</span>
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1 ml-6">{mode.description}</p>
+                </div>
+              ))}
+            </div>
+          </Card>
+        )}
+
+        {isHost && (
+          <Card className="p-4 bg-gradient-card border-border space-y-5">
+            <div className="flex items-center gap-2 text-sm font-semibold text-muted-foreground">
               <Settings className="h-4 w-4" />
               Game Settings
             </div>
 
-            {/* Imposter Count */}
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <Label className="text-sm">Imposters</Label>
-                <span className="text-sm font-bold text-primary">{imposterCount}</span>
+            {/* Imposter Count - hide for hidden_imposter mode */}
+            {gameMode !== 'hidden_imposter' && (
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <Label className="text-sm">Imposters</Label>
+                  <span className="text-sm font-bold text-primary">{imposterCount}</span>
+                </div>
+                <Slider
+                  value={[imposterCount]}
+                  onValueChange={([val]) => setImposterCount(val)}
+                  min={0}
+                  max={maxImposters}
+                  step={1}
+                  className="w-full"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Recommended: {recommendedImposters} for {players.length} players
+                </p>
               </div>
-              <Slider
-                value={[imposterCount]}
-                onValueChange={([val]) => setImposterCount(val)}
-                min={0}
-                max={maxImposters}
-                step={1}
-                className="w-full"
-              />
-              <p className="text-xs text-muted-foreground">
-                Recommended: {recommendedImposters} for {players.length} players
-              </p>
-            </div>
+            )}
 
-            {/* Round Count */}
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <Label className="text-sm">Rounds</Label>
-                <span className="text-sm font-bold text-primary">{roundCount}</span>
+            {/* Round Count - hide for elimination mode */}
+            {gameMode !== 'elimination' && (
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <Label className="text-sm">Rounds</Label>
+                  <span className="text-sm font-bold text-primary">{roundCount}</span>
+                </div>
+                <Slider
+                  value={[roundCount]}
+                  onValueChange={([val]) => setRoundCount(val)}
+                  min={1}
+                  max={5}
+                  step={1}
+                  className="w-full"
+                />
               </div>
-              <Slider
-                value={[roundCount]}
-                onValueChange={([val]) => setRoundCount(val)}
-                min={1}
-                max={5}
-                step={1}
-                className="w-full"
-              />
-            </div>
+            )}
 
             {/* Category Selection */}
             <div className="space-y-3">

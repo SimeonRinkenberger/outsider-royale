@@ -1,6 +1,7 @@
 export type LobbyStatus = 'waiting' | 'in_progress' | 'voting' | 'results';
 export type GameStatus = 'clue_round' | 'voting' | 'results' | 'finished';
 export type WordCategory = 'brand' | 'food' | 'movie' | 'animal' | 'place' | 'thing' | 'person';
+export type GameMode = 'classic' | 'elimination' | 'hidden_imposter';
 
 export interface Profile {
   id: string;
@@ -24,6 +25,7 @@ export interface LobbyPlayer {
   display_name: string;
   is_host: boolean;
   is_connected: boolean;
+  is_spectator: boolean;
   joined_at: string;
 }
 
@@ -38,9 +40,11 @@ export interface Game {
   lobby_id: string;
   secret_word_id: string;
   outsider_player_id: string;
+  imposter_word_id: string | null;
   total_rounds: number;
   current_round_number: number;
   status: GameStatus;
+  game_mode: GameMode;
   created_at: string;
 }
 
