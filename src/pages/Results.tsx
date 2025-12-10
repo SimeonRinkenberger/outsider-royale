@@ -55,6 +55,16 @@ const Results = () => {
 
     setIsResetting(true);
     try {
+      // Reset all spectators back to active players for the new game
+      const { error: resetError } = await supabase
+        .from('lobby_players')
+        .update({ is_spectator: false })
+        .eq('lobby_id', lobbyId);
+
+      if (resetError) {
+        console.error('Error resetting spectators:', resetError);
+      }
+
       // Get random word
       const { data: words } = await supabase
         .from('words')
@@ -68,8 +78,20 @@ const Results = () => {
 
       const randomWord = words[Math.floor(Math.random() * words.length)];
 
-      // Pick random outsider
-      const randomOutsider = players[Math.floor(Math.random() * players.length)];
+      // Get fresh player list after resetting spectators
+      const { data: freshPlayers } = await supabase
+        .from('lobby_players')
+        .select('*')
+        .eq('lobby_id', lobbyId);
+
+      if (!freshPlayers || freshPlayers.length === 0) {
+        toast.error('No players in lobby');
+        setIsResetting(false);
+        return;
+      }
+
+      // Pick random outsider from fresh player list
+      const randomOutsider = freshPlayers[Math.floor(Math.random() * freshPlayers.length)];
 
       // Create new game
       const { data: newGame, error: gameError } = await supabase
