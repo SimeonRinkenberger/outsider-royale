@@ -5,6 +5,7 @@ import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { supabase } from '@/integrations/supabase/client';
 import { useGameState } from '@/hooks/useGameState';
+import { useTurnChime } from '@/hooks/useTurnChime';
 import { getStoredUserId } from '@/lib/gameUtils';
 import { toast } from 'sonner';
 import { Send, Eye, EyeOff, Users, CheckCircle2, DoorOpen, FastForward } from 'lucide-react';
@@ -71,6 +72,9 @@ const Game = () => {
   const currentTurnIndex = clues.length;
   const currentTurnPlayer = shuffledPlayers[currentTurnIndex];
   const isMyTurn = currentTurnPlayer?.id === currentPlayer?.id;
+
+  // Play chime when it's the player's turn
+  useTurnChime(isMyTurn, hasSubmittedClue);
 
   // Debug logging
   useEffect(() => {
