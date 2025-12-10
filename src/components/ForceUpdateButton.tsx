@@ -27,7 +27,7 @@ const ForceUpdateButton = () => {
       variant="ghost"
       size="icon"
       onClick={forceUpdate}
-      className="fixed top-4 left-14 z-50"
+      className="fixed top-3 left-14 z-50"
       title="Force update - clears cache and reloads"
     >
       <RefreshCw className="h-5 w-5" />
