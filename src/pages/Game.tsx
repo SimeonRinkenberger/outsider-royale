@@ -128,20 +128,33 @@ const Game = () => {
     // Only host handles vote results transition
     if (!currentPlayer.is_host) return;
 
+    console.log('Vote check:', {
+      gameStatus: game.status,
+      votesCount: votes.length,
+      shuffledPlayersCount: shuffledPlayers.length,
+      activePlayersCount: activePlayers.length,
+      playersCount: players.length,
+      isEliminationMode,
+      isHost: currentPlayer.is_host
+    });
+
     const timer = setTimeout(async () => {
       // Check if all votes submitted (for non-elimination modes)
-      if (!isEliminationMode && game.status === 'voting' && votes.length === shuffledPlayers.length) {
+      // Use players.length for classic mode since all players vote
+      if (!isEliminationMode && game.status === 'voting' && votes.length === players.filter(p => !p.is_spectator).length) {
+        console.log('Moving to results - classic mode');
         moveToResults();
       }
       
       // For elimination mode: check if all active players voted (including skips)
       if (isEliminationMode && game.status === 'voting' && votes.length === activePlayers.length) {
+        console.log('Processing elimination votes');
         await processEliminationVotes();
       }
     }, 500);
 
     return () => clearTimeout(timer);
-  }, [votes.length, shuffledPlayers.length, activePlayers.length, game, currentPlayer, isEliminationMode]);
+  }, [votes.length, shuffledPlayers.length, activePlayers.length, players.length, game, currentPlayer, isEliminationMode]);
 
   const startNextRound = async () => {
     if (!currentRound || !game || !currentPlayer?.is_host) return;
