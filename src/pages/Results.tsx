@@ -50,6 +50,13 @@ const Results = () => {
     ? activeOutsiders.length === 0 // All outsiders eliminated
     : votes.filter(v => outsiders.some(o => o.player_id === v.suspected_outsider_player_id)).length >= players.length / 2;
 
+  // Trigger confetti on group win - must be before early return
+  useEffect(() => {
+    if (groupWins && game && secretWord) {
+      setShowConfetti(true);
+    }
+  }, [groupWins, game, secretWord]);
+
   const playAgain = async () => {
     if (!isHost || !lobbyId) return;
 
@@ -181,13 +188,6 @@ const Results = () => {
       </div>
     );
   }
-
-  // Trigger confetti on group win
-  useEffect(() => {
-    if (groupWins && game && secretWord) {
-      setShowConfetti(true);
-    }
-  }, [groupWins, game, secretWord]);
 
   return (
     <div className="min-h-screen bg-background pb-24">
