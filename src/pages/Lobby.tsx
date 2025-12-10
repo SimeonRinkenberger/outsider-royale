@@ -2,15 +2,16 @@ import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Label } from '@/components/ui/label';
+import { Slider } from '@/components/ui/slider';
+import { Checkbox } from '@/components/ui/checkbox';
 import { supabase } from '@/integrations/supabase/client';
 import { useGameState } from '@/hooks/useGameState';
 import { getStoredUserId } from '@/lib/gameUtils';
 import { toast } from 'sonner';
-import { Copy, Users, Crown, ArrowLeft, Play, X } from 'lucide-react';
+import { Copy, Users, Crown, ArrowLeft, Play, X, Settings } from 'lucide-react';
 
 const CATEGORIES = [
-  { value: 'all', label: 'All Categories' },
   { value: 'animal', label: 'Animals' },
   { value: 'brand', label: 'Brands' },
   { value: 'degenerate', label: 'Degenerate' },
@@ -26,12 +27,21 @@ const Lobby = () => {
   const navigate = useNavigate();
   const { lobby, players } = useGameState(lobbyId || null);
   const [isStarting, setIsStarting] = useState(false);
-  const [selectedCategory, setSelectedCategory] = useState('all');
+  const [selectedCategories, setSelectedCategories] = useState<string[]>(['animal', 'brand', 'food', 'movie', 'person', 'place', 'thing']);
+  const [imposterCount, setImposterCount] = useState(1);
+  const [roundCount, setRoundCount] = useState(3);
   const userId = getStoredUserId();
 
   const isHost = lobby?.host_user_id === userId;
   const canStart = players.length >= 3;
+  const maxImposters = Math.max(1, Math.floor((players.length - 1) / 2));
 
+  // Adjust imposter count if it exceeds max
+  useEffect(() => {
+    if (imposterCount > maxImposters) {
+      setImposterCount(maxImposters);
+    }
+  }, [maxImposters, imposterCount]);
 
   useEffect(() => {
     console.log('Lobby state changed:', { 
@@ -45,6 +55,18 @@ const Lobby = () => {
       navigate(`/game/${lobbyId}`);
     }
   }, [lobby?.current_game_id, lobbyId, navigate]);
+
+  const toggleCategory = (category: string) => {
+    setSelectedCategories(prev => 
+      prev.includes(category)
+        ? prev.filter(c => c !== category)
+        : [...prev, category]
+    );
+  };
+
+  const selectAllCategories = () => {
+    setSelectedCategories(CATEGORIES.map(c => c.value));
+  };
 
   const copyCode = () => {
     if (lobby?.code) {
@@ -91,39 +113,44 @@ const Lobby = () => {
   const startGame = async () => {
     if (!isHost || !lobbyId || !canStart) return;
 
+    if (selectedCategories.length === 0) {
+      toast.error('Please select at least one category');
+      return;
+    }
+
     setIsStarting(true);
     try {
-      // Get words (filtered by category if selected)
-      let query = supabase.from('words').select('*');
-      if (selectedCategory !== 'all') {
-        query = query.eq('category', selectedCategory as 'animal' | 'brand' | 'degenerate' | 'food' | 'movie' | 'person' | 'place' | 'thing');
-      }
-      const { data: words } = await query;
+      // Get words filtered by selected categories
+      const { data: words } = await supabase
+        .from('words')
+        .select('*')
+        .in('category', selectedCategories as ('animal' | 'brand' | 'degenerate' | 'food' | 'movie' | 'person' | 'place' | 'thing')[]);
       
       if (!words || words.length === 0) {
-        toast.error('No words available for this category');
+        toast.error('No words available for selected categories');
         setIsStarting(false);
         return;
       }
 
       const randomWord = words[Math.floor(Math.random() * words.length)];
 
-      // Pick random outsider
-      const randomOutsider = players[Math.floor(Math.random() * players.length)];
-      console.log('Starting game with outsider:', {
-        outsiderName: randomOutsider.display_name,
-        outsiderId: randomOutsider.id,
+      // Pick random outsiders
+      const shuffledPlayers = [...players].sort(() => Math.random() - 0.5);
+      const selectedOutsiders = shuffledPlayers.slice(0, imposterCount);
+      
+      console.log('Starting game with outsiders:', {
+        outsiders: selectedOutsiders.map(p => ({ name: p.display_name, id: p.id })),
         allPlayers: players.map(p => ({ name: p.display_name, id: p.id }))
       });
 
-      // Create game
+      // Create game (using first outsider for backward compatibility)
       const { data: game, error: gameError } = await supabase
         .from('games')
         .insert({
           lobby_id: lobbyId,
           secret_word_id: randomWord.id,
-          outsider_player_id: randomOutsider.id,
-          total_rounds: 3,
+          outsider_player_id: selectedOutsiders[0].id,
+          total_rounds: roundCount,
           current_round_number: 1,
           status: 'clue_round'
         })
@@ -131,6 +158,18 @@ const Lobby = () => {
         .single();
 
       if (gameError) throw gameError;
+
+      // Insert all outsiders into game_outsiders table
+      const outsiderInserts = selectedOutsiders.map(outsider => ({
+        game_id: game.id,
+        player_id: outsider.id
+      }));
+
+      const { error: outsidersError } = await supabase
+        .from('game_outsiders')
+        .insert(outsiderInserts);
+
+      if (outsidersError) throw outsidersError;
 
       // Create first round
       const { error: roundError } = await supabase
@@ -171,7 +210,7 @@ const Lobby = () => {
   }
 
   return (
-    <div className="min-h-screen bg-background pb-24">
+    <div className="min-h-screen bg-background pb-48">
       <header className="bg-card border-b border-border p-4 pl-28 sticky top-0 z-10">
         <div className="max-w-md mx-auto flex items-center justify-center relative">
           <Button variant="ghost" size="icon" className="absolute left-0" onClick={leaveLobby}>
@@ -261,22 +300,93 @@ const Lobby = () => {
         </div>
 
         {isHost && (
-          <div className="fixed bottom-6 left-0 right-0 px-4 max-w-md mx-auto space-y-3">
-            <Select value={selectedCategory} onValueChange={setSelectedCategory}>
-              <SelectTrigger className="w-full h-12 bg-card">
-                <SelectValue placeholder="Select category" />
-              </SelectTrigger>
-              <SelectContent>
+          <Card className="p-4 bg-gradient-card border-border space-y-5">
+            <div className="flex items-center gap-2 text-sm font-semibold text-muted-foreground">
+              <Settings className="h-4 w-4" />
+              Game Settings
+            </div>
+
+            {/* Imposter Count */}
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <Label className="text-sm">Imposters</Label>
+                <span className="text-sm font-bold text-primary">{imposterCount}</span>
+              </div>
+              <Slider
+                value={[imposterCount]}
+                onValueChange={([val]) => setImposterCount(val)}
+                min={1}
+                max={maxImposters}
+                step={1}
+                className="w-full"
+              />
+              <p className="text-xs text-muted-foreground">
+                Max {maxImposters} imposter{maxImposters > 1 ? 's' : ''} with {players.length} players
+              </p>
+            </div>
+
+            {/* Round Count */}
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <Label className="text-sm">Rounds</Label>
+                <span className="text-sm font-bold text-primary">{roundCount}</span>
+              </div>
+              <Slider
+                value={[roundCount]}
+                onValueChange={([val]) => setRoundCount(val)}
+                min={1}
+                max={5}
+                step={1}
+                className="w-full"
+              />
+            </div>
+
+            {/* Category Selection */}
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <Label className="text-sm">Categories</Label>
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  onClick={selectAllCategories}
+                  className="text-xs h-7"
+                >
+                  Select All
+                </Button>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
                 {CATEGORIES.map((cat) => (
-                  <SelectItem key={cat.value} value={cat.value}>
-                    {cat.label}
-                  </SelectItem>
+                  <div 
+                    key={cat.value} 
+                    className="flex items-center space-x-2 p-2 rounded-md hover:bg-muted/50 cursor-pointer"
+                    onClick={() => toggleCategory(cat.value)}
+                  >
+                    <Checkbox
+                      id={cat.value}
+                      checked={selectedCategories.includes(cat.value)}
+                      onCheckedChange={() => toggleCategory(cat.value)}
+                    />
+                    <label
+                      htmlFor={cat.value}
+                      className="text-sm font-medium cursor-pointer select-none"
+                    >
+                      {cat.label}
+                    </label>
+                  </div>
                 ))}
-              </SelectContent>
-            </Select>
+              </div>
+              {selectedCategories.length === 0 && (
+                <p className="text-xs text-destructive">Select at least one category</p>
+              )}
+            </div>
+          </Card>
+        )}
+
+        {isHost && (
+          <div className="fixed bottom-6 left-0 right-0 px-4 max-w-md mx-auto space-y-3">
             <Button
               onClick={startGame}
-              disabled={!canStart || isStarting}
+              disabled={!canStart || isStarting || selectedCategories.length === 0}
               className="w-full h-14 text-lg shadow-lg"
               size="lg"
             >

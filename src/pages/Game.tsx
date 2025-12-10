@@ -36,7 +36,7 @@ const getShuffledPlayersForGame = <T,>(players: T[], gameId: string): T[] => {
 const Game = () => {
   const { lobbyId } = useParams();
   const navigate = useNavigate();
-  const { lobby, players, game, currentRound, clues, allClues, votes, secretWord } = useGameState(lobbyId || null);
+  const { lobby, players, game, currentRound, clues, allClues, votes, secretWord, outsiders } = useGameState(lobbyId || null);
   const [clueInput, setClueInput] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [selectedVote, setSelectedVote] = useState<string | null>(null);
@@ -64,7 +64,9 @@ const Game = () => {
   }, [game?.id, players]);
 
   const currentPlayer = players.find(p => p.user_id === userId);
-  const isOutsider = game?.outsider_player_id === currentPlayer?.id;
+  
+  // Check if current player is an outsider (using outsiders array)
+  const isOutsider = outsiders.some(o => o.player_id === currentPlayer?.id);
   const hasSubmittedClue = clues.some(c => c.player_id === currentPlayer?.id);
   const hasVoted = votes.some(v => v.voter_player_id === currentPlayer?.id);
 
@@ -80,14 +82,14 @@ const Game = () => {
   useEffect(() => {
     if (game && currentPlayer) {
       console.log('Game outsider check:', {
-        outsiderPlayerId: game.outsider_player_id,
+        outsiders: outsiders.map(o => o.player_id),
         currentPlayerId: currentPlayer.id,
         currentPlayerName: currentPlayer.display_name,
         isOutsider,
-        match: game.outsider_player_id === currentPlayer.id
+        outsiderCount: outsiders.length
       });
     }
-  }, [game?.outsider_player_id, currentPlayer?.id, isOutsider]);
+  }, [outsiders, currentPlayer?.id, isOutsider]);
 
   useEffect(() => {
     if (!game || !currentPlayer) return;
