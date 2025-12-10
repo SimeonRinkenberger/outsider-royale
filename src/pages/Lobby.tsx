@@ -42,7 +42,7 @@ const Lobby = () => {
 
   const isHost = lobby?.host_user_id === userId;
   const canStart = players.length >= 3;
-  const maxImposters = Math.max(0, players.length - 1);
+  const maxImposters = Math.max(1, players.length - 1);
   
   // Recommended imposters based on player count
   const recommendedImposters = players.length <= 4 ? 1 
@@ -50,12 +50,17 @@ const Lobby = () => {
     : players.length <= 12 ? 3 
     : 4;
 
-  // Adjust imposter count if it exceeds max
+  // Update imposter count to recommended when players change, and clamp to valid range
   useEffect(() => {
-    if (imposterCount > maxImposters) {
-      setImposterCount(Math.max(0, maxImposters));
+    if (players.length > 0) {
+      const newRecommended = players.length <= 4 ? 1 
+        : players.length <= 7 ? 2 
+        : players.length <= 12 ? 3 
+        : 4;
+      const newMax = Math.max(1, players.length - 1);
+      setImposterCount(Math.min(newRecommended, newMax));
     }
-  }, [maxImposters, imposterCount]);
+  }, [players.length]);
 
   useEffect(() => {
     console.log('Lobby state changed:', { 
@@ -383,7 +388,7 @@ const Lobby = () => {
                 <Slider
                   value={[imposterCount]}
                   onValueChange={([val]) => setImposterCount(val)}
-                  min={0}
+                  min={1}
                   max={maxImposters}
                   step={1}
                   className="w-full"
