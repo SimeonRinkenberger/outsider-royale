@@ -133,7 +133,7 @@ const Home = () => {
       <header className="bg-card border-b border-border p-4">
         <div className="max-w-md mx-auto flex items-center justify-center relative">
           <h1 className="text-xl sm:text-2xl font-bold bg-gradient-primary bg-clip-text text-transparent">
-            Word Game
+            Sus Detector
           </h1>
           <div className="absolute right-0 flex items-center gap-1 sm:gap-2">
             <div className="flex items-center gap-1 text-xs sm:text-sm text-muted-foreground">
@@ -149,7 +149,7 @@ const Home = () => {
 
       <main className="p-4 max-w-md mx-auto space-y-6 py-8">
         <Card className="p-6 bg-gradient-primary text-white shadow-card border-0">
-          <h2 className="text-2xl font-bold mb-2">Find the Outsider!</h2>
+          <h2 className="text-2xl font-bold mb-2">Find the Imposter!</h2>
           <p className="text-white/90">
             One player doesn't know the secret word. Can the group find them?
           </p>
