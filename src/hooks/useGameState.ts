@@ -2,6 +2,13 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import type { Lobby, LobbyPlayer, Game, Round, Clue, Vote, Word } from '@/types/game';
 
+export interface GameOutsider {
+  id: string;
+  game_id: string;
+  player_id: string;
+  created_at: string;
+}
+
 export const useGameState = (lobbyId: string | null) => {
   const [lobby, setLobby] = useState<Lobby | null>(null);
   const [players, setPlayers] = useState<LobbyPlayer[]>([]);
@@ -11,6 +18,7 @@ export const useGameState = (lobbyId: string | null) => {
   const [allClues, setAllClues] = useState<Clue[]>([]); // All clues for the game
   const [votes, setVotes] = useState<Vote[]>([]);
   const [secretWord, setSecretWord] = useState<Word | null>(null);
+  const [outsiders, setOutsiders] = useState<GameOutsider[]>([]);
 
   useEffect(() => {
     if (!lobbyId) return;
@@ -336,6 +344,25 @@ export const useGameState = (lobbyId: string | null) => {
     };
   }, [game?.id, game?.current_round_number, currentRound?.id]);
 
+  // Fetch outsiders when game changes
+  useEffect(() => {
+    if (!game?.id) {
+      setOutsiders([]);
+      return;
+    }
+
+    const fetchOutsiders = async () => {
+      const { data } = await supabase
+        .from('game_outsiders')
+        .select('*')
+        .eq('game_id', game.id);
+      
+      if (data) setOutsiders(data as GameOutsider[]);
+    };
+
+    fetchOutsiders();
+  }, [game?.id]);
+
   return {
     lobby,
     players,
@@ -344,6 +371,7 @@ export const useGameState = (lobbyId: string | null) => {
     clues,
     allClues,
     votes,
-    secretWord
+    secretWord,
+    outsiders
   };
 };

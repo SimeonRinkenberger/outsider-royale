@@ -11,12 +11,12 @@ import { Trophy, XCircle, Home, RotateCcw, UserMinus, DoorOpen } from 'lucide-re
 const Results = () => {
   const { lobbyId } = useParams();
   const navigate = useNavigate();
-  const { lobby, players, game, votes, secretWord } = useGameState(lobbyId || null);
+  const { lobby, players, game, votes, secretWord, outsiders } = useGameState(lobbyId || null);
   const [isResetting, setIsResetting] = useState(false);
   const userId = getStoredUserId();
 
   const isHost = lobby?.host_user_id === userId;
-  const outsider = players.find(p => p.id === game?.outsider_player_id);
+  const outsiderPlayers = players.filter(p => outsiders.some(o => o.player_id === p.id));
 
   
   // When a new game is started (play again), navigate everyone to the new game
@@ -39,7 +39,7 @@ const Results = () => {
     return { player, votesReceived };
   });
 
-  const correctVotes = votes.filter(v => v.suspected_outsider_player_id === game?.outsider_player_id).length;
+  const correctVotes = votes.filter(v => outsiders.some(o => o.player_id === v.suspected_outsider_player_id)).length;
   const groupWins = correctVotes >= players.length / 2;
 
   const playAgain = async () => {
@@ -144,7 +144,7 @@ const Results = () => {
     }
   };
 
-  if (!game || !secretWord || !outsider) {
+  if (!game || !secretWord || outsiderPlayers.length === 0) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <p className="text-muted-foreground">Loading results...</p>
@@ -194,8 +194,12 @@ const Results = () => {
             <h3 className="text-3xl font-bold text-primary">{secretWord.text}</h3>
           </div>
           <div className="border-t border-border pt-4">
-            <p className="text-sm text-muted-foreground mb-1">The outsider was</p>
-            <h4 className="text-xl font-bold">{outsider.display_name}</h4>
+            <p className="text-sm text-muted-foreground mb-1">
+              {outsiderPlayers.length > 1 ? 'The outsiders were' : 'The outsider was'}
+            </p>
+            <h4 className="text-xl font-bold">
+              {outsiderPlayers.map(p => p.display_name).join(', ')}
+            </h4>
           </div>
         </Card>
 
@@ -211,7 +215,7 @@ const Results = () => {
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
                       <span className="font-medium">{player.display_name}</span>
-                      {player.id === outsider.id && (
+                      {outsiders.some(o => o.player_id === player.id) && (
                         <span className="text-xs bg-destructive/20 text-destructive px-2 py-1 rounded-full">
                           Outsider
                         </span>
