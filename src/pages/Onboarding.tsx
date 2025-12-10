@@ -61,7 +61,7 @@ const Onboarding = () => {
               placeholder="Enter your name"
               value={displayName}
               onChange={(e) => setDisplayName(e.target.value)}
-              maxLength={16}
+              maxLength={24}
               className="h-12 text-base"
               onKeyDown={(e) => e.key === 'Enter' && handleContinue()}
             />
