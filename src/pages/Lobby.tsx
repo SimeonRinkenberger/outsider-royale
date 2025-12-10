@@ -36,6 +36,7 @@ const Lobby = () => {
   const [isStarting, setIsStarting] = useState(false);
   const [selectedCategories, setSelectedCategories] = useState<string[]>(['animal', 'brand', 'food', 'movie', 'person', 'place', 'thing']);
   const [imposterCount, setImposterCount] = useState(1);
+  const [randomImposters, setRandomImposters] = useState(false);
   const [roundCount, setRoundCount] = useState(3);
   const [gameMode, setGameMode] = useState<GameMode>('classic');
   const userId = getStoredUserId();
@@ -168,9 +169,14 @@ const Lobby = () => {
         }
       }
 
+      // Determine actual imposter count (random or selected)
+      const actualImposterCount = randomImposters 
+        ? Math.floor(Math.random() * maxImposters) + 1 // Random between 1 and maxImposters
+        : imposterCount;
+
       // Pick random outsiders
       const shuffledPlayers = [...players].sort(() => Math.random() - 0.5);
-      const selectedOutsiders = shuffledPlayers.slice(0, imposterCount);
+      const selectedOutsiders = shuffledPlayers.slice(0, actualImposterCount);
       
       console.log('Starting game with outsiders:', {
         outsiders: selectedOutsiders.map(p => ({ name: p.display_name, id: p.id })),
@@ -378,26 +384,42 @@ const Lobby = () => {
               Game Settings
             </div>
 
-            {/* Imposter Count - hide for hidden_imposter mode */}
-            {gameMode !== 'hidden_imposter' && (
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <Label className="text-sm">Imposters</Label>
-                  <span className="text-sm font-bold text-primary">{imposterCount}</span>
-                </div>
-                <Slider
-                  value={[imposterCount]}
-                  onValueChange={([val]) => setImposterCount(val)}
-                  min={1}
-                  max={maxImposters}
-                  step={1}
-                  className="w-full"
-                />
+            {/* Imposter Count */}
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <Label className="text-sm">Imposters</Label>
+                <span className="text-sm font-bold text-primary">
+                  {randomImposters ? '?' : imposterCount}
+                </span>
+              </div>
+              <Slider
+                value={[imposterCount]}
+                onValueChange={([val]) => setImposterCount(val)}
+                min={1}
+                max={maxImposters}
+                step={1}
+                className="w-full"
+                disabled={randomImposters}
+              />
+              <div className="flex items-center justify-between">
                 <p className="text-xs text-muted-foreground">
                   Recommended: {recommendedImposters} for {players.length} players
                 </p>
+                <div 
+                  className="flex items-center space-x-2 cursor-pointer"
+                  onClick={() => setRandomImposters(!randomImposters)}
+                >
+                  <Checkbox
+                    id="random-imposters"
+                    checked={randomImposters}
+                    onCheckedChange={(checked) => setRandomImposters(checked as boolean)}
+                  />
+                  <label htmlFor="random-imposters" className="text-xs cursor-pointer">
+                    Random
+                  </label>
+                </div>
               </div>
-            )}
+            </div>
 
             {/* Round Count - hide for elimination mode */}
             {gameMode !== 'elimination' && (
