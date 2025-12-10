@@ -61,12 +61,12 @@ const Onboarding = () => {
               placeholder="Enter your name"
               value={displayName}
               onChange={(e) => setDisplayName(e.target.value)}
-              maxLength={24}
+              maxLength={50}
               className="h-12 text-base"
               onKeyDown={(e) => e.key === 'Enter' && handleContinue()}
             />
             <p className="text-xs text-muted-foreground">
-              {displayName.length}/24 characters
+              {displayName.length}/50 characters
             </p>
           </div>
 
