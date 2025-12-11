@@ -28,9 +28,9 @@ const CATEGORIES = [
 ];
 
 const GAME_MODES: { value: GameMode; label: string; description: string }[] = [
-  { value: 'classic', label: 'Classic', description: 'Vote after all rounds. Find the imposter!' },
+  { value: 'classic', label: 'Classic', description: 'Vote after all rounds. Find the outsider!' },
   { value: 'elimination', label: 'Elimination', description: 'Vote each round. Eliminated players become spectators.' },
-  { value: 'hidden_imposter', label: 'Hidden Imposter', description: 'Nobody knows they are the imposter. Imposters get a different word.' },
+  { value: 'hidden_imposter', label: 'Hidden Outsider', description: 'Nobody knows they are the outsider. Outsiders get a different word.' },
 ];
 
 const Lobby = () => {
@@ -525,10 +525,10 @@ const Lobby = () => {
               Game Settings
             </div>
 
-            {/* Imposter Count */}
+            {/* Outsider Count */}
             <div className="space-y-3">
               <div className="flex items-center justify-between">
-                <Label className="text-sm">Imposters</Label>
+                <Label className="text-sm">Outsiders</Label>
                 <span className="text-sm font-bold text-primary">
                   {randomImposters ? '?' : imposterCount}
                 </span>
@@ -551,11 +551,11 @@ const Lobby = () => {
                   onClick={() => setRandomImposters(!randomImposters)}
                 >
                   <Checkbox
-                    id="random-imposters"
+                    id="random-outsiders"
                     checked={randomImposters}
                     onCheckedChange={(checked) => setRandomImposters(checked as boolean)}
                   />
-                  <label htmlFor="random-imposters" className="text-xs cursor-pointer">
+                  <label htmlFor="random-outsiders" className="text-xs cursor-pointer">
                     Random
                   </label>
                 </div>

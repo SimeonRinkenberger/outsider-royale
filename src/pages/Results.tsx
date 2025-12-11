@@ -213,15 +213,15 @@ const Results = () => {
               <Trophy className="h-16 w-16 mx-auto mb-3 text-white animate-float" />
               <h2 className="text-2xl font-bold mb-2">Group Wins!</h2>
               <p className="text-white/90">
-                You found the imposter! Great job detectives!
+                You found the outsider! Great job detectives!
               </p>
             </>
           ) : (
             <>
               <XCircle className="h-16 w-16 text-destructive mx-auto mb-3 animate-shake" />
-              <h2 className="text-2xl font-bold text-destructive mb-2">Imposter Wins!</h2>
+              <h2 className="text-2xl font-bold text-destructive mb-2">Outsider Wins!</h2>
               <p className="text-muted-foreground">
-                The imposter fooled everyone!
+                The outsider fooled everyone!
               </p>
             </>
           )}

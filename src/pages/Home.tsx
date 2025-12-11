@@ -149,7 +149,7 @@ const Home = () => {
 
       <main className="p-4 max-w-md mx-auto space-y-6 py-8">
         <Card className="p-6 bg-gradient-primary text-white shadow-card border-0 animate-fade-in-up hover:scale-[1.02] transition-transform duration-300">
-          <h2 className="text-2xl font-bold mb-2">Find the Imposter!</h2>
+          <h2 className="text-2xl font-bold mb-2">Find the Outsider!</h2>
           <p className="text-white/90">
             One player doesn't know the secret word. Can the group find them?
           </p>
