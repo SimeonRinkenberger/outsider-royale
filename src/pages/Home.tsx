@@ -133,7 +133,7 @@ const Home = () => {
       <header className="bg-card border-b border-border p-4">
         <div className="max-w-md mx-auto flex items-center justify-center relative">
           <h1 className="text-xl sm:text-2xl font-bold bg-gradient-primary bg-clip-text text-transparent">
-            Sus Detector
+            Outsider Royale
           </h1>
           <div className="absolute right-0 flex items-center gap-1 sm:gap-2">
             <div className="flex items-center gap-1 text-xs sm:text-sm text-muted-foreground">
