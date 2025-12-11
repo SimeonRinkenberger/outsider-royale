@@ -114,13 +114,20 @@ const Game = () => {
     if (!game || !secretWord) return null;
     
     if (game.game_mode === 'hidden_imposter') {
-      // In hidden_imposter mode, everyone sees a word but imposters see imposterWord
-      return isOutsider && imposterWord ? imposterWord : secretWord;
+      // In hidden_imposter mode, everyone sees a word but imposters see a different word
+      if (isOutsider) {
+        // Prefer custom imposter word from metadata, fallback to DB imposter word
+        if (gameMetadata?.imposterCustomWord) {
+          return { ...secretWord, text: gameMetadata.imposterCustomWord };
+        }
+        return imposterWord || secretWord;
+      }
+      return secretWord;
     }
     
     // In classic and elimination modes, outsiders don't see the word
     return isOutsider ? null : secretWord;
-  }, [game?.game_mode, secretWord, imposterWord, isOutsider]);
+  }, [game?.game_mode, secretWord, imposterWord, isOutsider, gameMetadata?.imposterCustomWord]);
 
   // Debug logging
   useEffect(() => {

@@ -176,17 +176,36 @@ const Lobby = () => {
       }
       
       // For hidden_imposter mode, get a different word from the same category
+      let imposterWordText: string | null = null;
       if (gameConfig.gameMode === 'hidden_imposter') {
         const sameCategory = allWords.filter(w => w.category === randomWord.category && w.id !== randomWord.id);
         if (sameCategory.length > 0) {
           const imposterWord = sameCategory[Math.floor(Math.random() * sameCategory.length)];
+          imposterWordText = imposterWord.text;
           if (!imposterWord.isCustom) {
             imposterWordId = imposterWord.id;
           }
         } else {
-          const differentWords = allWords.filter(w => w.id !== randomWord.id && !w.isCustom);
+          // Fallback: pick from any different word
+          const differentWords = allWords.filter(w => w.id !== randomWord.id);
           if (differentWords.length > 0) {
-            imposterWordId = differentWords[Math.floor(Math.random() * differentWords.length)].id;
+            const imposterWord = differentWords[Math.floor(Math.random() * differentWords.length)];
+            imposterWordText = imposterWord.text;
+            if (!imposterWord.isCustom) {
+              imposterWordId = imposterWord.id;
+            }
+          }
+        }
+        
+        // If imposterWordId is still null but we have a text, use placeholder
+        if (imposterWordId === null && imposterWordText) {
+          const { data: placeholderWord } = await supabase
+            .from('words')
+            .select('id')
+            .limit(1)
+            .single();
+          if (placeholderWord) {
+            imposterWordId = placeholderWord.id;
           }
         }
       }
@@ -219,23 +238,14 @@ const Lobby = () => {
       if (gameError) throw gameError;
       
       // Store custom word and modifiers in localStorage for this game
-      if (randomWord.isCustom || gameConfig.selectedModifiers.length > 0) {
+      // Always store metadata for hidden_imposter mode to capture the imposter word text
+      if (randomWord.isCustom || gameConfig.selectedModifiers.length > 0 || gameConfig.gameMode === 'hidden_imposter') {
         const gameMetadata = {
           customWord: randomWord.isCustom ? randomWord.text : null,
           customCategory: randomWord.isCustom ? randomWord.category : null,
           modifiers: gameConfig.selectedModifiers,
-          imposterCustomWord: null as string | null,
+          imposterCustomWord: imposterWordText,
         };
-        
-        if (gameConfig.gameMode === 'hidden_imposter' && randomWord.isCustom) {
-          const sameCategory = allWords.filter(w => w.category === randomWord.category && w.id !== randomWord.id);
-          if (sameCategory.length > 0) {
-            const imposterWord = sameCategory[Math.floor(Math.random() * sameCategory.length)];
-            if (imposterWord.isCustom) {
-              gameMetadata.imposterCustomWord = imposterWord.text;
-            }
-          }
-        }
         
         localStorage.setItem(`game-metadata-${game.id}`, JSON.stringify(gameMetadata));
       }
