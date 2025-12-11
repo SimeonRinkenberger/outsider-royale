@@ -145,16 +145,16 @@ const Home = () => {
           </h1>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="sm" className="absolute right-0 gap-1 text-muted-foreground">
-                <User className="h-4 w-4" />
-                <span className="truncate max-w-[80px] sm:max-w-[120px]">{displayName}</span>
-                <ChevronDown className="h-3 w-3" />
+              <Button variant="ghost" size="icon" className="absolute right-0 h-9 w-9 rounded-full">
+                <User className="h-5 w-5" />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuLabel>My Account</DropdownMenuLabel>
+            <DropdownMenuContent align="end" className="w-48">
+              <DropdownMenuLabel className="font-normal">
+                <p className="text-sm font-medium">{displayName}</p>
+              </DropdownMenuLabel>
               <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={handleLogout} className="text-destructive focus:text-destructive">
+              <DropdownMenuItem onClick={handleLogout} className="text-destructive focus:text-destructive cursor-pointer">
                 <LogOut className="h-4 w-4 mr-2" />
                 Logout
               </DropdownMenuItem>
