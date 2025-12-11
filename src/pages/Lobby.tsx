@@ -7,10 +7,14 @@ import { Slider } from '@/components/ui/slider';
 import { Checkbox } from '@/components/ui/checkbox';
 import { supabase } from '@/integrations/supabase/client';
 import { useGameState } from '@/hooks/useGameState';
+import { useCustomContent, GamePreset, AVAILABLE_MODIFIERS } from '@/hooks/useCustomContent';
 import { getStoredUserId } from '@/lib/gameUtils';
 import { toast } from 'sonner';
-import { Copy, Users, Crown, ArrowLeft, Play, X, Settings, Gamepad2 } from 'lucide-react';
+import { Copy, Users, Crown, ArrowLeft, Play, X, Settings, Gamepad2, Sparkles, Palette } from 'lucide-react';
 import { GameMode } from '@/types/game';
+import { CustomCategoryManager } from '@/components/CustomCategoryManager';
+import { GameModifiers } from '@/components/GameModifiers';
+import { PresetManager } from '@/components/PresetManager';
 
 const CATEGORIES = [
   { value: 'animal', label: 'Animals' },
@@ -33,8 +37,23 @@ const Lobby = () => {
   const { lobbyId } = useParams();
   const navigate = useNavigate();
   const { lobby, players } = useGameState(lobbyId || null);
+  const {
+    customCategories,
+    presets,
+    addCategory,
+    updateCategory,
+    deleteCategory,
+    addPreset,
+    deletePreset,
+    exportPreset,
+    importPreset,
+    saveImported,
+  } = useCustomContent();
+  
   const [isStarting, setIsStarting] = useState(false);
   const [selectedCategories, setSelectedCategories] = useState<string[]>(['animal', 'brand', 'food', 'movie', 'person', 'place', 'thing']);
+  const [selectedCustomCategories, setSelectedCustomCategories] = useState<string[]>([]);
+  const [selectedModifiers, setSelectedModifiers] = useState<string[]>([]);
   const [imposterCount, setImposterCount] = useState(1);
   const [randomImposters, setRandomImposters] = useState(false);
   const [roundCount, setRoundCount] = useState(3);
@@ -86,6 +105,53 @@ const Lobby = () => {
 
   const selectAllCategories = () => {
     setSelectedCategories(CATEGORIES.map(c => c.value));
+    setSelectedCustomCategories(customCategories.map(c => c.id));
+  };
+
+  const toggleCustomCategory = (categoryId: string) => {
+    setSelectedCustomCategories(prev =>
+      prev.includes(categoryId)
+        ? prev.filter(c => c !== categoryId)
+        : [...prev, categoryId]
+    );
+  };
+
+  const toggleModifier = (modifierId: string) => {
+    setSelectedModifiers(prev =>
+      prev.includes(modifierId)
+        ? prev.filter(m => m !== modifierId)
+        : [...prev, modifierId]
+    );
+  };
+
+  const handleSavePreset = (name: string) => {
+    addPreset({
+      name,
+      categories: selectedCategories,
+      customCategoryIds: selectedCustomCategories,
+      modifiers: selectedModifiers,
+      imposterCount,
+      roundCount,
+      gameMode,
+    });
+  };
+
+  const handleLoadPreset = (preset: GamePreset) => {
+    setSelectedCategories(preset.categories);
+    setSelectedCustomCategories(preset.customCategoryIds.filter(id => 
+      customCategories.some(c => c.id === id)
+    ));
+    setSelectedModifiers(preset.modifiers);
+    setImposterCount(Math.min(preset.imposterCount, maxImposters));
+    setRoundCount(preset.roundCount);
+    setGameMode(preset.gameMode as GameMode);
+    toast.success(`Loaded "${preset.name}"`);
+  };
+
+  const getActiveModifierLabels = () => {
+    return selectedModifiers
+      .map(id => AVAILABLE_MODIFIERS.find(m => m.id === id)?.label)
+      .filter(Boolean);
   };
 
   const copyCode = () => {
@@ -140,36 +206,78 @@ const Lobby = () => {
   const startGame = async () => {
     if (!isHost || !lobbyId || !canStart) return;
 
-    if (selectedCategories.length === 0) {
+    const hasAnyCategory = selectedCategories.length > 0 || selectedCustomCategories.length > 0;
+    if (!hasAnyCategory) {
       toast.error('Please select at least one category');
       return;
     }
 
     setIsStarting(true);
     try {
-      // Get words filtered by selected categories
-      const { data: words } = await supabase
-        .from('words')
-        .select('*')
-        .in('category', selectedCategories as ('animal' | 'brand' | 'degenerate' | 'food' | 'movie' | 'person' | 'place' | 'thing')[]);
+      // Get words from built-in categories
+      let allWords: { id: string; text: string; category: string; isCustom?: boolean }[] = [];
       
-      if (!words || words.length === 0) {
+      if (selectedCategories.length > 0) {
+        const { data: words } = await supabase
+          .from('words')
+          .select('*')
+          .in('category', selectedCategories as ('animal' | 'brand' | 'degenerate' | 'food' | 'movie' | 'person' | 'place' | 'thing')[]);
+        
+        if (words) {
+          allWords = words.map(w => ({ ...w, isCustom: false }));
+        }
+      }
+      
+      // Add words from custom categories
+      const selectedCustomCats = customCategories.filter(c => selectedCustomCategories.includes(c.id));
+      for (const customCat of selectedCustomCats) {
+        for (const word of customCat.words) {
+          allWords.push({
+            id: `custom-${customCat.id}-${word}`,
+            text: word,
+            category: customCat.name,
+            isCustom: true,
+          });
+        }
+      }
+      
+      if (allWords.length === 0) {
         toast.error('No words available for selected categories');
         setIsStarting(false);
         return;
       }
 
-      const randomWord = words[Math.floor(Math.random() * words.length)];
+      const randomWord = allWords[Math.floor(Math.random() * allWords.length)];
+      
+      // For custom words, we need to insert them into the database first or use an existing word
+      let secretWordId = randomWord.id;
+      let imposterWordId = null;
+      
+      if (randomWord.isCustom) {
+        // For custom words, find or create a placeholder in the database
+        // We'll use an existing word as a placeholder and track the custom word separately
+        const { data: placeholderWord } = await supabase
+          .from('words')
+          .select('id')
+          .limit(1)
+          .single();
+        
+        if (placeholderWord) {
+          secretWordId = placeholderWord.id;
+        }
+      }
       
       // For hidden_imposter mode, get a different word from the same category
-      let imposterWordId = null;
       if (gameMode === 'hidden_imposter') {
-        const sameCategory = words.filter(w => w.category === randomWord.category && w.id !== randomWord.id);
+        const sameCategory = allWords.filter(w => w.category === randomWord.category && w.id !== randomWord.id);
         if (sameCategory.length > 0) {
-          imposterWordId = sameCategory[Math.floor(Math.random() * sameCategory.length)].id;
+          const imposterWord = sameCategory[Math.floor(Math.random() * sameCategory.length)];
+          if (!imposterWord.isCustom) {
+            imposterWordId = imposterWord.id;
+          }
         } else {
           // Fallback: use any different word
-          const differentWords = words.filter(w => w.id !== randomWord.id);
+          const differentWords = allWords.filter(w => w.id !== randomWord.id && !w.isCustom);
           if (differentWords.length > 0) {
             imposterWordId = differentWords[Math.floor(Math.random() * differentWords.length)].id;
           }
@@ -192,11 +300,12 @@ const Lobby = () => {
       });
 
       // Create game (using first outsider for backward compatibility)
+      // Store custom word info and modifiers in metadata via a workaround
       const { data: game, error: gameError } = await supabase
         .from('games')
         .insert({
           lobby_id: lobbyId,
-          secret_word_id: randomWord.id,
+          secret_word_id: secretWordId,
           outsider_player_id: selectedOutsiders[0]?.id || players[0].id,
           imposter_word_id: imposterWordId,
           total_rounds: gameMode === 'elimination' ? 99 : roundCount, // Elimination has unlimited rounds
@@ -206,6 +315,31 @@ const Lobby = () => {
         })
         .select()
         .single();
+
+      if (gameError) throw gameError;
+      
+      // Store custom word and modifiers in localStorage for this game
+      if (randomWord.isCustom || selectedModifiers.length > 0) {
+        const gameMetadata = {
+          customWord: randomWord.isCustom ? randomWord.text : null,
+          customCategory: randomWord.isCustom ? randomWord.category : null,
+          modifiers: selectedModifiers,
+          imposterCustomWord: null as string | null,
+        };
+        
+        // Find imposter word if it's custom
+        if (gameMode === 'hidden_imposter' && randomWord.isCustom) {
+          const sameCategory = allWords.filter(w => w.category === randomWord.category && w.id !== randomWord.id);
+          if (sameCategory.length > 0) {
+            const imposterWord = sameCategory[Math.floor(Math.random() * sameCategory.length)];
+            if (imposterWord.isCustom) {
+              gameMetadata.imposterCustomWord = imposterWord.text;
+            }
+          }
+        }
+        
+        localStorage.setItem(`game-metadata-${game.id}`, JSON.stringify(gameMetadata));
+      }
 
       if (gameError) throw gameError;
 
@@ -479,19 +613,100 @@ const Lobby = () => {
                     </label>
                   </div>
                 ))}
+              
+                {/* Custom Categories in same grid */}
+                {customCategories.length > 0 && (
+                  <>
+                    <div className="col-span-2 border-t border-border my-2 pt-2">
+                      <p className="text-xs text-muted-foreground mb-2">Custom Categories</p>
+                    </div>
+                    {customCategories.map((cat) => (
+                      <div 
+                        key={cat.id} 
+                        className="flex items-center space-x-2 p-2 rounded-md hover:bg-muted/50 cursor-pointer"
+                        onClick={() => toggleCustomCategory(cat.id)}
+                      >
+                        <Checkbox
+                          id={cat.id}
+                          checked={selectedCustomCategories.includes(cat.id)}
+                          onCheckedChange={() => toggleCustomCategory(cat.id)}
+                        />
+                        <label
+                          htmlFor={cat.id}
+                          className="text-sm font-medium cursor-pointer select-none flex items-center gap-1"
+                        >
+                          <Sparkles className="h-3 w-3 text-primary" />
+                          {cat.name}
+                        </label>
+                      </div>
+                    ))}
+                  </>
+                )}
               </div>
-              {selectedCategories.length === 0 && (
+              {selectedCategories.length === 0 && selectedCustomCategories.length === 0 && (
                 <p className="text-xs text-destructive">Select at least one category</p>
               )}
             </div>
           </Card>
         )}
 
+        {/* Custom Content Section - Modifiers, Custom Categories, Presets */}
+        {isHost && (
+          <Card className="p-4 bg-gradient-card border-border space-y-5">
+            <div className="flex items-center gap-2 text-sm font-semibold text-muted-foreground">
+              <Palette className="h-4 w-4" />
+              Customize Game
+            </div>
+
+            <GameModifiers
+              selectedModifiers={selectedModifiers}
+              onToggle={toggleModifier}
+            />
+
+            <div className="border-t border-border pt-4">
+              <CustomCategoryManager
+                categories={customCategories}
+                onAdd={addCategory}
+                onUpdate={updateCategory}
+                onDelete={deleteCategory}
+              />
+            </div>
+
+            <div className="border-t border-border pt-4">
+              <PresetManager
+                presets={presets}
+                customCategories={customCategories}
+                currentSettings={{
+                  categories: selectedCategories,
+                  customCategoryIds: selectedCustomCategories,
+                  modifiers: selectedModifiers,
+                  imposterCount,
+                  roundCount,
+                  gameMode,
+                }}
+                onSavePreset={handleSavePreset}
+                onLoadPreset={handleLoadPreset}
+                onDeletePreset={deletePreset}
+                onExportPreset={exportPreset}
+                onImportPreset={importPreset}
+                onSaveImported={saveImported}
+              />
+            </div>
+          </Card>
+        )}
+
         {isHost && (
           <div className="fixed bottom-6 left-0 right-0 px-4 max-w-md mx-auto space-y-3">
+            {selectedModifiers.length > 0 && (
+              <div className="bg-card/90 backdrop-blur-sm rounded-lg p-2 text-center">
+                <p className="text-xs text-muted-foreground">
+                  Active: {getActiveModifierLabels().join(', ')}
+                </p>
+              </div>
+            )}
             <Button
               onClick={startGame}
-              disabled={!canStart || isStarting || selectedCategories.length === 0}
+              disabled={!canStart || isStarting || (selectedCategories.length === 0 && selectedCustomCategories.length === 0)}
               className="w-full h-14 text-lg shadow-lg"
               size="lg"
             >
