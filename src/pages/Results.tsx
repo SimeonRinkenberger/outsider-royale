@@ -4,33 +4,67 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { supabase } from '@/integrations/supabase/client';
 import { useGameState } from '@/hooks/useGameState';
+import { useCustomContent } from '@/hooks/useCustomContent';
 import { getStoredUserId } from '@/lib/gameUtils';
 import { toast } from 'sonner';
-import { Trophy, XCircle, Home, RotateCcw, UserMinus, DoorOpen } from 'lucide-react';
+import { Trophy, XCircle, Home, RotateCcw, UserMinus, DoorOpen, Settings, ChevronDown, ChevronUp } from 'lucide-react';
 import Confetti from '@/components/Confetti';
+import { GameConfigPanel, GameConfig, getActiveModifierLabels } from '@/components/GameConfigPanel';
+import { GameMode } from '@/types/game';
 
 const Results = () => {
   const { lobbyId } = useParams();
   const navigate = useNavigate();
   const { lobby, players, game, votes, secretWord, outsiders } = useGameState(lobbyId || null);
+  const {
+    customCategories,
+    presets,
+    addCategory,
+    updateCategory,
+    deleteCategory,
+    addPreset,
+    deletePreset,
+    exportPreset,
+    importPreset,
+    saveImported,
+  } = useCustomContent();
+  
   const [isResetting, setIsResetting] = useState(false);
   const [showConfetti, setShowConfetti] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
+  const [gameConfig, setGameConfig] = useState<GameConfig>({
+    selectedCategories: ['animal', 'brand', 'food', 'movie', 'person', 'place', 'thing'],
+    selectedCustomCategories: [],
+    selectedModifiers: [],
+    imposterCount: 1,
+    randomImposters: false,
+    roundCount: 3,
+    gameMode: 'classic',
+  });
   const userId = getStoredUserId();
 
   const isHost = lobby?.host_user_id === userId;
   const outsiderPlayers = players.filter(p => outsiders.some(o => o.player_id === p.id));
+  const maxImposters = Math.max(1, players.length - 1);
 
-  
+  // Update imposter count to recommended when players change
+  useEffect(() => {
+    if (players.length > 0) {
+      const newRecommended = players.length <= 4 ? 1 
+        : players.length <= 7 ? 2 
+        : players.length <= 12 ? 3 
+        : 4;
+      const newMax = Math.max(1, players.length - 1);
+      setGameConfig(prev => ({
+        ...prev,
+        imposterCount: Math.min(newRecommended, newMax)
+      }));
+    }
+  }, [players.length]);
+
   // When a new game is started (play again), navigate everyone to the new game
   useEffect(() => {
-    console.log('Results lobby state changed:', {
-      status: lobby?.status,
-      currentGameId: lobby?.current_game_id,
-      lobbyId,
-    });
-
     if (lobby?.status === 'in_progress' && lobby.current_game_id) {
-      console.log('Results: navigating to new game for lobby', lobbyId);
       navigate(`/game/${lobbyId}`);
     }
   }, [lobby?.status, lobby?.current_game_id, lobbyId, navigate]);
@@ -60,6 +94,12 @@ const Results = () => {
   const playAgain = async () => {
     if (!isHost || !lobbyId) return;
 
+    const hasAnyCategory = gameConfig.selectedCategories.length > 0 || gameConfig.selectedCustomCategories.length > 0;
+    if (!hasAnyCategory) {
+      toast.error('Please select at least one category');
+      return;
+    }
+
     setIsResetting(true);
     try {
       // Reset all spectators back to active players for the new game
@@ -72,18 +112,40 @@ const Results = () => {
         console.error('Error resetting spectators:', resetError);
       }
 
-      // Get random word
-      const { data: words } = await supabase
-        .from('words')
-        .select('*');
+      // Get words from built-in categories
+      let allWords: { id: string; text: string; category: string; isCustom?: boolean }[] = [];
       
-      if (!words || words.length === 0) {
-        toast.error('No words available');
+      if (gameConfig.selectedCategories.length > 0) {
+        const { data: words } = await supabase
+          .from('words')
+          .select('*')
+          .in('category', gameConfig.selectedCategories as ('animal' | 'brand' | 'degenerate' | 'food' | 'movie' | 'person' | 'place' | 'thing')[]);
+        
+        if (words) {
+          allWords = words.map(w => ({ ...w, isCustom: false }));
+        }
+      }
+      
+      // Add words from custom categories
+      const selectedCustomCats = customCategories.filter(c => gameConfig.selectedCustomCategories.includes(c.id));
+      for (const customCat of selectedCustomCats) {
+        for (const word of customCat.words) {
+          allWords.push({
+            id: `custom-${customCat.id}-${word}`,
+            text: word,
+            category: customCat.name,
+            isCustom: true,
+          });
+        }
+      }
+      
+      if (allWords.length === 0) {
+        toast.error('No words available for selected categories');
         setIsResetting(false);
         return;
       }
 
-      const randomWord = words[Math.floor(Math.random() * words.length)];
+      const randomWord = allWords[Math.floor(Math.random() * allWords.length)];
 
       // Get fresh player list after resetting spectators
       const { data: freshPlayers } = await supabase
@@ -97,24 +159,100 @@ const Results = () => {
         return;
       }
 
-      // Pick random outsider from fresh player list
-      const randomOutsider = freshPlayers[Math.floor(Math.random() * freshPlayers.length)];
+      // For custom words, we need to use a placeholder
+      let secretWordId = randomWord.id;
+      let imposterWordId = null;
+      
+      if (randomWord.isCustom) {
+        const { data: placeholderWord } = await supabase
+          .from('words')
+          .select('id')
+          .limit(1)
+          .single();
+        
+        if (placeholderWord) {
+          secretWordId = placeholderWord.id;
+        }
+      }
+      
+      // For hidden_imposter mode, get a different word from the same category
+      if (gameConfig.gameMode === 'hidden_imposter') {
+        const sameCategory = allWords.filter(w => w.category === randomWord.category && w.id !== randomWord.id);
+        if (sameCategory.length > 0) {
+          const imposterWord = sameCategory[Math.floor(Math.random() * sameCategory.length)];
+          if (!imposterWord.isCustom) {
+            imposterWordId = imposterWord.id;
+          }
+        } else {
+          const differentWords = allWords.filter(w => w.id !== randomWord.id && !w.isCustom);
+          if (differentWords.length > 0) {
+            imposterWordId = differentWords[Math.floor(Math.random() * differentWords.length)].id;
+          }
+        }
+      }
+
+      // Determine actual imposter count (random or selected)
+      const actualImposterCount = gameConfig.randomImposters 
+        ? Math.floor(Math.random() * maxImposters) + 1
+        : gameConfig.imposterCount;
+
+      // Pick random outsiders from fresh player list
+      const shuffledPlayers = [...freshPlayers].sort(() => Math.random() - 0.5);
+      const selectedOutsiders = shuffledPlayers.slice(0, actualImposterCount);
 
       // Create new game
       const { data: newGame, error: gameError } = await supabase
         .from('games')
         .insert({
           lobby_id: lobbyId,
-          secret_word_id: randomWord.id,
-          outsider_player_id: randomOutsider.id,
-          total_rounds: 3,
+          secret_word_id: secretWordId,
+          outsider_player_id: selectedOutsiders[0]?.id || freshPlayers[0].id,
+          imposter_word_id: imposterWordId,
+          total_rounds: gameConfig.gameMode === 'elimination' ? 99 : gameConfig.roundCount,
           current_round_number: 1,
-          status: 'clue_round'
+          status: 'clue_round',
+          game_mode: gameConfig.gameMode
         })
         .select()
         .single();
 
       if (gameError) throw gameError;
+
+      // Store custom word and modifiers in localStorage for this game
+      if (randomWord.isCustom || gameConfig.selectedModifiers.length > 0) {
+        const gameMetadata = {
+          customWord: randomWord.isCustom ? randomWord.text : null,
+          customCategory: randomWord.isCustom ? randomWord.category : null,
+          modifiers: gameConfig.selectedModifiers,
+          imposterCustomWord: null as string | null,
+        };
+        
+        if (gameConfig.gameMode === 'hidden_imposter' && randomWord.isCustom) {
+          const sameCategory = allWords.filter(w => w.category === randomWord.category && w.id !== randomWord.id);
+          if (sameCategory.length > 0) {
+            const imposterWord = sameCategory[Math.floor(Math.random() * sameCategory.length)];
+            if (imposterWord.isCustom) {
+              gameMetadata.imposterCustomWord = imposterWord.text;
+            }
+          }
+        }
+        
+        localStorage.setItem(`game-metadata-${newGame.id}`, JSON.stringify(gameMetadata));
+      }
+
+      // Insert all outsiders into game_outsiders table
+      if (selectedOutsiders.length > 0) {
+        const outsiderInserts = selectedOutsiders.map(outsider => ({
+          game_id: newGame.id,
+          player_id: outsider.id
+        }));
+
+        const { error: outsidersError } = await supabase
+          .from('game_outsiders')
+          .insert(outsiderInserts);
+
+        if (outsidersError) throw outsidersError;
+      }
 
       // Create first round
       const { error: roundError } = await supabase
@@ -287,17 +425,61 @@ const Results = () => {
           </div>
         </div>
 
+        {/* Game Settings for Next Game (Host Only) */}
+        {isHost && (
+          <div className="space-y-3">
+            <Button
+              variant="outline"
+              className="w-full justify-between"
+              onClick={() => setShowSettings(!showSettings)}
+            >
+              <span className="flex items-center gap-2">
+                <Settings className="h-4 w-4" />
+                Next Game Settings
+              </span>
+              {showSettings ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+            </Button>
+            
+            {showSettings && (
+              <GameConfigPanel
+                playerCount={players.length}
+                customCategories={customCategories}
+                presets={presets}
+                config={gameConfig}
+                onConfigChange={setGameConfig}
+                onAddCategory={addCategory}
+                onUpdateCategory={updateCategory}
+                onDeleteCategory={deleteCategory}
+                onAddPreset={addPreset}
+                onDeletePreset={deletePreset}
+                onExportPreset={exportPreset}
+                onImportPreset={importPreset}
+                onSaveImported={saveImported}
+              />
+            )}
+          </div>
+        )}
+
         <div className="space-y-3 pt-4">
           {isHost && (
-            <Button
-              onClick={playAgain}
-              disabled={isResetting}
-              className="w-full h-14 text-lg"
-              size="lg"
-            >
-              <RotateCcw className="h-5 w-5 mr-2" />
-              {isResetting ? 'Starting...' : 'Play Again'}
-            </Button>
+            <>
+              {gameConfig.selectedModifiers.length > 0 && (
+                <div className="bg-card/90 backdrop-blur-sm rounded-lg p-2 text-center">
+                  <p className="text-xs text-muted-foreground">
+                    Active: {getActiveModifierLabels(gameConfig.selectedModifiers).join(', ')}
+                  </p>
+                </div>
+              )}
+              <Button
+                onClick={playAgain}
+                disabled={isResetting || (gameConfig.selectedCategories.length === 0 && gameConfig.selectedCustomCategories.length === 0)}
+                className="w-full h-14 text-lg"
+                size="lg"
+              >
+                <RotateCcw className="h-5 w-5 mr-2" />
+                {isResetting ? 'Starting...' : 'Play Again'}
+              </Button>
+            </>
           )}
           <Button
             onClick={goHome}

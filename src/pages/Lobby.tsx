@@ -2,36 +2,14 @@ import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { Label } from '@/components/ui/label';
-import { Slider } from '@/components/ui/slider';
-import { Checkbox } from '@/components/ui/checkbox';
 import { supabase } from '@/integrations/supabase/client';
 import { useGameState } from '@/hooks/useGameState';
-import { useCustomContent, GamePreset, AVAILABLE_MODIFIERS } from '@/hooks/useCustomContent';
+import { useCustomContent } from '@/hooks/useCustomContent';
 import { getStoredUserId } from '@/lib/gameUtils';
 import { toast } from 'sonner';
-import { Copy, Users, Crown, ArrowLeft, Play, X, Settings, Gamepad2, Sparkles, Palette } from 'lucide-react';
+import { Copy, Users, Crown, ArrowLeft, Play, X } from 'lucide-react';
 import { GameMode } from '@/types/game';
-import { CustomCategoryManager } from '@/components/CustomCategoryManager';
-import { GameModifiers } from '@/components/GameModifiers';
-import { PresetManager } from '@/components/PresetManager';
-
-const CATEGORIES = [
-  { value: 'animal', label: 'Animals' },
-  { value: 'brand', label: 'Brands' },
-  { value: 'degenerate', label: 'Degenerate' },
-  { value: 'food', label: 'Food' },
-  { value: 'movie', label: 'Movies' },
-  { value: 'person', label: 'People' },
-  { value: 'place', label: 'Places' },
-  { value: 'thing', label: 'Things' },
-];
-
-const GAME_MODES: { value: GameMode; label: string; description: string }[] = [
-  { value: 'classic', label: 'Classic', description: 'Vote after all rounds. Find the outsider!' },
-  { value: 'elimination', label: 'Elimination', description: 'Vote each round. Eliminated players become spectators.' },
-  { value: 'hidden_imposter', label: 'Hidden Outsider', description: 'Nobody knows they are the outsider. Outsiders get a different word.' },
-];
+import { GameConfigPanel, GameConfig, getActiveModifierLabels } from '@/components/GameConfigPanel';
 
 const Lobby = () => {
   const { lobbyId } = useParams();
@@ -51,24 +29,20 @@ const Lobby = () => {
   } = useCustomContent();
   
   const [isStarting, setIsStarting] = useState(false);
-  const [selectedCategories, setSelectedCategories] = useState<string[]>(['animal', 'brand', 'food', 'movie', 'person', 'place', 'thing']);
-  const [selectedCustomCategories, setSelectedCustomCategories] = useState<string[]>([]);
-  const [selectedModifiers, setSelectedModifiers] = useState<string[]>([]);
-  const [imposterCount, setImposterCount] = useState(1);
-  const [randomImposters, setRandomImposters] = useState(false);
-  const [roundCount, setRoundCount] = useState(3);
-  const [gameMode, setGameMode] = useState<GameMode>('classic');
+  const [gameConfig, setGameConfig] = useState<GameConfig>({
+    selectedCategories: ['animal', 'brand', 'food', 'movie', 'person', 'place', 'thing'],
+    selectedCustomCategories: [],
+    selectedModifiers: [],
+    imposterCount: 1,
+    randomImposters: false,
+    roundCount: 3,
+    gameMode: 'classic',
+  });
   const userId = getStoredUserId();
 
   const isHost = lobby?.host_user_id === userId;
   const canStart = players.length >= 3;
   const maxImposters = Math.max(1, players.length - 1);
-  
-  // Recommended imposters based on player count
-  const recommendedImposters = players.length <= 4 ? 1 
-    : players.length <= 7 ? 2 
-    : players.length <= 12 ? 3 
-    : 4;
 
   // Update imposter count to recommended when players change, and clamp to valid range
   useEffect(() => {
@@ -78,81 +52,18 @@ const Lobby = () => {
         : players.length <= 12 ? 3 
         : 4;
       const newMax = Math.max(1, players.length - 1);
-      setImposterCount(Math.min(newRecommended, newMax));
+      setGameConfig(prev => ({
+        ...prev,
+        imposterCount: Math.min(newRecommended, newMax)
+      }));
     }
   }, [players.length]);
 
   useEffect(() => {
-    console.log('Lobby state changed:', { 
-      status: lobby?.status, 
-      gameId: lobby?.current_game_id,
-      willNavigate: !!lobby?.current_game_id 
-    });
-    
     if (lobby?.current_game_id) {
-      console.log('Navigating to game:', lobby.current_game_id);
       navigate(`/game/${lobbyId}`);
     }
   }, [lobby?.current_game_id, lobbyId, navigate]);
-
-  const toggleCategory = (category: string) => {
-    setSelectedCategories(prev => 
-      prev.includes(category)
-        ? prev.filter(c => c !== category)
-        : [...prev, category]
-    );
-  };
-
-  const selectAllCategories = () => {
-    setSelectedCategories(CATEGORIES.map(c => c.value));
-    setSelectedCustomCategories(customCategories.map(c => c.id));
-  };
-
-  const toggleCustomCategory = (categoryId: string) => {
-    setSelectedCustomCategories(prev =>
-      prev.includes(categoryId)
-        ? prev.filter(c => c !== categoryId)
-        : [...prev, categoryId]
-    );
-  };
-
-  const toggleModifier = (modifierId: string) => {
-    setSelectedModifiers(prev =>
-      prev.includes(modifierId)
-        ? prev.filter(m => m !== modifierId)
-        : [...prev, modifierId]
-    );
-  };
-
-  const handleSavePreset = (name: string) => {
-    addPreset({
-      name,
-      categories: selectedCategories,
-      customCategoryIds: selectedCustomCategories,
-      modifiers: selectedModifiers,
-      imposterCount,
-      roundCount,
-      gameMode,
-    });
-  };
-
-  const handleLoadPreset = (preset: GamePreset) => {
-    setSelectedCategories(preset.categories);
-    setSelectedCustomCategories(preset.customCategoryIds.filter(id => 
-      customCategories.some(c => c.id === id)
-    ));
-    setSelectedModifiers(preset.modifiers);
-    setImposterCount(Math.min(preset.imposterCount, maxImposters));
-    setRoundCount(preset.roundCount);
-    setGameMode(preset.gameMode as GameMode);
-    toast.success(`Loaded "${preset.name}"`);
-  };
-
-  const getActiveModifierLabels = () => {
-    return selectedModifiers
-      .map(id => AVAILABLE_MODIFIERS.find(m => m.id === id)?.label)
-      .filter(Boolean);
-  };
 
   const copyCode = () => {
     if (lobby?.code) {
@@ -178,7 +89,6 @@ const Lobby = () => {
       toast.error('Failed to leave lobby');
     }
   };
-
 
   const kickPlayer = async (playerId: string, playerName: string) => {
     if (!isHost || !lobbyId) return;
@@ -206,7 +116,7 @@ const Lobby = () => {
   const startGame = async () => {
     if (!isHost || !lobbyId || !canStart) return;
 
-    const hasAnyCategory = selectedCategories.length > 0 || selectedCustomCategories.length > 0;
+    const hasAnyCategory = gameConfig.selectedCategories.length > 0 || gameConfig.selectedCustomCategories.length > 0;
     if (!hasAnyCategory) {
       toast.error('Please select at least one category');
       return;
@@ -217,11 +127,11 @@ const Lobby = () => {
       // Get words from built-in categories
       let allWords: { id: string; text: string; category: string; isCustom?: boolean }[] = [];
       
-      if (selectedCategories.length > 0) {
+      if (gameConfig.selectedCategories.length > 0) {
         const { data: words } = await supabase
           .from('words')
           .select('*')
-          .in('category', selectedCategories as ('animal' | 'brand' | 'degenerate' | 'food' | 'movie' | 'person' | 'place' | 'thing')[]);
+          .in('category', gameConfig.selectedCategories as ('animal' | 'brand' | 'degenerate' | 'food' | 'movie' | 'person' | 'place' | 'thing')[]);
         
         if (words) {
           allWords = words.map(w => ({ ...w, isCustom: false }));
@@ -229,7 +139,7 @@ const Lobby = () => {
       }
       
       // Add words from custom categories
-      const selectedCustomCats = customCategories.filter(c => selectedCustomCategories.includes(c.id));
+      const selectedCustomCats = customCategories.filter(c => gameConfig.selectedCustomCategories.includes(c.id));
       for (const customCat of selectedCustomCats) {
         for (const word of customCat.words) {
           allWords.push({
@@ -254,8 +164,6 @@ const Lobby = () => {
       let imposterWordId = null;
       
       if (randomWord.isCustom) {
-        // For custom words, find or create a placeholder in the database
-        // We'll use an existing word as a placeholder and track the custom word separately
         const { data: placeholderWord } = await supabase
           .from('words')
           .select('id')
@@ -268,7 +176,7 @@ const Lobby = () => {
       }
       
       // For hidden_imposter mode, get a different word from the same category
-      if (gameMode === 'hidden_imposter') {
+      if (gameConfig.gameMode === 'hidden_imposter') {
         const sameCategory = allWords.filter(w => w.category === randomWord.category && w.id !== randomWord.id);
         if (sameCategory.length > 0) {
           const imposterWord = sameCategory[Math.floor(Math.random() * sameCategory.length)];
@@ -276,7 +184,6 @@ const Lobby = () => {
             imposterWordId = imposterWord.id;
           }
         } else {
-          // Fallback: use any different word
           const differentWords = allWords.filter(w => w.id !== randomWord.id && !w.isCustom);
           if (differentWords.length > 0) {
             imposterWordId = differentWords[Math.floor(Math.random() * differentWords.length)].id;
@@ -285,22 +192,15 @@ const Lobby = () => {
       }
 
       // Determine actual imposter count (random or selected)
-      const actualImposterCount = randomImposters 
-        ? Math.floor(Math.random() * maxImposters) + 1 // Random between 1 and maxImposters
-        : imposterCount;
+      const actualImposterCount = gameConfig.randomImposters 
+        ? Math.floor(Math.random() * maxImposters) + 1
+        : gameConfig.imposterCount;
 
       // Pick random outsiders
       const shuffledPlayers = [...players].sort(() => Math.random() - 0.5);
       const selectedOutsiders = shuffledPlayers.slice(0, actualImposterCount);
-      
-      console.log('Starting game with outsiders:', {
-        outsiders: selectedOutsiders.map(p => ({ name: p.display_name, id: p.id })),
-        allPlayers: players.map(p => ({ name: p.display_name, id: p.id })),
-        gameMode
-      });
 
-      // Create game (using first outsider for backward compatibility)
-      // Store custom word info and modifiers in metadata via a workaround
+      // Create game
       const { data: game, error: gameError } = await supabase
         .from('games')
         .insert({
@@ -308,10 +208,10 @@ const Lobby = () => {
           secret_word_id: secretWordId,
           outsider_player_id: selectedOutsiders[0]?.id || players[0].id,
           imposter_word_id: imposterWordId,
-          total_rounds: gameMode === 'elimination' ? 99 : roundCount, // Elimination has unlimited rounds
+          total_rounds: gameConfig.gameMode === 'elimination' ? 99 : gameConfig.roundCount,
           current_round_number: 1,
           status: 'clue_round',
-          game_mode: gameMode
+          game_mode: gameConfig.gameMode
         })
         .select()
         .single();
@@ -319,16 +219,15 @@ const Lobby = () => {
       if (gameError) throw gameError;
       
       // Store custom word and modifiers in localStorage for this game
-      if (randomWord.isCustom || selectedModifiers.length > 0) {
+      if (randomWord.isCustom || gameConfig.selectedModifiers.length > 0) {
         const gameMetadata = {
           customWord: randomWord.isCustom ? randomWord.text : null,
           customCategory: randomWord.isCustom ? randomWord.category : null,
-          modifiers: selectedModifiers,
+          modifiers: gameConfig.selectedModifiers,
           imposterCustomWord: null as string | null,
         };
         
-        // Find imposter word if it's custom
-        if (gameMode === 'hidden_imposter' && randomWord.isCustom) {
+        if (gameConfig.gameMode === 'hidden_imposter' && randomWord.isCustom) {
           const sameCategory = allWords.filter(w => w.category === randomWord.category && w.id !== randomWord.id);
           if (sameCategory.length > 0) {
             const imposterWord = sameCategory[Math.floor(Math.random() * sameCategory.length)];
@@ -340,8 +239,6 @@ const Lobby = () => {
         
         localStorage.setItem(`game-metadata-${game.id}`, JSON.stringify(gameMetadata));
       }
-
-      if (gameError) throw gameError;
 
       // Insert all outsiders into game_outsiders table
       if (selectedOutsiders.length > 0) {
@@ -486,227 +383,35 @@ const Lobby = () => {
         </div>
 
         {isHost && (
-          <Card className="p-4 bg-gradient-card border-border space-y-5">
-            <div className="flex items-center gap-2 text-sm font-semibold text-muted-foreground">
-              <Gamepad2 className="h-4 w-4" />
-              Game Mode
-            </div>
-
-            <div className="space-y-2">
-              {GAME_MODES.map((mode) => (
-                <div 
-                  key={mode.value}
-                  onClick={() => setGameMode(mode.value)}
-                  className={`p-3 rounded-lg border cursor-pointer transition-colors ${
-                    gameMode === mode.value 
-                      ? 'border-primary bg-primary/10' 
-                      : 'border-border hover:bg-muted/50'
-                  }`}
-                >
-                  <div className="flex items-center gap-2">
-                    <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${
-                      gameMode === mode.value ? 'border-primary' : 'border-muted-foreground'
-                    }`}>
-                      {gameMode === mode.value && <div className="w-2 h-2 rounded-full bg-primary" />}
-                    </div>
-                    <span className="font-medium">{mode.label}</span>
-                  </div>
-                  <p className="text-xs text-muted-foreground mt-1 ml-6">{mode.description}</p>
-                </div>
-              ))}
-            </div>
-          </Card>
-        )}
-
-        {isHost && (
-          <Card className="p-4 bg-gradient-card border-border space-y-5">
-            <div className="flex items-center gap-2 text-sm font-semibold text-muted-foreground">
-              <Settings className="h-4 w-4" />
-              Game Settings
-            </div>
-
-            {/* Outsider Count */}
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <Label className="text-sm">Outsiders</Label>
-                <span className="text-sm font-bold text-primary">
-                  {randomImposters ? '?' : imposterCount}
-                </span>
-              </div>
-              <Slider
-                value={[imposterCount]}
-                onValueChange={([val]) => setImposterCount(val)}
-                min={1}
-                max={maxImposters}
-                step={1}
-                className="w-full"
-                disabled={randomImposters}
-              />
-              <div className="flex items-center justify-between">
-                <p className="text-xs text-muted-foreground">
-                  Recommended: {recommendedImposters} for {players.length} players
-                </p>
-                <div 
-                  className="flex items-center space-x-2 cursor-pointer"
-                  onClick={() => setRandomImposters(!randomImposters)}
-                >
-                  <Checkbox
-                    id="random-outsiders"
-                    checked={randomImposters}
-                    onCheckedChange={(checked) => setRandomImposters(checked as boolean)}
-                  />
-                  <label htmlFor="random-outsiders" className="text-xs cursor-pointer">
-                    Random
-                  </label>
-                </div>
-              </div>
-            </div>
-
-            {/* Round Count - hide for elimination mode */}
-            {gameMode !== 'elimination' && (
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <Label className="text-sm">Rounds</Label>
-                  <span className="text-sm font-bold text-primary">{roundCount}</span>
-                </div>
-                <Slider
-                  value={[roundCount]}
-                  onValueChange={([val]) => setRoundCount(val)}
-                  min={1}
-                  max={5}
-                  step={1}
-                  className="w-full"
-                />
-              </div>
-            )}
-
-            {/* Category Selection */}
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <Label className="text-sm">Categories</Label>
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
-                  onClick={selectAllCategories}
-                  className="text-xs h-7"
-                >
-                  Select All
-                </Button>
-              </div>
-              <div className="grid grid-cols-2 gap-2">
-                {CATEGORIES.map((cat) => (
-                  <div 
-                    key={cat.value} 
-                    className="flex items-center space-x-2 p-2 rounded-md hover:bg-muted/50 cursor-pointer"
-                    onClick={() => toggleCategory(cat.value)}
-                  >
-                    <Checkbox
-                      id={cat.value}
-                      checked={selectedCategories.includes(cat.value)}
-                      onCheckedChange={() => toggleCategory(cat.value)}
-                    />
-                    <label
-                      htmlFor={cat.value}
-                      className="text-sm font-medium cursor-pointer select-none"
-                    >
-                      {cat.label}
-                    </label>
-                  </div>
-                ))}
-              
-                {/* Custom Categories in same grid */}
-                {customCategories.length > 0 && (
-                  <>
-                    <div className="col-span-2 border-t border-border my-2 pt-2">
-                      <p className="text-xs text-muted-foreground mb-2">Custom Categories</p>
-                    </div>
-                    {customCategories.map((cat) => (
-                      <div 
-                        key={cat.id} 
-                        className="flex items-center space-x-2 p-2 rounded-md hover:bg-muted/50 cursor-pointer"
-                        onClick={() => toggleCustomCategory(cat.id)}
-                      >
-                        <Checkbox
-                          id={cat.id}
-                          checked={selectedCustomCategories.includes(cat.id)}
-                          onCheckedChange={() => toggleCustomCategory(cat.id)}
-                        />
-                        <label
-                          htmlFor={cat.id}
-                          className="text-sm font-medium cursor-pointer select-none flex items-center gap-1"
-                        >
-                          <Sparkles className="h-3 w-3 text-primary" />
-                          {cat.name}
-                        </label>
-                      </div>
-                    ))}
-                  </>
-                )}
-              </div>
-              {selectedCategories.length === 0 && selectedCustomCategories.length === 0 && (
-                <p className="text-xs text-destructive">Select at least one category</p>
-              )}
-            </div>
-          </Card>
-        )}
-
-        {/* Custom Content Section - Modifiers, Custom Categories, Presets */}
-        {isHost && (
-          <Card className="p-4 bg-gradient-card border-border space-y-5">
-            <div className="flex items-center gap-2 text-sm font-semibold text-muted-foreground">
-              <Palette className="h-4 w-4" />
-              Customize Game
-            </div>
-
-            <GameModifiers
-              selectedModifiers={selectedModifiers}
-              onToggle={toggleModifier}
-            />
-
-            <div className="border-t border-border pt-4">
-              <CustomCategoryManager
-                categories={customCategories}
-                onAdd={addCategory}
-                onUpdate={updateCategory}
-                onDelete={deleteCategory}
-              />
-            </div>
-
-            <div className="border-t border-border pt-4">
-              <PresetManager
-                presets={presets}
-                customCategories={customCategories}
-                currentSettings={{
-                  categories: selectedCategories,
-                  customCategoryIds: selectedCustomCategories,
-                  modifiers: selectedModifiers,
-                  imposterCount,
-                  roundCount,
-                  gameMode,
-                }}
-                onSavePreset={handleSavePreset}
-                onLoadPreset={handleLoadPreset}
-                onDeletePreset={deletePreset}
-                onExportPreset={exportPreset}
-                onImportPreset={importPreset}
-                onSaveImported={saveImported}
-              />
-            </div>
-          </Card>
+          <GameConfigPanel
+            playerCount={players.length}
+            customCategories={customCategories}
+            presets={presets}
+            config={gameConfig}
+            onConfigChange={setGameConfig}
+            onAddCategory={addCategory}
+            onUpdateCategory={updateCategory}
+            onDeleteCategory={deleteCategory}
+            onAddPreset={addPreset}
+            onDeletePreset={deletePreset}
+            onExportPreset={exportPreset}
+            onImportPreset={importPreset}
+            onSaveImported={saveImported}
+          />
         )}
 
         {isHost && (
           <div className="fixed bottom-6 left-0 right-0 px-4 max-w-md mx-auto space-y-3">
-            {selectedModifiers.length > 0 && (
+            {gameConfig.selectedModifiers.length > 0 && (
               <div className="bg-card/90 backdrop-blur-sm rounded-lg p-2 text-center">
                 <p className="text-xs text-muted-foreground">
-                  Active: {getActiveModifierLabels().join(', ')}
+                  Active: {getActiveModifierLabels(gameConfig.selectedModifiers).join(', ')}
                 </p>
               </div>
             )}
             <Button
               onClick={startGame}
-              disabled={!canStart || isStarting || (selectedCategories.length === 0 && selectedCustomCategories.length === 0)}
+              disabled={!canStart || isStarting || (gameConfig.selectedCategories.length === 0 && gameConfig.selectedCustomCategories.length === 0)}
               className="w-full h-14 text-lg shadow-lg"
               size="lg"
             >
