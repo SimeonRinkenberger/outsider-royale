@@ -524,6 +524,9 @@ const Game = () => {
                   You've been eliminated. Watch the game unfold!
                 </p>
                 <p className="text-lg font-bold text-primary mt-4">Secret Word: {secretWord.text}</p>
+                <p className="text-xs text-muted-foreground">
+                  Category: {gameMetadata?.customCategory || secretWord.category}
+                </p>
                 <p className="text-sm text-muted-foreground">
                   Outsider{outsiders.length > 1 ? 's' : ''}: {players.filter(p => outsiders.some(o => o.player_id === p.id)).map(p => p.display_name).join(', ')}
                 </p>
@@ -535,6 +538,9 @@ const Game = () => {
                 <Eye className="h-8 w-8 mx-auto" />
                 <p className="text-white/80 text-sm">Your Word</p>
                 <h2 className="text-4xl font-bold">{displayWord?.text}</h2>
+                <p className="text-white/70 text-xs uppercase tracking-wider mt-1">
+                  Category: {gameMetadata?.customCategory || secretWord.category}
+                </p>
                 <p className="text-white/90 text-sm">
                   Give a clue that relates to this word
                 </p>
@@ -548,6 +554,9 @@ const Game = () => {
                 <p className="text-sm text-muted-foreground">
                   You don't know the secret word. Try to blend in by guessing what it might be from others' clues!
                 </p>
+                <p className="text-xs text-muted-foreground mt-2">
+                  Category: <span className="font-semibold">{gameMetadata?.customCategory || secretWord.category}</span>
+                </p>
               </div>
             </Card>
           ) : (
@@ -556,6 +565,9 @@ const Game = () => {
                 <Eye className="h-8 w-8 mx-auto" />
                 <p className="text-white/80 text-sm">Secret Word</p>
                 <h2 className="text-4xl font-bold">{secretWord.text}</h2>
+                <p className="text-white/70 text-xs uppercase tracking-wider mt-1">
+                  Category: {gameMetadata?.customCategory || secretWord.category}
+                </p>
                 <p className="text-white/90 text-sm">
                   Give a clue that relates to this word
                 </p>
@@ -731,9 +743,12 @@ const Game = () => {
               <Card className="p-6 bg-gradient-primary text-white shadow-card border-0 text-center">
                 <p className="text-white/80 text-sm mb-1">The secret word was</p>
                 <h2 className="text-3xl font-bold">{secretWord.text}</h2>
+                <p className="text-white/70 text-xs uppercase tracking-wider mt-1">
+                  Category: {gameMetadata?.customCategory || secretWord.category}
+                </p>
                 {isHiddenImposterMode && imposterWord && (
                   <p className="text-white/80 text-sm mt-2">
-                    Imposter word: <span className="font-bold">{imposterWord.text}</span>
+                    Outsider word: <span className="font-bold">{imposterWord.text}</span>
                   </p>
                 )}
               </Card>
