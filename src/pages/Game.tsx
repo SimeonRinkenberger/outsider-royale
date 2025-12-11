@@ -9,6 +9,14 @@ import { useTurnChime } from '@/hooks/useTurnChime';
 import { getStoredUserId } from '@/lib/gameUtils';
 import { toast } from 'sonner';
 import { Send, Eye, EyeOff, Users, CheckCircle2, DoorOpen, FastForward, ArrowRight } from 'lucide-react';
+import { ActiveModifiersDisplay } from '@/components/ActiveModifiersDisplay';
+
+interface GameMetadata {
+  customWord: string | null;
+  customCategory: string | null;
+  modifiers: string[];
+  imposterCustomWord: string | null;
+}
 
 // Seeded random shuffle - ensures all clients get the same order for a given seed
 const seededShuffle = <T,>(array: T[], seed: string): T[] => {
@@ -41,7 +49,22 @@ const Game = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [selectedVote, setSelectedVote] = useState<string | null>(null);
   const [skipVote, setSkipVote] = useState(false);
+  const [gameMetadata, setGameMetadata] = useState<GameMetadata | null>(null);
   const userId = getStoredUserId();
+
+  // Load game metadata (modifiers, custom words) from localStorage
+  useEffect(() => {
+    if (game?.id) {
+      const stored = localStorage.getItem(`game-metadata-${game.id}`);
+      if (stored) {
+        try {
+          setGameMetadata(JSON.parse(stored));
+        } catch (e) {
+          console.error('Failed to parse game metadata:', e);
+        }
+      }
+    }
+  }, [game?.id]);
 
   const leaveLobby = async () => {
     if (!userId || !lobbyId) return;
@@ -460,6 +483,11 @@ const Game = () => {
         </header>
 
         <main className="p-4 max-w-md mx-auto space-y-6 py-6">
+          {/* Active Modifiers Banner */}
+          {gameMetadata?.modifiers && gameMetadata.modifiers.length > 0 && (
+            <ActiveModifiersDisplay modifiers={gameMetadata.modifiers} />
+          )}
+          
           {isSpectator ? (
             <Card className="p-6 bg-muted/50 border-border">
               <div className="text-center space-y-2">
@@ -644,6 +672,11 @@ const Game = () => {
         </header>
 
         <main className="p-4 max-w-md mx-auto space-y-6 py-6">
+          {/* Active Modifiers Banner */}
+          {gameMetadata?.modifiers && gameMetadata.modifiers.length > 0 && (
+            <ActiveModifiersDisplay modifiers={gameMetadata.modifiers} compact />
+          )}
+          
           {isSpectator ? (
             <Card className="p-6 bg-muted/50 border-border text-center">
               <Eye className="h-12 w-12 text-muted-foreground mx-auto mb-2" />
