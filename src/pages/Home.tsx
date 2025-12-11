@@ -149,9 +149,9 @@ const Home = () => {
                 <User className="h-5 w-5" />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-48">
+            <DropdownMenuContent align="end" className="min-w-48">
               <DropdownMenuLabel className="font-normal">
-                <p className="text-sm font-medium">{displayName}</p>
+                <p className="text-sm font-medium break-words">{displayName}</p>
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={handleLogout} className="text-destructive focus:text-destructive cursor-pointer">
