@@ -3,10 +3,18 @@ import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { supabase } from '@/integrations/supabase/client';
 import { generateLobbyCode, getStoredUserId, getStoredDisplayName } from '@/lib/gameUtils';
 import { toast } from 'sonner';
-import { Plus, LogIn, User, LogOut } from 'lucide-react';
+import { Plus, LogIn, User, LogOut, ChevronDown } from 'lucide-react';
 
 const Home = () => {
   const [joinCode, setJoinCode] = useState('');
@@ -135,15 +143,23 @@ const Home = () => {
           <h1 className="text-xl sm:text-2xl font-bold bg-gradient-primary bg-clip-text text-transparent">
             Outsider Royale
           </h1>
-          <div className="absolute right-0 flex items-center gap-1 sm:gap-2">
-            <div className="flex items-center gap-1 text-xs sm:text-sm text-muted-foreground">
-              <User className="h-3 w-3 sm:h-4 sm:w-4" />
-              <span className="truncate max-w-[60px] sm:max-w-[100px]">{displayName}</span>
-            </div>
-            <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={handleLogout} title="Logout">
-              <LogOut className="h-4 w-4" />
-            </Button>
-          </div>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="sm" className="absolute right-0 gap-1 text-muted-foreground">
+                <User className="h-4 w-4" />
+                <span className="truncate max-w-[80px] sm:max-w-[120px]">{displayName}</span>
+                <ChevronDown className="h-3 w-3" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuLabel>My Account</DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={handleLogout} className="text-destructive focus:text-destructive">
+                <LogOut className="h-4 w-4 mr-2" />
+                Logout
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </header>
 
