@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -10,6 +10,7 @@ import { getStoredUserId } from '@/lib/gameUtils';
 import { toast } from 'sonner';
 import { Send, Eye, EyeOff, Users, CheckCircle2, DoorOpen, FastForward, ArrowRight } from 'lucide-react';
 import { ActiveModifiersDisplay } from '@/components/ActiveModifiersDisplay';
+import { SpeedRoundTimer } from '@/components/SpeedRoundTimer';
 
 interface GameMetadata {
   customWord: string | null;
@@ -410,6 +411,32 @@ const Game = () => {
     }
   };
 
+  // Handle speed round timer expiry - auto-submit with "..." or skip
+  const handleSpeedRoundTimeUp = useCallback(async () => {
+    if (!currentPlayer || !currentRound || !game || hasSubmittedClue || !isMyTurn) return;
+    
+    const clueToSubmit = clueInput.trim() || '⏱️';
+    
+    try {
+      await supabase
+        .from('clues')
+        .insert({
+          round_id: currentRound.id,
+          player_id: currentPlayer.id,
+          clue_text: clueToSubmit
+        });
+      
+      setClueInput('');
+      toast.warning("Time's up! Auto-submitted.");
+    } catch (error) {
+      console.error('Error auto-submitting clue:', error);
+      toast.error('Failed to auto-submit clue');
+    }
+  }, [currentPlayer, currentRound, game, hasSubmittedClue, isMyTurn, clueInput]);
+
+  // Check if speed round modifier is active
+  const isSpeedRound = gameMetadata?.modifiers?.includes('speed-round') ?? false;
+
   const submitVote = async (suspectedPlayerId: string) => {
     if (!currentPlayer || !game || hasVoted) return;
 
@@ -553,6 +580,15 @@ const Game = () => {
 
           {!isSpectator && !hasSubmittedClue && isMyTurn ? (
             <div className="space-y-4">
+              {/* Speed Round Timer */}
+              {isSpeedRound && (
+                <SpeedRoundTimer
+                  isActive={isMyTurn && !hasSubmittedClue}
+                  duration={15}
+                  onTimeUp={handleSpeedRoundTimeUp}
+                />
+              )}
+              
               <div className="space-y-2">
                 <label className="text-sm font-medium">Your Clue</label>
                 <Input
@@ -560,11 +596,12 @@ const Game = () => {
                   value={clueInput}
                   onChange={(e) => setClueInput(e.target.value)}
                   maxLength={30}
-                  className="h-12 text-base"
+                  className={`h-12 text-base ${isSpeedRound ? 'border-primary focus:ring-primary' : ''}`}
                   onKeyDown={(e) => e.key === 'Enter' && submitClue()}
+                  autoFocus={isSpeedRound}
                 />
                 <p className="text-xs text-muted-foreground">
-                  Keep it short and relevant!
+                  {isSpeedRound ? 'Quick! Submit before time runs out!' : 'Keep it short and relevant!'}
                 </p>
               </div>
               <Button
