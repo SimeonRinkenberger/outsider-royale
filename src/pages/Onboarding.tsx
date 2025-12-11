@@ -13,8 +13,8 @@ const Onboarding = () => {
   const navigate = useNavigate();
 
   const handleContinue = async () => {
-    if (!displayName.trim() || displayName.length > 16) {
-      toast.error('Please enter a name (1-16 characters)');
+    if (!displayName.trim() || displayName.length > 50) {
+      toast.error('Please enter a name (1-50 characters)');
       return;
     }
 
