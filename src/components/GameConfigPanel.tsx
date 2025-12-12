@@ -14,7 +14,6 @@ import { toast } from 'sonner';
 const CATEGORIES = [
   { value: 'animal', label: 'Animals' },
   { value: 'brand', label: 'Brands' },
-  { value: 'degenerate', label: 'Degenerate' },
   { value: 'food', label: 'Food' },
   { value: 'movie', label: 'Movies' },
   { value: 'person', label: 'People' },
@@ -36,6 +35,8 @@ export interface GameConfig {
   randomImposters: boolean;
   roundCount: number;
   gameMode: GameMode;
+  showOutsiderCount: boolean;
+  votesPerPlayer: number;
 }
 
 interface GameConfigPanelProps {
@@ -208,6 +209,45 @@ export const GameConfigPanel = ({
                 Random
               </label>
             </div>
+          </div>
+        </div>
+
+        {/* Voting Settings */}
+        <div className="space-y-3 border-t border-border pt-4">
+          <Label className="text-sm text-muted-foreground">Voting Options</Label>
+          
+          {/* Show Outsider Count */}
+          <div 
+            className="flex items-center justify-between p-2 rounded-md hover:bg-muted/50 cursor-pointer"
+            onClick={() => updateConfig({ showOutsiderCount: !config.showOutsiderCount })}
+          >
+            <div>
+              <p className="text-sm font-medium">Show Outsider Count</p>
+              <p className="text-xs text-muted-foreground">Display how many outsiders there are during voting</p>
+            </div>
+            <Checkbox
+              checked={config.showOutsiderCount}
+              onCheckedChange={(checked) => updateConfig({ showOutsiderCount: checked as boolean })}
+            />
+          </div>
+          
+          {/* Votes Per Player */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium">Votes Per Player</p>
+                <p className="text-xs text-muted-foreground">How many players each person can vote for</p>
+              </div>
+              <span className="text-sm font-bold text-primary">{config.votesPerPlayer}</span>
+            </div>
+            <Slider
+              value={[config.votesPerPlayer]}
+              onValueChange={([val]) => updateConfig({ votesPerPlayer: val })}
+              min={1}
+              max={Math.max(1, playerCount - 1)}
+              step={1}
+              className="w-full"
+            />
           </div>
         </div>
 

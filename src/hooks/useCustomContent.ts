@@ -41,6 +41,7 @@ export const AVAILABLE_MODIFIERS: Omit<GameModifier, 'enabled'>[] = [
   { id: 'category-hint', label: 'Category Hint', description: 'Players see the word category' },
   { id: 'silent-round', label: 'Silent Round', description: 'No discussion between rounds' },
   { id: 'speed-round', label: 'Speed Round', description: '15 seconds per clue submission' },
+  { id: 'outsider-guess', label: 'Outsider Can Guess', description: 'Outsiders can guess the word at any time to win' },
 ];
 
 export const useCustomContent = () => {

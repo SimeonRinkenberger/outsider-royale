@@ -8,7 +8,7 @@ import { useGameState } from '@/hooks/useGameState';
 import { useTurnChime } from '@/hooks/useTurnChime';
 import { getStoredUserId } from '@/lib/gameUtils';
 import { toast } from 'sonner';
-import { Send, Eye, EyeOff, Users, CheckCircle2, DoorOpen, FastForward, ArrowRight } from 'lucide-react';
+import { Send, Eye, EyeOff, Users, CheckCircle2, DoorOpen, FastForward, ArrowRight, Lightbulb } from 'lucide-react';
 import { ActiveModifiersDisplay } from '@/components/ActiveModifiersDisplay';
 import { SpeedRoundTimer } from '@/components/SpeedRoundTimer';
 
@@ -17,6 +17,9 @@ interface GameMetadata {
   customCategory: string | null;
   modifiers: string[];
   imposterCustomWord: string | null;
+  showOutsiderCount?: boolean;
+  votesPerPlayer?: number;
+  outsiderCount?: number;
 }
 
 // Seeded random shuffle - ensures all clients get the same order for a given seed
@@ -48,9 +51,13 @@ const Game = () => {
   const { lobby, players, game, currentRound, clues, allClues, votes, secretWord, imposterWord, outsiders } = useGameState(lobbyId || null);
   const [clueInput, setClueInput] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [selectedVote, setSelectedVote] = useState<string | null>(null);
+  const [selectedVotes, setSelectedVotes] = useState<string[]>([]);
   const [skipVote, setSkipVote] = useState(false);
+  const [votesSubmitted, setVotesSubmitted] = useState(false);
   const [gameMetadata, setGameMetadata] = useState<GameMetadata | null>(null);
+  const [guessInput, setGuessInput] = useState('');
+  const [showGuessInput, setShowGuessInput] = useState(false);
+  const [hasGuessed, setHasGuessed] = useState(false);
   const userId = getStoredUserId();
 
   // Load game metadata (modifiers, custom words) from localStorage
@@ -332,8 +339,9 @@ const Game = () => {
         .eq('id', game.id);
     }
     
-    setSelectedVote(null);
+    setSelectedVotes([]);
     setSkipVote(false);
+    setVotesSubmitted(false);
     toast.success(`Round ${nextRound} started!`);
   };
 
@@ -443,30 +451,86 @@ const Game = () => {
 
   // Check if speed round modifier is active
   const isSpeedRound = gameMetadata?.modifiers?.includes('speed-round') ?? false;
+  const canOutsiderGuess = gameMetadata?.modifiers?.includes('outsider-guess') ?? false;
 
-  const submitVote = async (suspectedPlayerId: string) => {
-    if (!currentPlayer || !game || hasVoted) return;
+  // Outsider guess submission
+  const submitGuess = async () => {
+    if (!currentPlayer || !game || !secretWord || hasGuessed || !guessInput.trim()) return;
 
     setIsSubmitting(true);
     try {
-      // For skip votes in elimination mode, insert with voter's own ID as a marker
-      // This will be filtered out in vote counting since you can't vote for yourself normally
-      const voteTarget = suspectedPlayerId === 'skip' ? currentPlayer.id : suspectedPlayerId;
+      const isCorrect = guessInput.trim().toLowerCase() === secretWord.text.toLowerCase();
       
-      await supabase
-        .from('votes')
-        .insert({
-          game_id: game.id,
-          voter_player_id: currentPlayer.id,
-          suspected_outsider_player_id: voteTarget
-        });
+      if (isCorrect) {
+        // Outsider wins! Move directly to results
+        toast.success("Correct! You've won the game!");
+        
+        // Update game status to results
+        await supabase
+          .from('games')
+          .update({ status: 'results' })
+          .eq('id', game.id);
 
-      setSelectedVote(suspectedPlayerId);
-      setSkipVote(suspectedPlayerId === 'skip');
-      toast.success(suspectedPlayerId === 'skip' ? 'Vote skipped!' : 'Vote submitted!');
+        await supabase
+          .from('lobbies')
+          .update({ status: 'results' })
+          .eq('id', lobbyId);
+          
+        // Store the win reason in localStorage
+        const existingMetadata = gameMetadata || {};
+        localStorage.setItem(`game-metadata-${game.id}`, JSON.stringify({
+          ...existingMetadata,
+          outsiderGuessedCorrectly: true,
+          outsiderGuesser: currentPlayer.display_name,
+        }));
+      } else {
+        toast.error("Wrong guess! Keep playing...");
+        setHasGuessed(true);
+      }
+      
+      setGuessInput('');
+      setShowGuessInput(false);
     } catch (error) {
-      console.error('Error submitting vote:', error);
-      toast.error('Failed to submit vote');
+      console.error('Error submitting guess:', error);
+      toast.error('Failed to submit guess');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const maxVotes = gameMetadata?.votesPerPlayer ?? 1;
+  const canVoteForPlayer = (playerId: string) => {
+    return !selectedVotes.includes(playerId) && selectedVotes.length < maxVotes;
+  };
+
+  const toggleVoteSelection = (playerId: string) => {
+    if (selectedVotes.includes(playerId)) {
+      setSelectedVotes(prev => prev.filter(id => id !== playerId));
+    } else if (selectedVotes.length < maxVotes) {
+      setSelectedVotes(prev => [...prev, playerId]);
+    }
+  };
+
+  const submitVotes = async () => {
+    if (!currentPlayer || !game || votesSubmitted || selectedVotes.length === 0) return;
+
+    setIsSubmitting(true);
+    try {
+      // Insert all selected votes
+      const voteInserts = selectedVotes.map(playerId => ({
+        game_id: game.id,
+        voter_player_id: currentPlayer.id,
+        suspected_outsider_player_id: playerId === 'skip' ? currentPlayer.id : playerId,
+      }));
+      
+      await supabase.from('votes').insert(voteInserts);
+
+      setVotesSubmitted(true);
+      setSkipVote(selectedVotes.includes('skip'));
+      toast.success(selectedVotes.includes('skip') ? 'Vote skipped!' : `${selectedVotes.length} vote(s) submitted!`);
+    } catch (error) {
+      console.error('Error submitting votes:', error);
+      toast.error('Failed to submit votes');
     } finally {
       setIsSubmitting(false);
     }
@@ -564,6 +628,61 @@ const Game = () => {
                 <p className="text-xs text-muted-foreground mt-2">
                   Category: <span className="font-semibold">{gameMetadata?.customCategory || secretWord.category}</span>
                 </p>
+                
+                {/* Outsider Guess Feature */}
+                {canOutsiderGuess && !hasGuessed && (
+                  <div className="mt-4 pt-4 border-t border-destructive/20">
+                    {!showGuessInput ? (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setShowGuessInput(true)}
+                        className="gap-2 border-destructive/30 text-destructive hover:bg-destructive/10"
+                      >
+                        <Lightbulb className="h-4 w-4" />
+                        Guess the Word (Win Instantly!)
+                      </Button>
+                    ) : (
+                      <div className="space-y-2">
+                        <Input
+                          placeholder="Enter your guess..."
+                          value={guessInput}
+                          onChange={(e) => setGuessInput(e.target.value)}
+                          className="text-center"
+                          onKeyDown={(e) => e.key === 'Enter' && submitGuess()}
+                          autoFocus
+                        />
+                        <div className="flex gap-2">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => { setShowGuessInput(false); setGuessInput(''); }}
+                            className="flex-1"
+                          >
+                            Cancel
+                          </Button>
+                          <Button
+                            variant="destructive"
+                            size="sm"
+                            onClick={submitGuess}
+                            disabled={isSubmitting || !guessInput.trim()}
+                            className="flex-1"
+                          >
+                            Submit Guess
+                          </Button>
+                        </div>
+                        <p className="text-xs text-muted-foreground">
+                          ⚠️ You only get one guess!
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                )}
+                {canOutsiderGuess && hasGuessed && (
+                  <p className="text-xs text-muted-foreground mt-4 pt-4 border-t border-destructive/20">
+                    ❌ You've already used your guess
+                  </p>
+                )}
               </div>
             </Card>
           ) : (
@@ -760,43 +879,70 @@ const Game = () => {
                 )}
               </Card>
 
-              {!hasVoted ? (
+              {!votesSubmitted ? (
                 <div className="space-y-3">
+                  {/* Show outsider count if enabled */}
+                  {gameMetadata?.showOutsiderCount && (
+                    <Card className="p-3 bg-muted/50 border-border text-center">
+                      <p className="text-sm text-muted-foreground">
+                        There {outsiders.length === 1 ? 'is' : 'are'} <span className="font-bold text-primary">{outsiders.length}</span> outsider{outsiders.length !== 1 ? 's' : ''} to find
+                      </p>
+                    </Card>
+                  )}
+                  
                   <h3 className="text-sm font-semibold text-muted-foreground px-1">
-                    Select a player{isEliminationMode ? ' (or skip)' : ''}:
+                    {maxVotes > 1 
+                      ? `Select up to ${maxVotes} players (${selectedVotes.length}/${maxVotes})` 
+                      : `Select a player${isEliminationMode ? ' (or skip)' : ''}`}:
                   </h3>
                   <div className="space-y-2">
-                    {votablePlayers.map((player) => (
-                      <Button
-                        key={player.id}
-                        onClick={() => submitVote(player.id)}
-                        disabled={isSubmitting || player.id === currentPlayer?.id || player.is_spectator}
-                        variant={selectedVote === player.id ? 'default' : 'outline'}
-                        className="w-full h-14 text-base justify-start"
-                      >
-                        {player.display_name}
-                        {player.id === currentPlayer?.id && ' (You)'}
-                        {player.is_spectator && ' (Spectator)'}
-                      </Button>
-                    ))}
+                    {votablePlayers.map((player) => {
+                      const isSelected = selectedVotes.includes(player.id);
+                      const canSelect = player.id !== currentPlayer?.id && !player.is_spectator && (isSelected || selectedVotes.length < maxVotes);
+                      return (
+                        <Button
+                          key={player.id}
+                          onClick={() => toggleVoteSelection(player.id)}
+                          disabled={isSubmitting || player.id === currentPlayer?.id || player.is_spectator || (!isSelected && !canSelect)}
+                          variant={isSelected ? 'default' : 'outline'}
+                          className="w-full h-14 text-base justify-start"
+                        >
+                          {player.display_name}
+                          {player.id === currentPlayer?.id && ' (You)'}
+                          {player.is_spectator && ' (Spectator)'}
+                          {isSelected && ' ✓'}
+                        </Button>
+                      );
+                    })}
                     {isEliminationMode && (
                       <Button
-                        onClick={() => submitVote('skip')}
+                        onClick={() => toggleVoteSelection('skip')}
                         disabled={isSubmitting}
-                        variant={selectedVote === 'skip' ? 'default' : 'outline'}
+                        variant={selectedVotes.includes('skip') ? 'default' : 'outline'}
                         className="w-full h-14 text-base justify-start text-muted-foreground"
                       >
                         Skip vote (no elimination)
+                        {selectedVotes.includes('skip') && ' ✓'}
                       </Button>
                     )}
                   </div>
+                  
+                  {selectedVotes.length > 0 && (
+                    <Button
+                      onClick={submitVotes}
+                      disabled={isSubmitting || selectedVotes.length === 0}
+                      className="w-full h-12 mt-4"
+                    >
+                      {isSubmitting ? 'Submitting...' : `Submit ${selectedVotes.length} Vote${selectedVotes.length > 1 ? 's' : ''}`}
+                    </Button>
+                  )}
                 </div>
               ) : (
                 <Card className="p-6 bg-gradient-card border-border text-center">
                   <CheckCircle2 className="h-12 w-12 text-primary mx-auto mb-2" />
-                  <h3 className="font-bold text-lg mb-1">Vote Submitted!</h3>
+                  <h3 className="font-bold text-lg mb-1">Votes Submitted!</h3>
                   <p className="text-sm text-muted-foreground">
-                    Waiting for {activePlayers.length - votes.length} other vote(s)...
+                    Waiting for other players...
                   </p>
                 </Card>
               )}

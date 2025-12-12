@@ -37,6 +37,8 @@ const Lobby = () => {
     randomImposters: false,
     roundCount: 3,
     gameMode: 'classic',
+    showOutsiderCount: false,
+    votesPerPlayer: 1,
   });
   const userId = getStoredUserId();
 
@@ -238,17 +240,18 @@ const Lobby = () => {
       if (gameError) throw gameError;
       
       // Store custom word and modifiers in localStorage for this game
-      // Always store metadata for hidden_imposter mode to capture the imposter word text
-      if (randomWord.isCustom || gameConfig.selectedModifiers.length > 0 || gameConfig.gameMode === 'hidden_imposter') {
-        const gameMetadata = {
-          customWord: randomWord.isCustom ? randomWord.text : null,
-          customCategory: randomWord.isCustom ? randomWord.category : null,
-          modifiers: gameConfig.selectedModifiers,
-          imposterCustomWord: imposterWordText,
-        };
-        
-        localStorage.setItem(`game-metadata-${game.id}`, JSON.stringify(gameMetadata));
-      }
+      // Always store metadata to capture game settings
+      const gameMetadata = {
+        customWord: randomWord.isCustom ? randomWord.text : null,
+        customCategory: randomWord.isCustom ? randomWord.category : null,
+        modifiers: gameConfig.selectedModifiers,
+        imposterCustomWord: imposterWordText,
+        showOutsiderCount: gameConfig.showOutsiderCount,
+        votesPerPlayer: gameConfig.votesPerPlayer,
+        outsiderCount: selectedOutsiders.length,
+      };
+      
+      localStorage.setItem(`game-metadata-${game.id}`, JSON.stringify(gameMetadata));
 
       // Insert all outsiders into game_outsiders table
       if (selectedOutsiders.length > 0) {
