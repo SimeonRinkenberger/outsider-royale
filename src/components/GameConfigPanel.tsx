@@ -7,9 +7,7 @@ import { Settings, Gamepad2, Palette, Sparkles } from 'lucide-react';
 import { GameMode } from '@/types/game';
 import { CustomCategoryManager } from '@/components/CustomCategoryManager';
 import { GameModifiers } from '@/components/GameModifiers';
-import { PresetManager } from '@/components/PresetManager';
-import { CustomCategory, GamePreset, AVAILABLE_MODIFIERS } from '@/hooks/useCustomContent';
-import { toast } from 'sonner';
+import { CustomCategory, AVAILABLE_MODIFIERS } from '@/hooks/useCustomContent';
 
 const CATEGORIES = [
   { value: 'animal', label: 'Animals' },
@@ -42,33 +40,21 @@ export interface GameConfig {
 interface GameConfigPanelProps {
   playerCount: number;
   customCategories: CustomCategory[];
-  presets: GamePreset[];
   config: GameConfig;
   onConfigChange: (config: GameConfig) => void;
   onAddCategory: (name: string, words: string[]) => void;
   onUpdateCategory: (id: string, name: string, words: string[]) => void;
   onDeleteCategory: (id: string) => void;
-  onAddPreset: (preset: Omit<GamePreset, 'id' | 'createdAt'>) => void;
-  onDeletePreset: (id: string) => void;
-  onExportPreset: (preset: GamePreset, includedCustomCategories: CustomCategory[]) => string;
-  onImportPreset: (code: string) => { preset: GamePreset; customCategories: CustomCategory[] } | null;
-  onSaveImported: (preset: GamePreset, categories: CustomCategory[]) => void;
 }
 
 export const GameConfigPanel = ({
   playerCount,
   customCategories,
-  presets,
   config,
   onConfigChange,
   onAddCategory,
   onUpdateCategory,
   onDeleteCategory,
-  onAddPreset,
-  onDeletePreset,
-  onExportPreset,
-  onImportPreset,
-  onSaveImported,
 }: GameConfigPanelProps) => {
   const maxImposters = Math.max(1, playerCount - 1);
   const recommendedImposters = playerCount <= 4 ? 1 
@@ -108,31 +94,6 @@ export const GameConfigPanel = ({
     updateConfig({ selectedModifiers: newModifiers });
   };
 
-  const handleSavePreset = (name: string) => {
-    onAddPreset({
-      name,
-      categories: config.selectedCategories,
-      customCategoryIds: config.selectedCustomCategories,
-      modifiers: config.selectedModifiers,
-      imposterCount: config.imposterCount,
-      roundCount: config.roundCount,
-      gameMode: config.gameMode,
-    });
-  };
-
-  const handleLoadPreset = (preset: GamePreset) => {
-    updateConfig({
-      selectedCategories: preset.categories,
-      selectedCustomCategories: preset.customCategoryIds.filter(id => 
-        customCategories.some(c => c.id === id)
-      ),
-      selectedModifiers: preset.modifiers,
-      imposterCount: Math.min(preset.imposterCount, maxImposters),
-      roundCount: preset.roundCount,
-      gameMode: preset.gameMode as GameMode,
-    });
-    toast.success(`Loaded "${preset.name}"`);
-  };
 
   return (
     <div className="space-y-4">
@@ -356,27 +317,6 @@ export const GameConfigPanel = ({
             onAdd={onAddCategory}
             onUpdate={onUpdateCategory}
             onDelete={onDeleteCategory}
-          />
-        </div>
-
-        <div className="border-t border-border pt-4">
-          <PresetManager
-            presets={presets}
-            customCategories={customCategories}
-            currentSettings={{
-              categories: config.selectedCategories,
-              customCategoryIds: config.selectedCustomCategories,
-              modifiers: config.selectedModifiers,
-              imposterCount: config.imposterCount,
-              roundCount: config.roundCount,
-              gameMode: config.gameMode,
-            }}
-            onSavePreset={handleSavePreset}
-            onLoadPreset={handleLoadPreset}
-            onDeletePreset={onDeletePreset}
-            onExportPreset={onExportPreset}
-            onImportPreset={onImportPreset}
-            onSaveImported={onSaveImported}
           />
         </div>
       </Card>
