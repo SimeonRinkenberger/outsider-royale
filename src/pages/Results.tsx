@@ -40,6 +40,8 @@ const Results = () => {
     randomImposters: false,
     roundCount: 3,
     gameMode: 'classic',
+    showOutsiderCount: false,
+    votesPerPlayer: 1,
   });
   const userId = getStoredUserId();
 
@@ -68,6 +70,27 @@ const Results = () => {
       navigate(`/game/${lobbyId}`);
     }
   }, [lobby?.status, lobby?.current_game_id, lobbyId, navigate]);
+
+  // Load game metadata to check if outsider guessed correctly
+  const [gameMetadata, setGameMetadata] = useState<{
+    outsiderGuessedCorrectly?: boolean;
+    outsiderGuesser?: string;
+  } | null>(null);
+  
+  useEffect(() => {
+    if (game?.id) {
+      const stored = localStorage.getItem(`game-metadata-${game.id}`);
+      if (stored) {
+        try {
+          setGameMetadata(JSON.parse(stored));
+        } catch (e) {
+          console.error('Failed to parse game metadata:', e);
+        }
+      }
+    }
+  }, [game?.id]);
+
+  const outsiderGuessedCorrectly = gameMetadata?.outsiderGuessedCorrectly ?? false;
   
   // Calculate vote results
   const votesByPlayer = players.map(player => {
@@ -80,9 +103,14 @@ const Results = () => {
   const activePlayers = players.filter(p => !p.is_spectator);
   const activeOutsiders = outsiders.filter(o => activePlayers.some(p => p.id === o.player_id));
   
-  const groupWins = isEliminationMode 
-    ? activeOutsiders.length === 0 // All outsiders eliminated
-    : votes.filter(v => outsiders.some(o => o.player_id === v.suspected_outsider_player_id)).length >= players.length / 2;
+  // Outsider wins if they guessed correctly, otherwise check votes
+  const outsiderWins = outsiderGuessedCorrectly || (
+    isEliminationMode 
+      ? activeOutsiders.length >= activePlayers.length / 2 // Outsiders have majority
+      : votes.filter(v => outsiders.some(o => o.player_id === v.suspected_outsider_player_id)).length < players.length / 2
+  );
+  
+  const groupWins = !outsiderWins;
 
   // Trigger confetti on group win - must be before early return
   useEffect(() => {
@@ -359,7 +387,9 @@ const Results = () => {
               <XCircle className="h-16 w-16 text-destructive mx-auto mb-3 animate-shake" />
               <h2 className="text-2xl font-bold text-destructive mb-2">Outsider Wins!</h2>
               <p className="text-muted-foreground">
-                The outsider fooled everyone!
+                {outsiderGuessedCorrectly 
+                  ? `${gameMetadata?.outsiderGuesser || 'The outsider'} guessed the word correctly!`
+                  : 'The outsider fooled everyone!'}
               </p>
             </>
           )}
