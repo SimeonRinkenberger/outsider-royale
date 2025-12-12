@@ -180,7 +180,13 @@ const Lobby = () => {
       // For hidden_imposter mode, get a different word from the same category
       let imposterWordText: string | null = null;
       if (gameConfig.gameMode === 'hidden_imposter') {
-        const sameCategory = allWords.filter(w => w.category === randomWord.category && w.id !== randomWord.id);
+        // Filter by both ID and text to ensure the imposter word is always different
+        const sameCategory = allWords.filter(w => 
+          w.category === randomWord.category && 
+          w.id !== randomWord.id && 
+          w.text.toLowerCase() !== randomWord.text.toLowerCase()
+        );
+        
         if (sameCategory.length > 0) {
           const imposterWord = sameCategory[Math.floor(Math.random() * sameCategory.length)];
           imposterWordText = imposterWord.text;
@@ -188,8 +194,12 @@ const Lobby = () => {
             imposterWordId = imposterWord.id;
           }
         } else {
-          // Fallback: pick from any different word
-          const differentWords = allWords.filter(w => w.id !== randomWord.id);
+          // Fallback: pick from any different word (different text)
+          const differentWords = allWords.filter(w => 
+            w.id !== randomWord.id && 
+            w.text.toLowerCase() !== randomWord.text.toLowerCase()
+          );
+          
           if (differentWords.length > 0) {
             const imposterWord = differentWords[Math.floor(Math.random() * differentWords.length)];
             imposterWordText = imposterWord.text;
@@ -197,6 +207,13 @@ const Lobby = () => {
               imposterWordId = imposterWord.id;
             }
           }
+        }
+        
+        // If no different word could be found, show error
+        if (!imposterWordText || imposterWordText.toLowerCase() === randomWord.text.toLowerCase()) {
+          toast.error('Need at least 2 different words for Hidden Outsider mode');
+          setIsStarting(false);
+          return;
         }
         
         // If imposterWordId is still null but we have a text, use placeholder
