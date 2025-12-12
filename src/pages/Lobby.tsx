@@ -416,17 +416,11 @@ const Lobby = () => {
           <GameConfigPanel
             playerCount={players.length}
             customCategories={customCategories}
-            presets={presets}
             config={gameConfig}
             onConfigChange={setGameConfig}
             onAddCategory={addCategory}
             onUpdateCategory={updateCategory}
             onDeleteCategory={deleteCategory}
-            onAddPreset={addPreset}
-            onDeletePreset={deletePreset}
-            onExportPreset={exportPreset}
-            onImportPreset={importPreset}
-            onSaveImported={saveImported}
           />
         )}
 
