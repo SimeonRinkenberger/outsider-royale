@@ -242,19 +242,25 @@ export type Database = {
       }
       profiles: {
         Row: {
+          auth_user_id: string | null
           created_at: string
           display_name: string
           id: string
+          is_guest: boolean
         }
         Insert: {
+          auth_user_id?: string | null
           created_at?: string
           display_name: string
           id?: string
+          is_guest?: boolean
         }
         Update: {
+          auth_user_id?: string | null
           created_at?: string
           display_name?: string
           id?: string
+          is_guest?: boolean
         }
         Relationships: []
       }
@@ -289,6 +295,60 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      user_stats: {
+        Row: {
+          best_win_streak: number
+          created_at: string
+          current_win_streak: number
+          favorite_category: string | null
+          games_played: number
+          games_played_as_outsider: number
+          games_played_as_safe: number
+          games_won_as_outsider: number
+          games_won_as_safe: number
+          id: string
+          total_clues_submitted: number
+          total_correct_votes: number
+          total_votes_cast: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          best_win_streak?: number
+          created_at?: string
+          current_win_streak?: number
+          favorite_category?: string | null
+          games_played?: number
+          games_played_as_outsider?: number
+          games_played_as_safe?: number
+          games_won_as_outsider?: number
+          games_won_as_safe?: number
+          id?: string
+          total_clues_submitted?: number
+          total_correct_votes?: number
+          total_votes_cast?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          best_win_streak?: number
+          created_at?: string
+          current_win_streak?: number
+          favorite_category?: string | null
+          games_played?: number
+          games_played_as_outsider?: number
+          games_played_as_safe?: number
+          games_won_as_outsider?: number
+          games_won_as_safe?: number
+          id?: string
+          total_clues_submitted?: number
+          total_correct_votes?: number
+          total_votes_cast?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
       }
       votes: {
         Row: {

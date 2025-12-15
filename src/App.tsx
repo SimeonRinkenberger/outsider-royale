@@ -9,8 +9,14 @@ import { getStoredUserId } from './lib/gameUtils';
 
 import ThemeToggle from './components/ThemeToggle';
 import ForceUpdateButton from './components/ForceUpdateButton';
+import Menu from './pages/Menu';
 import Onboarding from './pages/Onboarding';
 import Home from './pages/Home';
+import Auth from './pages/Auth';
+import AuthCallback from './pages/AuthCallback';
+import Stats from './pages/Stats';
+import InPersonSetup from './pages/InPersonSetup';
+import InPersonGame from './pages/InPersonGame';
 import Lobby from './pages/Lobby';
 import Game from './pages/Game';
 import Results from './pages/Results';
@@ -36,7 +42,7 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
     );
   }
 
-  return hasUser ? <>{children}</> : <Navigate to="/" replace />;
+  return hasUser ? <>{children}</> : <Navigate to="/onboarding" replace />;
 };
 
 const App = () => (
@@ -50,7 +56,14 @@ const App = () => (
           <ForceUpdateButton />
           
           <Routes>
-            <Route path="/" element={<Onboarding />} />
+            <Route path="/" element={<Menu />} />
+            <Route path="/menu" element={<Menu />} />
+            <Route path="/auth" element={<Auth />} />
+            <Route path="/auth/callback" element={<AuthCallback />} />
+            <Route path="/onboarding" element={<Onboarding />} />
+            <Route path="/in-person" element={<InPersonSetup />} />
+            <Route path="/in-person/game" element={<InPersonGame />} />
+            <Route path="/stats" element={<Stats />} />
             <Route
               path="/home"
               element={
