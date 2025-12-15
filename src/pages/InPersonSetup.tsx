@@ -4,9 +4,10 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
-import { ArrowLeft, Plus, Trash2, Play, Users } from 'lucide-react';
+import { Plus, Trash2, Play, Users } from 'lucide-react';
 import { toast } from 'sonner';
 import { motion, AnimatePresence } from 'framer-motion';
+import GameHeader from '@/components/GameHeader';
 
 const InPersonSetup = () => {
   const navigate = useNavigate();
@@ -65,14 +66,7 @@ const InPersonSetup = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      <header className="bg-card border-b border-border p-4">
-        <div className="max-w-md mx-auto flex items-center gap-4">
-          <Button variant="ghost" size="icon" onClick={() => navigate('/menu')}>
-            <ArrowLeft className="h-5 w-5" />
-          </Button>
-          <h1 className="text-xl font-bold">In Person Setup</h1>
-        </div>
-      </header>
+      <GameHeader title="In Person Setup" showBack={true} backPath="/menu" />
 
       <main className="p-4 max-w-md mx-auto space-y-6">
         {/* Players Section */}

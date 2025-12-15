@@ -8,7 +8,8 @@ import { useGameState } from '@/hooks/useGameState';
 import { useTurnChime } from '@/hooks/useTurnChime';
 import { getStoredUserId } from '@/lib/gameUtils';
 import { toast } from 'sonner';
-import { Send, Eye, EyeOff, Users, CheckCircle2, DoorOpen, FastForward, ArrowRight, Lightbulb } from 'lucide-react';
+import { Send, Eye, EyeOff, Users, CheckCircle2, DoorOpen, FastForward, ArrowRight, Lightbulb, User } from 'lucide-react';
+import { useNavigate as useNav } from 'react-router-dom';
 import { ActiveModifiersDisplay } from '@/components/ActiveModifiersDisplay';
 import { SpeedRoundTimer } from '@/components/SpeedRoundTimer';
 
@@ -572,6 +573,9 @@ const Game = () => {
                   <span className="hidden sm:inline">Skip</span>
                 </Button>
               )}
+              <Button variant="ghost" size="icon" onClick={() => navigate('/stats')}>
+                <User className="h-5 w-5" />
+              </Button>
               <Button variant="ghost" size="sm" onClick={leaveLobby} className="gap-1 text-muted-foreground">
                 <DoorOpen className="h-4 w-4" />
                 <span className="hidden sm:inline">Leave</span>
@@ -839,10 +843,15 @@ const Game = () => {
                   : `Who didn't know: "${secretWord.text}"?`}
               </p>
             </div>
-            <Button variant="ghost" size="sm" onClick={leaveLobby} className="gap-1 text-muted-foreground">
-              <DoorOpen className="h-4 w-4" />
-              <span className="hidden sm:inline">Leave</span>
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button variant="ghost" size="icon" onClick={() => navigate('/stats')}>
+                <User className="h-5 w-5" />
+              </Button>
+              <Button variant="ghost" size="sm" onClick={leaveLobby} className="gap-1 text-muted-foreground">
+                <DoorOpen className="h-4 w-4" />
+                <span className="hidden sm:inline">Leave</span>
+              </Button>
+            </div>
           </div>
         </header>
 

@@ -7,6 +7,7 @@ import { toast } from 'sonner';
 import { Eye, EyeOff, ArrowRight, RotateCcw, Trophy, Users } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Confetti from '@/components/Confetti';
+import GameHeader from '@/components/GameHeader';
 
 interface InPersonGameConfig {
   players: string[];
@@ -156,16 +157,14 @@ const InPersonGame = () => {
     <div className="min-h-screen bg-background flex flex-col">
       {showConfetti && <Confetti isActive={showConfetti} />}
       
-      <header className="bg-card border-b border-border p-4">
-        <div className="max-w-md mx-auto">
-          <h1 className="text-xl font-bold text-center">
-            {config.phase === 'word-reveal' && 'Pass the Device'}
-            {config.phase === 'discussion' && 'Discussion Time'}
-            {config.phase === 'voting' && 'Voting'}
-            {config.phase === 'results' && 'Results'}
-          </h1>
-        </div>
-      </header>
+      <GameHeader 
+        title={
+          config.phase === 'word-reveal' ? 'Pass the Device' :
+          config.phase === 'discussion' ? 'Discussion Time' :
+          config.phase === 'voting' ? 'Voting' : 'Results'
+        }
+        showBack={false}
+      />
 
       <main className="flex-1 p-4 max-w-md mx-auto w-full flex flex-col justify-center">
         <AnimatePresence mode="wait">

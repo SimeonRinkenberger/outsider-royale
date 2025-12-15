@@ -3,35 +3,21 @@ import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
 import { supabase } from '@/integrations/supabase/client';
 import { generateLobbyCode, getStoredUserId, getStoredDisplayName } from '@/lib/gameUtils';
 import { toast } from 'sonner';
-import { Plus, LogIn, User, LogOut, ChevronDown } from 'lucide-react';
+import { Plus, LogIn } from 'lucide-react';
+import GameHeader from '@/components/GameHeader';
 
 const Home = () => {
   const [joinCode, setJoinCode] = useState('');
   const [isCreating, setIsCreating] = useState(false);
   const [isJoining, setIsJoining] = useState(false);
   const navigate = useNavigate();
-  const displayName = getStoredDisplayName();
-
-  const handleLogout = () => {
-    localStorage.removeItem('wordgame_user_id');
-    localStorage.removeItem('wordgame_display_name');
-    toast.success('Logged out');
-    navigate('/');
-  };
 
   const createLobby = async () => {
     const userId = getStoredUserId();
+    const displayName = getStoredDisplayName();
     if (!userId || !displayName) {
       navigate('/');
       return;
@@ -72,6 +58,7 @@ const Home = () => {
 
   const joinLobby = async () => {
     const userId = getStoredUserId();
+    const displayName = getStoredDisplayName();
     if (!userId || !displayName) {
       navigate('/');
       return;
@@ -138,30 +125,7 @@ const Home = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      <header className="bg-card border-b border-border p-4">
-        <div className="max-w-md mx-auto flex items-center justify-center relative">
-          <h1 className="text-xl sm:text-2xl font-bold bg-gradient-primary bg-clip-text text-transparent">
-            Outsider Royale
-          </h1>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="absolute right-0 h-9 w-9 rounded-full">
-                <User className="h-5 w-5" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="min-w-48">
-              <DropdownMenuLabel className="font-normal">
-                <p className="text-sm font-medium break-words">{displayName}</p>
-              </DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={handleLogout} className="text-destructive focus:text-destructive cursor-pointer">
-                <LogOut className="h-4 w-4 mr-2" />
-                Logout
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
-      </header>
+      <GameHeader title="Outsider Royale" showBack={true} backPath="/menu" />
 
       <main className="p-4 max-w-md mx-auto space-y-6 py-8">
         <Card className="p-6 bg-gradient-primary text-white shadow-card border-0 animate-fade-in-up hover:scale-[1.02] transition-transform duration-300">

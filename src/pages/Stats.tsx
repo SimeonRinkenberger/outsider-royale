@@ -90,8 +90,9 @@ const Stats = () => {
             </Button>
             <h1 className="text-xl font-bold">Your Stats</h1>
           </div>
-          <Button variant="ghost" size="icon" onClick={handleLogout}>
-            <LogOut className="h-5 w-5" />
+          <Button variant="destructive" size="sm" onClick={handleLogout} className="gap-2">
+            <LogOut className="h-4 w-4" />
+            Logout
           </Button>
         </div>
       </header>
