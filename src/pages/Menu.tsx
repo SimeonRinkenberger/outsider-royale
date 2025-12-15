@@ -149,7 +149,9 @@ const Menu = () => {
                   <Wifi className="h-8 w-8 text-white" />
                 </div>
                 <div className="flex-1">
-                  <h3 className="text-xl font-bold">Online</h3>
+                  <h3 className="text-xl font-bold">
+                    Online as {isAuthenticated && displayName ? displayName : 'Guest'}
+                  </h3>
                   <p className="text-muted-foreground text-sm">
                     Everyone uses their own device
                   </p>
