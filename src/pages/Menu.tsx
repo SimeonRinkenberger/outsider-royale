@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { supabase } from '@/integrations/supabase/client';
-import { getStoredUserId, getStoredDisplayName } from '@/lib/gameUtils';
+import { getStoredUserId, getStoredDisplayName, clearStorage } from '@/lib/gameUtils';
 import { Users, Wifi, User, LogIn, BarChart3 } from 'lucide-react';
 import { motion } from 'framer-motion';
 
@@ -11,17 +11,34 @@ const Menu = () => {
   const navigate = useNavigate();
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
-  const displayName = getStoredDisplayName();
+  const [displayName, setDisplayName] = useState<string | null>(null);
 
   useEffect(() => {
     const checkAuth = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       setIsAuthenticated(!!session);
+      
+      // Only show display name if authenticated or has a valid guest profile
+      if (session) {
+        setDisplayName(getStoredDisplayName());
+      } else {
+        // Clear any stale guest data when not authenticated
+        clearStorage();
+        setDisplayName(null);
+      }
+      
       setIsLoading(false);
     };
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       setIsAuthenticated(!!session);
+      
+      if (event === 'SIGNED_OUT') {
+        clearStorage();
+        setDisplayName(null);
+      } else if (session) {
+        setDisplayName(getStoredDisplayName());
+      }
     });
 
     checkAuth();
