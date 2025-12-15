@@ -7,10 +7,11 @@ import { useGameState } from '@/hooks/useGameState';
 import { useCustomContent } from '@/hooks/useCustomContent';
 import { getStoredUserId } from '@/lib/gameUtils';
 import { toast } from 'sonner';
-import { Trophy, XCircle, Home, RotateCcw, UserMinus, DoorOpen, Settings, ChevronDown, ChevronUp } from 'lucide-react';
+import { Trophy, XCircle, RotateCcw, UserMinus, DoorOpen, Settings, ChevronDown, ChevronUp } from 'lucide-react';
 import Confetti from '@/components/Confetti';
 import { GameConfigPanel, GameConfig, getActiveModifierLabels } from '@/components/GameConfigPanel';
 import { GameMode } from '@/types/game';
+import GameHeader from '@/components/GameHeader';
 
 const Results = () => {
   const { lobbyId } = useParams();
@@ -359,16 +360,16 @@ const Results = () => {
     <div className="min-h-screen bg-background pb-24">
       <Confetti isActive={showConfetti} />
       
-      <header className="bg-card border-b border-border p-4 sticky top-0 z-10">
-        <div className="max-w-md mx-auto flex items-center justify-between">
-          <div className="w-10" />
-          <h1 className="text-xl font-bold">Game Results</h1>
+      <GameHeader 
+        title="Game Results" 
+        showBack={false} 
+        rightContent={
           <Button variant="ghost" size="sm" onClick={goHome} className="gap-1 text-muted-foreground">
             <DoorOpen className="h-4 w-4" />
             <span className="hidden sm:inline">Leave</span>
           </Button>
-        </div>
-      </header>
+        }
+      />
 
       <main className="p-4 max-w-md mx-auto space-y-6 py-6">
         <Card className={`p-6 shadow-card border-0 text-center animate-bounce-in ${
@@ -510,7 +511,7 @@ const Results = () => {
             variant="outline"
             className="w-full h-12 text-base"
           >
-            <Home className="h-5 w-5 mr-2" />
+            <DoorOpen className="h-5 w-5 mr-2" />
             Leave Lobby
           </Button>
         </div>

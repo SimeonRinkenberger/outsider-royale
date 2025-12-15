@@ -7,9 +7,10 @@ import { useGameState } from '@/hooks/useGameState';
 import { useCustomContent } from '@/hooks/useCustomContent';
 import { getStoredUserId } from '@/lib/gameUtils';
 import { toast } from 'sonner';
-import { Copy, Users, Crown, ArrowLeft, Play, X } from 'lucide-react';
+import { Copy, Users, Crown, Play, X } from 'lucide-react';
 import { GameMode } from '@/types/game';
 import { GameConfigPanel, GameConfig, getActiveModifierLabels } from '@/components/GameConfigPanel';
+import GameHeader from '@/components/GameHeader';
 
 const Lobby = () => {
   const { lobbyId } = useParams();
@@ -324,14 +325,7 @@ const Lobby = () => {
 
   return (
     <div className="min-h-screen bg-background pb-48">
-      <header className="bg-card border-b border-border p-4 pl-28 sticky top-0 z-10">
-        <div className="max-w-md mx-auto flex items-center justify-center relative">
-          <Button variant="ghost" size="icon" className="absolute left-0" onClick={leaveLobby}>
-            <ArrowLeft className="h-5 w-5" />
-          </Button>
-          <h1 className="text-xl font-bold">Lobby</h1>
-        </div>
-      </header>
+      <GameHeader title="Lobby" showBack={true} onBack={leaveLobby} />
 
       <main className="p-4 max-w-md mx-auto space-y-6 py-6">
         <Card className="p-6 bg-gradient-primary text-white shadow-card border-0">
