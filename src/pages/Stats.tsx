@@ -3,11 +3,12 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { supabase } from '@/integrations/supabase/client';
-import { getStoredDisplayName, clearStorage } from '@/lib/gameUtils';
+import { getStoredDisplayName, clearStorage, setStoredDisplayName } from '@/lib/gameUtils';
 import { toast } from 'sonner';
 import { ArrowLeft, Trophy, Target, Flame, MessageSquare, Vote, LogOut, TrendingUp } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { AvatarPicker, getAvatarById } from '@/components/AvatarPicker';
+import { AccountSettings } from '@/components/AccountSettings';
 
 interface UserStats {
   games_played: number;
@@ -30,7 +31,8 @@ const Stats = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [profileId, setProfileId] = useState<string | null>(null);
-  const displayName = getStoredDisplayName();
+  const [displayName, setDisplayName] = useState(getStoredDisplayName());
+  const [userEmail, setUserEmail] = useState<string | null>(null);
   
   // Check if we came from a game/lobby context
   const fromGame = location.state?.fromGame || false;
@@ -61,20 +63,31 @@ const Stats = () => {
       // Fetch profile for avatar
       const { data: profileData } = await supabase
         .from('profiles')
-        .select('id, avatar_url')
+        .select('id, avatar_url, display_name')
         .eq('auth_user_id', session.user.id)
         .single();
 
       if (profileData) {
         setProfileId(profileData.id);
         setAvatarUrl(profileData.avatar_url);
+        if (profileData.display_name) {
+          setDisplayName(profileData.display_name);
+        }
       }
+
+      // Store email from session
+      setUserEmail(session.user.email || null);
       
       setIsLoading(false);
     };
 
     fetchStats();
   }, [navigate]);
+
+  const handleDisplayNameChange = (newName: string) => {
+    setDisplayName(newName);
+    setStoredDisplayName(newName);
+  };
 
   const handleAvatarSelect = async (avatarId: string) => {
     if (!profileId) return;
@@ -283,6 +296,14 @@ const Stats = () => {
             </Card>
           </motion.div>
         )}
+
+        {/* Account Settings */}
+        <AccountSettings
+          profileId={profileId}
+          currentDisplayName={displayName}
+          currentEmail={userEmail}
+          onDisplayNameChange={handleDisplayNameChange}
+        />
       </main>
     </div>
   );
