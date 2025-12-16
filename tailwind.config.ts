@@ -141,6 +141,10 @@ export default {
           "0%": { width: "0" },
           "100%": { width: "100%" },
         },
+        "shimmer": {
+          "0%": { backgroundPosition: "-200% 0" },
+          "100%": { backgroundPosition: "200% 0" },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
@@ -158,6 +162,7 @@ export default {
         "flip-in": "flip-in 0.5s ease-out",
         "spotlight": "spotlight 0.6s ease-out",
         "confetti-fall": "confetti-fall 3s linear forwards",
+        "shimmer": "shimmer 0.6s ease-out forwards",
       },
     },
   },
