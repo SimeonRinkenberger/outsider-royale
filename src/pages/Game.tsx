@@ -14,10 +14,17 @@ import { ActiveModifiersDisplay } from '@/components/ActiveModifiersDisplay';
 import { SpeedRoundTimer } from '@/components/SpeedRoundTimer';
 import { getAvatarById } from '@/components/AvatarPicker';
 
+interface CustomModifierData {
+  id: string;
+  label: string;
+  description: string;
+}
+
 interface GameMetadata {
   customWord: string | null;
   customCategory: string | null;
   modifiers: string[];
+  customModifiersData?: CustomModifierData[]; // Full custom modifier data for non-hosts
   imposterCustomWord: string | null;
   showOutsiderCount?: boolean;
   votesPerPlayer?: number;
@@ -941,7 +948,7 @@ const Game = () => {
           {/* Active rules dropdown below player names */}
           <ActiveModifiersDisplay 
             modifiers={gameMetadata?.modifiers || []} 
-            customModifiers={customModifiers}
+            customModifiers={gameMetadata?.customModifiersData || customModifiers}
             gameMode={game.game_mode}
             compact
           />
@@ -1082,7 +1089,7 @@ const Game = () => {
           {/* Active rules dropdown below content */}
           <ActiveModifiersDisplay 
             modifiers={gameMetadata?.modifiers || []} 
-            customModifiers={customModifiers}
+            customModifiers={gameMetadata?.customModifiersData || customModifiers}
             gameMode={game.game_mode}
             compact
           />

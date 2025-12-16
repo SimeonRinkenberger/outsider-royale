@@ -312,10 +312,16 @@ const Lobby = () => {
       
       // Store custom word and modifiers in localStorage for this game
       // Always store metadata to capture game settings
+      // Include full custom modifier data so non-hosts can see them
+      const selectedCustomModifiers = customModifiers.filter(m => 
+        gameConfig.selectedModifiers.includes(m.id)
+      ).map(m => ({ id: m.id, label: m.label, description: m.description }));
+      
       const gameMetadata = {
         customWord: randomWord.isCustom ? randomWord.text : null,
         customCategory: randomWord.isCustom ? randomWord.category : null,
         modifiers: gameConfig.selectedModifiers,
+        customModifiersData: selectedCustomModifiers,
         imposterCustomWord: imposterWordText,
         showOutsiderCount: gameConfig.showOutsiderCount,
         votesPerPlayer: gameConfig.votesPerPlayer,
