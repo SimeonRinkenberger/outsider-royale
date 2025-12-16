@@ -2,16 +2,21 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
 import { supabase } from '@/integrations/supabase/client';
-import { getStoredUserId, getStoredDisplayName, clearStorage } from '@/lib/gameUtils';
+import { getStoredUserId, getStoredDisplayName, clearStorage, setStoredUserId, setStoredDisplayName } from '@/lib/gameUtils';
 import { Users, Wifi, User, LogIn, BarChart3 } from 'lucide-react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
+import { toast } from 'sonner';
 
 const Menu = () => {
   const navigate = useNavigate();
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [displayName, setDisplayName] = useState<string | null>(null);
+  const [showGuestInput, setShowGuestInput] = useState(false);
+  const [guestName, setGuestName] = useState('');
+  const [isCreatingGuest, setIsCreatingGuest] = useState(false);
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -55,7 +60,37 @@ const Menu = () => {
     if (userId) {
       navigate('/home');
     } else {
-      navigate('/onboarding');
+      // Show the guest input instead of navigating
+      setShowGuestInput(true);
+    }
+  };
+
+  const handleGuestContinue = async () => {
+    if (!guestName.trim() || guestName.length > 50) {
+      toast.error('Please enter a name (1-50 characters)');
+      return;
+    }
+
+    setIsCreatingGuest(true);
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .insert({ display_name: guestName.trim() })
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      setStoredUserId(data.id);
+      setStoredDisplayName(data.display_name);
+      
+      toast.success(`Welcome, ${data.display_name}!`);
+      navigate('/home');
+    } catch (error) {
+      console.error('Error creating profile:', error);
+      toast.error('Failed to create profile');
+    } finally {
+      setIsCreatingGuest(false);
     }
   };
 
@@ -141,8 +176,8 @@ const Menu = () => {
             transition={{ duration: 0.5, delay: 0.2 }}
           >
             <Card 
-              className="p-6 cursor-pointer hover:scale-[1.02] transition-all duration-300 border-2 hover:border-primary/50"
-              onClick={handleOnline}
+              className={`p-6 cursor-pointer transition-all duration-300 border-2 ${showGuestInput ? 'border-primary' : 'hover:scale-[1.02] hover:border-primary/50'}`}
+              onClick={!showGuestInput ? handleOnline : undefined}
             >
               <div className="flex items-center gap-4">
                 <div className="p-3 rounded-xl bg-gradient-primary">
@@ -157,6 +192,62 @@ const Menu = () => {
                   </p>
                 </div>
               </div>
+
+              {/* Animated Guest Input */}
+              <AnimatePresence>
+                {showGuestInput && (
+                  <motion.div
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: 'auto', opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    transition={{ duration: 0.3, ease: 'easeOut' }}
+                    className="overflow-hidden"
+                  >
+                    <div className="pt-4 mt-4 border-t border-border space-y-4">
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium">Choose a display name</label>
+                        <Input
+                          placeholder="Enter your name"
+                          value={guestName}
+                          onChange={(e) => setGuestName(e.target.value)}
+                          maxLength={50}
+                          className="h-12 text-base"
+                          onKeyDown={(e) => e.key === 'Enter' && handleGuestContinue()}
+                          autoFocus
+                          onClick={(e) => e.stopPropagation()}
+                        />
+                        <p className="text-xs text-muted-foreground">
+                          {guestName.length}/50 characters
+                        </p>
+                      </div>
+
+                      <div className="flex gap-2">
+                        <Button
+                          variant="outline"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setShowGuestInput(false);
+                            setGuestName('');
+                          }}
+                          className="flex-1"
+                        >
+                          Cancel
+                        </Button>
+                        <Button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleGuestContinue();
+                          }}
+                          disabled={isCreatingGuest || !guestName.trim()}
+                          className="flex-1"
+                        >
+                          {isCreatingGuest ? 'Creating...' : 'Continue'}
+                        </Button>
+                      </div>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </Card>
           </motion.div>
         </div>
