@@ -144,28 +144,6 @@ const Lobby = () => {
     }
   };
 
-  const kickPlayer = async (playerId: string, playerName: string) => {
-    if (!isHost || !lobbyId) return;
-
-    try {
-      const { error } = await supabase
-        .from('lobby_players')
-        .delete()
-        .eq('id', playerId)
-        .eq('lobby_id', lobbyId);
-
-      if (error) {
-        console.error('Error kicking player:', error);
-        toast.error('Failed to kick player');
-        return;
-      }
-
-      toast.success(`${playerName} was kicked`);
-    } catch (error) {
-      console.error('Error kicking player:', error);
-      toast.error('Failed to kick player');
-    }
-  };
 
   const startGame = async () => {
     if (!isHost || !lobbyId || !canStart) return;
@@ -449,16 +427,6 @@ const Lobby = () => {
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
-                      {isHost && !player.is_host && (
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => kickPlayer(player.id, player.display_name)}
-                          className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
-                        >
-                          <X className="h-4 w-4" />
-                        </Button>
-                      )}
                       {player.is_connected ? (
                         <div className="w-2 h-2 rounded-full bg-green-500" />
                       ) : (
