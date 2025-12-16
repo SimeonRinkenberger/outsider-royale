@@ -5,6 +5,7 @@ import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { supabase } from '@/integrations/supabase/client';
 import { useGameState } from '@/hooks/useGameState';
+import { useCustomContent } from '@/hooks/useCustomContent';
 import { useTurnChime } from '@/hooks/useTurnChime';
 import { getStoredUserId } from '@/lib/gameUtils';
 import { toast } from 'sonner';
@@ -60,6 +61,7 @@ const Game = () => {
   const [showGuessInput, setShowGuessInput] = useState(false);
   const [hasGuessed, setHasGuessed] = useState(false);
   const [playerAvatars, setPlayerAvatars] = useState<Record<string, string | null>>({});
+  const { customModifiers } = useCustomContent();
   const userId = getStoredUserId();
 
   // Fetch avatars for all players
@@ -618,6 +620,7 @@ const Game = () => {
           {game && (
             <ActiveModifiersDisplay 
               modifiers={gameMetadata?.modifiers || []} 
+              customModifiers={customModifiers}
               gameMode={game.game_mode}
             />
           )}
@@ -898,6 +901,7 @@ const Game = () => {
           {game && (
             <ActiveModifiersDisplay 
               modifiers={gameMetadata?.modifiers || []} 
+              customModifiers={customModifiers}
               gameMode={game.game_mode}
               compact 
             />
