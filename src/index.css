@@ -126,3 +126,29 @@ All colors MUST be HSL.
 .animate-pulse-glow {
   animation: pulse-glow-slow 3s ease-in-out infinite;
 }
+
+/* Placeholder shimmer animation */
+@keyframes placeholder-shimmer {
+  0% {
+    background-position: -200% center;
+  }
+  100% {
+    background-position: 200% center;
+  }
+}
+
+.input-shimmer:focus::placeholder {
+  background: linear-gradient(
+    90deg,
+    hsl(var(--muted-foreground)) 0%,
+    hsl(var(--primary)) 25%,
+    hsl(var(--accent)) 50%,
+    hsl(var(--primary)) 75%,
+    hsl(var(--muted-foreground)) 100%
+  );
+  background-size: 200% auto;
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: placeholder-shimmer 1.5s ease-in-out forwards;
+}
