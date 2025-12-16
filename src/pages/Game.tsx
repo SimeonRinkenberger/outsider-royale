@@ -140,7 +140,8 @@ const Game = () => {
   
   // Check if current player is an outsider (using outsiders array)
   const isOutsider = outsiders.some(o => o.player_id === currentPlayer?.id);
-  const hasSubmittedClue = clues.some(c => c.player_id === currentPlayer?.id);
+  // Check if player has submitted a clue for the CURRENT round only
+  const hasSubmittedClue = clues.some(c => c.player_id === currentPlayer?.id && c.round_id === currentRound?.id);
   const hasVoted = votes.some(v => v.voter_player_id === currentPlayer?.id);
 
   // Host broadcasts metadata to all players, non-hosts listen for it
