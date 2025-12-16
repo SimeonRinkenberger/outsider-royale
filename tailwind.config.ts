@@ -110,8 +110,8 @@ export default {
           "50%": { transform: "rotate(3deg)" },
         },
         "pulse-glow": {
-          "0%, 100%": { boxShadow: "0 0 2px hsl(var(--primary) / 0.3)" },
-          "50%": { boxShadow: "0 0 8px hsl(var(--primary) / 0.5)" },
+          "0%, 100%": { boxShadow: "0 0 5px hsl(var(--primary) / 0.5)" },
+          "50%": { boxShadow: "0 0 20px hsl(var(--primary) / 0.8), 0 0 30px hsl(var(--primary) / 0.4)" },
         },
         "float": {
           "0%, 100%": { transform: "translateY(0)" },
@@ -151,7 +151,7 @@ export default {
         "bounce-in": "bounce-in 0.6s ease-out",
         "shake": "shake 0.5s ease-in-out",
         "wiggle": "wiggle 0.3s ease-in-out",
-        "pulse-glow": "pulse-glow 2s ease-in-out infinite",
+        "pulse-glow": "pulse-glow 4s ease-in-out infinite",
         "float": "float 3s ease-in-out infinite",
         "slide-up": "slide-up 0.4s ease-out",
         "slide-down": "slide-down 0.4s ease-out",
