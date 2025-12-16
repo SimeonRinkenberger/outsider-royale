@@ -7,7 +7,7 @@ import { useGameState } from '@/hooks/useGameState';
 import { useCustomContent } from '@/hooks/useCustomContent';
 import { getStoredUserId } from '@/lib/gameUtils';
 import { toast } from 'sonner';
-import { Trophy, XCircle, RotateCcw, UserMinus, DoorOpen, Settings, ChevronDown, ChevronUp } from 'lucide-react';
+import { Trophy, XCircle, RotateCcw, DoorOpen, Settings, ChevronDown, ChevronUp } from 'lucide-react';
 import Confetti from '@/components/Confetti';
 import { GameConfigPanel, GameConfig, getActiveModifierLabels } from '@/components/GameConfigPanel';
 import { GameMode } from '@/types/game';
@@ -472,22 +472,6 @@ const Results = () => {
     }
   };
 
-  const kickPlayer = async (playerId: string, playerName: string) => {
-    if (!isHost || !lobbyId) return;
-
-    try {
-      await supabase
-        .from('lobby_players')
-        .delete()
-        .eq('id', playerId)
-        .eq('lobby_id', lobbyId);
-
-      toast.success(`${playerName} has been removed from the lobby`);
-    } catch (error) {
-      console.error('Error kicking player:', error);
-      toast.error('Failed to remove player');
-    }
-  };
 
   if (!game || !secretWord || outsiderPlayers.length === 0 || !resultsReady) {
     return (
@@ -580,16 +564,6 @@ const Results = () => {
                         <span className="font-bold text-primary">{votesReceived}</span>
                         <span className="text-muted-foreground"> votes</span>
                       </div>
-                      {isHost && player.user_id !== userId && (
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
-                          onClick={() => kickPlayer(player.id, player.display_name)}
-                        >
-                          <UserMinus className="h-4 w-4" />
-                        </Button>
-                      )}
                     </div>
                   </div>
                 </Card>
