@@ -379,26 +379,34 @@ const Results = () => {
       if (gameError) throw gameError;
 
       // Store custom word and modifiers in localStorage for this game
-      if (randomWord.isCustom || gameConfig.selectedModifiers.length > 0) {
-        const gameMetadata = {
-          customWord: randomWord.isCustom ? randomWord.text : null,
-          customCategory: randomWord.isCustom ? randomWord.category : null,
-          modifiers: gameConfig.selectedModifiers,
-          imposterCustomWord: null as string | null,
-        };
-        
-        if (gameConfig.gameMode === 'hidden_imposter' && randomWord.isCustom) {
-          const sameCategory = allWords.filter(w => w.category === randomWord.category && w.id !== randomWord.id);
-          if (sameCategory.length > 0) {
-            const imposterWord = sameCategory[Math.floor(Math.random() * sameCategory.length)];
-            if (imposterWord.isCustom) {
-              gameMetadata.imposterCustomWord = imposterWord.text;
-            }
+      // Include full custom modifier data so non-hosts can see them
+      const selectedCustomModifiers = customModifiers.filter(m => 
+        gameConfig.selectedModifiers.includes(m.id)
+      ).map(m => ({ id: m.id, label: m.label, description: m.description }));
+      
+      let imposterCustomWord: string | null = null;
+      if (gameConfig.gameMode === 'hidden_imposter' && randomWord.isCustom) {
+        const sameCategory = allWords.filter(w => w.category === randomWord.category && w.id !== randomWord.id);
+        if (sameCategory.length > 0) {
+          const imposterWord = sameCategory[Math.floor(Math.random() * sameCategory.length)];
+          if (imposterWord.isCustom) {
+            imposterCustomWord = imposterWord.text;
           }
         }
-        
-        localStorage.setItem(`game-metadata-${newGame.id}`, JSON.stringify(gameMetadata));
       }
+      
+      const gameMetadata = {
+        customWord: randomWord.isCustom ? randomWord.text : null,
+        customCategory: randomWord.isCustom ? randomWord.category : null,
+        modifiers: gameConfig.selectedModifiers,
+        customModifiersData: selectedCustomModifiers,
+        imposterCustomWord,
+        showOutsiderCount: gameConfig.showOutsiderCount,
+        votesPerPlayer: gameConfig.votesPerPlayer,
+        outsiderCount: selectedOutsiders.length,
+      };
+      
+      localStorage.setItem(`game-metadata-${newGame.id}`, JSON.stringify(gameMetadata));
 
       // Insert all outsiders into game_outsiders table
       if (selectedOutsiders.length > 0) {
