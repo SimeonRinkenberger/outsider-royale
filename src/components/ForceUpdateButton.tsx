@@ -1,8 +1,14 @@
 import { RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
+import { isNative } from '@/lib/platform';
 
 const ForceUpdateButton = () => {
+  // Don't show in native apps - PWA cache clearing doesn't apply
+  if (isNative()) {
+    return null;
+  }
+
   const forceUpdate = async () => {
     toast.info('Clearing cache and reloading...');
     

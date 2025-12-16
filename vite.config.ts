@@ -17,8 +17,8 @@ export default defineConfig(({ mode }) => ({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.ico', 'icon-192.png', 'icon-512.png'],
       manifest: {
-        name: 'Word Game - Find the Outsider',
-        short_name: 'Word Game',
+        name: 'Outsider Royale - Find the Outsider!',
+        short_name: 'Outsider Royale',
         description: 'A real-time mobile party game where friends find the outsider who doesn\'t know the secret word!',
         theme_color: '#6366f1',
         background_color: '#0a0a0a',

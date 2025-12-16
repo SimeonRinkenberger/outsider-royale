@@ -11,6 +11,7 @@ import { Copy, Users, Crown, Play, X } from 'lucide-react';
 import { GameMode } from '@/types/game';
 import { GameConfigPanel, GameConfig, getActiveModifierLabels } from '@/components/GameConfigPanel';
 import GameHeader from '@/components/GameHeader';
+import { copyToClipboard } from '@/lib/platform';
 
 const Lobby = () => {
   const { lobbyId } = useParams();
@@ -68,10 +69,14 @@ const Lobby = () => {
     }
   }, [lobby?.current_game_id, lobbyId, navigate]);
 
-  const copyCode = () => {
+  const copyCode = async () => {
     if (lobby?.code) {
-      navigator.clipboard.writeText(lobby.code);
-      toast.success('Code copied!');
+      const success = await copyToClipboard(lobby.code);
+      if (success) {
+        toast.success('Code copied!');
+      } else {
+        toast.error('Failed to copy code');
+      }
     }
   };
 
