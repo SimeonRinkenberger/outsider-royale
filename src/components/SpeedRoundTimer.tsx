@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Timer } from 'lucide-react';
 
@@ -17,8 +17,14 @@ export const SpeedRoundTimer = ({
 }: SpeedRoundTimerProps) => {
   const [timeLeft, setTimeLeft] = useState(duration);
   const [hasTriggered, setHasTriggered] = useState(false);
+  const onTimeUpRef = useRef(onTimeUp);
+  
+  // Keep callback ref updated
+  useEffect(() => {
+    onTimeUpRef.current = onTimeUp;
+  }, [onTimeUp]);
 
-  // Reset timer when it becomes active
+  // Reset timer when it becomes active or duration changes
   useEffect(() => {
     if (isActive) {
       setTimeLeft(duration);
@@ -26,13 +32,13 @@ export const SpeedRoundTimer = ({
     }
   }, [isActive, duration]);
 
-  // Countdown logic
+  // Countdown logic - using ref to avoid callback dependency issues
   useEffect(() => {
     if (!isActive || isPaused || hasTriggered) return;
 
     if (timeLeft <= 0) {
       setHasTriggered(true);
-      onTimeUp();
+      onTimeUpRef.current();
       return;
     }
 
@@ -41,7 +47,7 @@ export const SpeedRoundTimer = ({
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [isActive, timeLeft, onTimeUp, isPaused, hasTriggered]);
+  }, [isActive, timeLeft, isPaused, hasTriggered]);
 
   if (!isActive) return null;
 
