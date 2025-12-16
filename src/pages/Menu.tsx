@@ -201,7 +201,7 @@ const Menu = () => {
                     <div className="pt-4 mt-4 border-t border-border space-y-4">
                       <div className="space-y-2">
                         <label className="text-sm font-medium">Choose a display name</label>
-                        <Input placeholder="Enter your name" value={guestName} onChange={e => setGuestName(e.target.value)} maxLength={50} onKeyDown={e => e.key === 'Enter' && handleGuestContinue()} autoFocus onClick={e => e.stopPropagation()} className="h-12 text-base mx-[5px] ml-[5px] mr-[5px]" />
+                        <Input placeholder="Enter your name" value={guestName} onChange={e => setGuestName(e.target.value)} maxLength={50} onKeyDown={e => e.key === 'Enter' && handleGuestContinue()} autoFocus onClick={e => e.stopPropagation()} className="h-12 text-base mx-[5px] ml-[5px] mr-[5px] px-[5px]" />
                         <p className="text-xs text-muted-foreground">
                           {guestName.length}/50 characters
                         </p>
