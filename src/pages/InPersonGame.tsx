@@ -141,15 +141,28 @@ const InPersonGame = () => {
     });
 
     const sortedVotes = Object.entries(voteCounts).sort((a, b) => b[1] - a[1]);
-    const mostVoted = sortedVotes[0]?.[0];
-    const mostVotedIndex = config.players.indexOf(mostVoted);
-    const wasOutsiderCaught = config.outsiderIndices.includes(mostVotedIndex);
+    const totalVotes = Object.values(config.votes).length;
+    const majorityThreshold = Math.ceil(totalVotes / 2); // 50% or more
+    
+    // Check if any outsider received a majority of votes
+    let wasOutsiderCaught = false;
+    let caughtOutsider: string | null = null;
+    
+    for (const [player, count] of sortedVotes) {
+      const playerIndex = config.players.indexOf(player);
+      if (config.outsiderIndices.includes(playerIndex) && count >= majorityThreshold) {
+        wasOutsiderCaught = true;
+        caughtOutsider = player;
+        break;
+      }
+    }
     
     return {
       voteCounts,
       sortedVotes,
       wasOutsiderCaught,
-      mostVoted
+      caughtOutsider,
+      majorityThreshold
     };
   };
 

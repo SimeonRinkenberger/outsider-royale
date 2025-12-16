@@ -14,7 +14,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 
 const InPersonSetup = () => {
   const navigate = useNavigate();
-  const [players, setPlayers] = useState<string[]>(['', '']);
+  const [players, setPlayers] = useState<string[]>(['', '', '']);
   const [showConfig, setShowConfig] = useState(false);
   
   const {
