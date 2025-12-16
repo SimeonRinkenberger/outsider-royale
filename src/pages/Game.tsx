@@ -135,6 +135,36 @@ const Game = () => {
   const hasSubmittedClue = clues.some(c => c.player_id === currentPlayer?.id);
   const hasVoted = votes.some(v => v.voter_player_id === currentPlayer?.id);
 
+  // Host broadcasts metadata to all players, non-hosts listen for it
+  useEffect(() => {
+    if (!game?.id || !currentPlayer) return;
+
+    const channel = supabase.channel(`game-metadata-${game.id}`);
+    
+    // Non-hosts listen for metadata broadcast
+    channel.on('broadcast', { event: 'metadata' }, (payload) => {
+      if (payload.payload?.metadata) {
+        console.log('Received game metadata from host:', payload.payload.metadata);
+        setGameMetadata(payload.payload.metadata);
+      }
+    }).subscribe();
+
+    // If host has metadata, broadcast it
+    if (currentPlayer.is_host && gameMetadata) {
+      setTimeout(() => {
+        channel.send({
+          type: 'broadcast',
+          event: 'metadata',
+          payload: { metadata: gameMetadata }
+        });
+      }, 500);
+    }
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [game?.id, currentPlayer?.is_host, currentPlayer?.id, gameMetadata]);
+
   // Calculate whose turn it is based on clues submitted THIS ROUND (only active players)
   const currentTurnIndex = clues.length;
   const currentTurnPlayer = shuffledPlayers[currentTurnIndex];
@@ -588,12 +618,6 @@ const Game = () => {
       <div className="min-h-screen bg-background pb-24">
         <header className="bg-card border-b border-border p-4 sticky top-0 z-10">
           <div className="max-w-md mx-auto flex items-center justify-between">
-            <ActiveModifiersDisplay 
-              modifiers={gameMetadata?.modifiers || []} 
-              customModifiers={customModifiers}
-              gameMode={game.game_mode}
-              compact
-            />
             <div className="text-center flex-1">
               <p className="text-sm text-muted-foreground">
                 {isEliminationMode ? `Round ${game.current_round_number}` : `Round ${game.current_round_number} of ${game.total_rounds}`}
@@ -858,6 +882,14 @@ const Game = () => {
               })}
             </div>
           </div>
+
+          {/* Active rules dropdown below player names */}
+          <ActiveModifiersDisplay 
+            modifiers={gameMetadata?.modifiers || []} 
+            customModifiers={customModifiers}
+            gameMode={game.game_mode}
+            compact
+          />
         </main>
       </div>
     );
@@ -871,12 +903,6 @@ const Game = () => {
       <div className="min-h-screen bg-background pb-24">
         <header className="bg-card border-b border-border p-4 sticky top-0 z-10">
           <div className="max-w-md mx-auto flex items-center justify-between">
-            <ActiveModifiersDisplay 
-              modifiers={gameMetadata?.modifiers || []} 
-              customModifiers={customModifiers}
-              gameMode={game.game_mode}
-              compact
-            />
             <div className="text-center flex-1">
               <h1 className="text-xl font-bold">
                 {isEliminationMode ? `Round ${game.current_round_number} Voting` : 'Vote for the Outsider'}
@@ -997,6 +1023,14 @@ const Game = () => {
               )}
             </>
           )}
+
+          {/* Active rules dropdown below content */}
+          <ActiveModifiersDisplay 
+            modifiers={gameMetadata?.modifiers || []} 
+            customModifiers={customModifiers}
+            gameMode={game.game_mode}
+            compact
+          />
         </main>
       </div>
     );
