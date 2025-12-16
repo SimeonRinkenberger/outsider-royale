@@ -162,7 +162,7 @@ export default {
         "flip-in": "flip-in 0.5s ease-out",
         "spotlight": "spotlight 0.6s ease-out",
         "confetti-fall": "confetti-fall 3s linear forwards",
-        "shimmer": "shimmer 0.6s ease-out forwards",
+        "shimmer": "shimmer 1.2s ease-in-out forwards",
       },
     },
   },
