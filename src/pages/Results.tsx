@@ -97,6 +97,9 @@ const Results = () => {
 
   const outsiderGuessedCorrectly = gameMetadata?.outsiderGuessedCorrectly ?? false;
   
+  // Track if results have been calculated (need votes to be loaded)
+  const [resultsReady, setResultsReady] = useState(false);
+  
   // Calculate vote results
   const votesByPlayer = players.map(player => {
     const votesReceived = votes.filter(v => v.suspected_outsider_player_id === player.id).length;
@@ -117,12 +120,19 @@ const Results = () => {
   
   const groupWins = !outsiderWins;
 
+  // Mark results as ready once we have votes (or if outsider guessed correctly)
+  useEffect(() => {
+    if (outsiderGuessedCorrectly || votes.length > 0) {
+      setResultsReady(true);
+    }
+  }, [outsiderGuessedCorrectly, votes.length]);
+
   // Trigger confetti on group win - must be before early return
   useEffect(() => {
-    if (groupWins && game && secretWord) {
+    if (resultsReady && groupWins && game && secretWord) {
       setShowConfetti(true);
     }
-  }, [groupWins, game, secretWord]);
+  }, [resultsReady, groupWins, game, secretWord]);
 
   const playAgain = async () => {
     if (!isHost || !lobbyId) return;
@@ -352,7 +362,7 @@ const Results = () => {
     }
   };
 
-  if (!game || !secretWord || outsiderPlayers.length === 0) {
+  if (!game || !secretWord || outsiderPlayers.length === 0 || !resultsReady) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <p className="text-muted-foreground">Loading results...</p>
