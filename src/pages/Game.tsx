@@ -565,8 +565,8 @@ const Game = () => {
     }
   }, [currentPlayer, currentRound, game, hasSubmittedClue, isMyTurn, clueInput, gameMetadata?.modifiers]);
 
-  // Check if timed round modifier is active
-  const isTimedRound = gameMetadata?.modifiers?.includes('timed-round') ?? false;
+  // Check if timed round modifier is active (support both old 'speed-round' and new 'timed-round')
+  const isTimedRound = gameMetadata?.modifiers?.includes('timed-round') || gameMetadata?.modifiers?.includes('speed-round') || false;
   const timedRoundDuration = gameMetadata?.timedRoundDuration ?? 30;
   const canOutsiderGuess = gameMetadata?.modifiers?.includes('outsider-guess') ?? false;
 
@@ -845,7 +845,7 @@ const Game = () => {
               {/* Timed Round Timer */}
               {isTimedRound && (
                 <SpeedRoundTimer
-                  key={`timer-${currentTurnPlayer?.id}-${game.current_round_number}`}
+                  key={`timer-${currentTurnPlayer?.id}-${game.current_round_number}-${clues.length}`}
                   isActive={isMyTurn && !hasSubmittedClue}
                   duration={timedRoundDuration}
                   onTimeUp={handleSpeedRoundTimeUp}
