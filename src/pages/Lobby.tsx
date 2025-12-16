@@ -79,17 +79,31 @@ const Lobby = () => {
   const canStart = players.length >= 3;
   const maxImposters = Math.max(1, players.length - 1);
 
-  // Update imposter count to recommended when players change, and clamp to valid range
+  // Load saved game config from localStorage
+  useEffect(() => {
+    if (lobbyId) {
+      const stored = localStorage.getItem(`game-config-${lobbyId}`);
+      if (stored) {
+        try {
+          const savedConfig = JSON.parse(stored);
+          setGameConfig(prev => ({
+            ...prev,
+            ...savedConfig,
+          }));
+        } catch (e) {
+          console.error('Failed to parse game config:', e);
+        }
+      }
+    }
+  }, [lobbyId]);
+
+  // Update imposter count to stay within valid range when players change
   useEffect(() => {
     if (players.length > 0) {
-      const newRecommended = players.length <= 4 ? 1 
-        : players.length <= 7 ? 2 
-        : players.length <= 12 ? 3 
-        : 4;
       const newMax = Math.max(1, players.length - 1);
       setGameConfig(prev => ({
         ...prev,
-        imposterCount: Math.min(newRecommended, newMax)
+        imposterCount: Math.min(prev.imposterCount, newMax)
       }));
     }
   }, [players.length]);
@@ -163,6 +177,9 @@ const Lobby = () => {
 
     setIsStarting(true);
     try {
+      // Save game config to localStorage for persistence
+      localStorage.setItem(`game-config-${lobbyId}`, JSON.stringify(gameConfig));
+
       // Get words from built-in categories
       let allWords: { id: string; text: string; category: string; isCustom?: boolean }[] = [];
       

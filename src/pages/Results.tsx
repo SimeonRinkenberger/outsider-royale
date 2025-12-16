@@ -48,26 +48,41 @@ const Results = () => {
     showOutsiderCount: false,
     votesPerPlayer: 1,
   });
+  const [settingsLoaded, setSettingsLoaded] = useState(false);
   const userId = getStoredUserId();
 
   const isHost = lobby?.host_user_id === userId;
   const outsiderPlayers = players.filter(p => outsiders.some(o => o.player_id === p.id));
   const maxImposters = Math.max(1, players.length - 1);
 
-  // Update imposter count to recommended when players change
+  // Load previous game settings from localStorage
   useEffect(() => {
-    if (players.length > 0) {
-      const newRecommended = players.length <= 4 ? 1 
-        : players.length <= 7 ? 2 
-        : players.length <= 12 ? 3 
-        : 4;
-      const newMax = Math.max(1, players.length - 1);
-      setGameConfig(prev => ({
-        ...prev,
-        imposterCount: Math.min(newRecommended, newMax)
-      }));
+    if (game?.id && !settingsLoaded) {
+      const stored = localStorage.getItem(`game-config-${lobbyId}`);
+      if (stored) {
+        try {
+          const savedConfig = JSON.parse(stored);
+          setGameConfig(prev => ({
+            ...prev,
+            ...savedConfig,
+            // Keep imposterCount within valid bounds
+            imposterCount: Math.min(savedConfig.imposterCount || 1, maxImposters || 1)
+          }));
+        } catch (e) {
+          console.error('Failed to parse game config:', e);
+        }
+      } else if (game) {
+        // Fallback: use game object values
+        setGameConfig(prev => ({
+          ...prev,
+          gameMode: game.game_mode as GameMode,
+          roundCount: game.total_rounds,
+          imposterCount: outsiders.length || 1,
+        }));
+      }
+      setSettingsLoaded(true);
     }
-  }, [players.length]);
+  }, [game?.id, lobbyId, settingsLoaded, maxImposters, game, outsiders.length]);
 
   // When a new game is started (play again), navigate everyone to the new game
   useEffect(() => {
@@ -154,6 +169,9 @@ const Results = () => {
       if (resetError) {
         console.error('Error resetting spectators:', resetError);
       }
+
+      // Save game config to localStorage for persistence
+      localStorage.setItem(`game-config-${lobbyId}`, JSON.stringify(gameConfig));
 
       // Get words from built-in categories
       let allWords: { id: string; text: string; category: string; isCustom?: boolean }[] = [];
