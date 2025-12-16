@@ -77,7 +77,8 @@ const Auth = () => {
     setIsLoading(true);
     try {
       if (mode === 'signup') {
-        const redirectUrl = `${window.location.origin}/`;
+        // Use production URL for OAuth redirects (works for both web and native)
+        const redirectUrl = 'https://4b9de44f-1c68-4ee8-8e08-f7594c181759.lovableproject.com/';
         
         const { data, error } = await supabase.auth.signUp({
           email,
