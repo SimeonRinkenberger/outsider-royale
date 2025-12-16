@@ -19,10 +19,14 @@ const Results = () => {
   const { lobby, players, game, votes, secretWord, outsiders } = useGameState(lobbyId || null);
   const {
     customCategories,
+    customModifiers,
     presets,
     addCategory,
     updateCategory,
     deleteCategory,
+    addModifier,
+    updateModifier,
+    deleteModifier,
     addPreset,
     deletePreset,
     exportPreset,
@@ -475,11 +479,15 @@ const Results = () => {
               <GameConfigPanel
                 playerCount={players.length}
                 customCategories={customCategories}
+                customModifiers={customModifiers}
                 config={gameConfig}
                 onConfigChange={setGameConfig}
                 onAddCategory={addCategory}
                 onUpdateCategory={updateCategory}
                 onDeleteCategory={deleteCategory}
+                onAddModifier={addModifier}
+                onUpdateModifier={updateModifier}
+                onDeleteModifier={deleteModifier}
               />
             )}
           </div>
@@ -491,7 +499,7 @@ const Results = () => {
               {gameConfig.selectedModifiers.length > 0 && (
                 <div className="bg-card/90 backdrop-blur-sm rounded-lg p-2 text-center">
                   <p className="text-xs text-muted-foreground">
-                    Active: {getActiveModifierLabels(gameConfig.selectedModifiers).join(', ')}
+                    Active: {getActiveModifierLabels(gameConfig.selectedModifiers, customModifiers).join(', ')}
                   </p>
                 </div>
               )}

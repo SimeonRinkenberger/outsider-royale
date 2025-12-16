@@ -14,6 +14,13 @@ export interface GameModifier {
   enabled: boolean;
 }
 
+export interface CustomModifier {
+  id: string;
+  label: string;
+  description: string;
+  createdAt: string;
+}
+
 export interface GamePreset {
   id: string;
   name: string;
@@ -29,6 +36,7 @@ export interface GamePreset {
 const STORAGE_KEYS = {
   customCategories: 'sus-detector-custom-categories',
   presets: 'sus-detector-presets',
+  customModifiers: 'sus-detector-custom-modifiers',
 };
 
 // Predefined modifiers that hosts can toggle
@@ -45,6 +53,7 @@ export const AVAILABLE_MODIFIERS: Omit<GameModifier, 'enabled'>[] = [
 export const useCustomContent = () => {
   const [customCategories, setCustomCategories] = useState<CustomCategory[]>([]);
   const [presets, setPresets] = useState<GamePreset[]>([]);
+  const [customModifiers, setCustomModifiers] = useState<CustomModifier[]>([]);
   const [isLoaded, setIsLoaded] = useState(false);
 
   // Load from localStorage on mount
@@ -52,12 +61,16 @@ export const useCustomContent = () => {
     try {
       const storedCategories = localStorage.getItem(STORAGE_KEYS.customCategories);
       const storedPresets = localStorage.getItem(STORAGE_KEYS.presets);
+      const storedModifiers = localStorage.getItem(STORAGE_KEYS.customModifiers);
       
       if (storedCategories) {
         setCustomCategories(JSON.parse(storedCategories));
       }
       if (storedPresets) {
         setPresets(JSON.parse(storedPresets));
+      }
+      if (storedModifiers) {
+        setCustomModifiers(JSON.parse(storedModifiers));
       }
     } catch (error) {
       console.error('Error loading custom content:', error);
@@ -75,6 +88,12 @@ export const useCustomContent = () => {
   const savePresets = useCallback((newPresets: GamePreset[]) => {
     setPresets(newPresets);
     localStorage.setItem(STORAGE_KEYS.presets, JSON.stringify(newPresets));
+  }, []);
+
+  // Save custom modifiers to localStorage
+  const saveCustomModifiers = useCallback((modifiers: CustomModifier[]) => {
+    setCustomModifiers(modifiers);
+    localStorage.setItem(STORAGE_KEYS.customModifiers, JSON.stringify(modifiers));
   }, []);
 
   // Add a custom category
@@ -102,6 +121,32 @@ export const useCustomContent = () => {
   const deleteCategory = useCallback((id: string) => {
     saveCategories(customCategories.filter(cat => cat.id !== id));
   }, [customCategories, saveCategories]);
+
+  // Add a custom modifier
+  const addModifier = useCallback((label: string, description: string) => {
+    const newModifier: CustomModifier = {
+      id: `modifier-${Date.now()}`,
+      label,
+      description,
+      createdAt: new Date().toISOString(),
+    };
+    saveCustomModifiers([...customModifiers, newModifier]);
+    return newModifier;
+  }, [customModifiers, saveCustomModifiers]);
+
+  // Update a custom modifier
+  const updateModifier = useCallback((id: string, label: string, description: string) => {
+    saveCustomModifiers(
+      customModifiers.map(mod => 
+        mod.id === id ? { ...mod, label, description } : mod
+      )
+    );
+  }, [customModifiers, saveCustomModifiers]);
+
+  // Delete a custom modifier
+  const deleteModifier = useCallback((id: string) => {
+    saveCustomModifiers(customModifiers.filter(mod => mod.id !== id));
+  }, [customModifiers, saveCustomModifiers]);
 
   // Add a preset
   const addPreset = useCallback((preset: Omit<GamePreset, 'id' | 'createdAt'>) => {
@@ -175,11 +220,15 @@ export const useCustomContent = () => {
 
   return {
     customCategories,
+    customModifiers,
     presets,
     isLoaded,
     addCategory,
     updateCategory,
     deleteCategory,
+    addModifier,
+    updateModifier,
+    deleteModifier,
     addPreset,
     deletePreset,
     exportPreset,

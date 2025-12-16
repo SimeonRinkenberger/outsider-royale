@@ -7,6 +7,7 @@ import { getStoredDisplayName, clearStorage } from '@/lib/gameUtils';
 import { toast } from 'sonner';
 import { ArrowLeft, Trophy, Target, Flame, MessageSquare, Vote, LogOut, TrendingUp } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { AvatarPicker, getAvatarById } from '@/components/AvatarPicker';
 
 interface UserStats {
   games_played: number;
@@ -26,6 +27,8 @@ const Stats = () => {
   const navigate = useNavigate();
   const [stats, setStats] = useState<UserStats | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [profileId, setProfileId] = useState<string | null>(null);
   const displayName = getStoredDisplayName();
 
   useEffect(() => {
@@ -37,17 +40,30 @@ const Stats = () => {
         return;
       }
 
-      const { data, error } = await supabase
+      // Fetch stats
+      const { data: statsData, error: statsError } = await supabase
         .from('user_stats')
         .select('*')
         .eq('user_id', session.user.id)
         .single();
 
-      if (error) {
-        console.error('Error fetching stats:', error);
+      if (statsError) {
+        console.error('Error fetching stats:', statsError);
         toast.error('Failed to load stats');
       } else {
-        setStats(data);
+        setStats(statsData);
+      }
+
+      // Fetch profile for avatar
+      const { data: profileData } = await supabase
+        .from('profiles')
+        .select('id, avatar_url')
+        .eq('auth_user_id', session.user.id)
+        .single();
+
+      if (profileData) {
+        setProfileId(profileData.id);
+        setAvatarUrl(profileData.avatar_url);
       }
       
       setIsLoading(false);
@@ -55,6 +71,22 @@ const Stats = () => {
 
     fetchStats();
   }, [navigate]);
+
+  const handleAvatarSelect = async (avatarId: string) => {
+    if (!profileId) return;
+
+    const { error } = await supabase
+      .from('profiles')
+      .update({ avatar_url: avatarId })
+      .eq('id', profileId);
+
+    if (error) {
+      toast.error('Failed to update avatar');
+    } else {
+      setAvatarUrl(avatarId);
+      toast.success('Avatar updated!');
+    }
+  };
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -98,15 +130,22 @@ const Stats = () => {
       </header>
 
       <main className="p-4 max-w-md mx-auto space-y-4">
-        {displayName && (
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="text-center py-2"
-          >
-            <h2 className="text-2xl font-bold">{displayName}</h2>
-          </motion.div>
-        )}
+        {/* Profile Section with Avatar */}
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="flex flex-col items-center py-4"
+        >
+          <AvatarPicker
+            currentAvatar={avatarUrl}
+            displayName={displayName || undefined}
+            onSelect={handleAvatarSelect}
+          />
+          {displayName && (
+            <h2 className="text-2xl font-bold mt-3">{displayName}</h2>
+          )}
+          <p className="text-sm text-muted-foreground">Tap avatar to change</p>
+        </motion.div>
 
         {/* Overview */}
         <motion.div

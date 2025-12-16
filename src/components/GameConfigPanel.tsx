@@ -7,7 +7,7 @@ import { Settings, Gamepad2, Palette, Sparkles } from 'lucide-react';
 import { GameMode } from '@/types/game';
 import { CustomCategoryManager } from '@/components/CustomCategoryManager';
 import { GameModifiers } from '@/components/GameModifiers';
-import { CustomCategory, AVAILABLE_MODIFIERS } from '@/hooks/useCustomContent';
+import { CustomCategory, CustomModifier, AVAILABLE_MODIFIERS } from '@/hooks/useCustomContent';
 
 const CATEGORIES = [
   { value: 'animal', label: 'Animals' },
@@ -40,21 +40,29 @@ export interface GameConfig {
 interface GameConfigPanelProps {
   playerCount: number;
   customCategories: CustomCategory[];
+  customModifiers?: CustomModifier[];
   config: GameConfig;
   onConfigChange: (config: GameConfig) => void;
   onAddCategory: (name: string, words: string[]) => void;
   onUpdateCategory: (id: string, name: string, words: string[]) => void;
   onDeleteCategory: (id: string) => void;
+  onAddModifier?: (label: string, description: string) => void;
+  onUpdateModifier?: (id: string, label: string, description: string) => void;
+  onDeleteModifier?: (id: string) => void;
 }
 
 export const GameConfigPanel = ({
   playerCount,
   customCategories,
+  customModifiers = [],
   config,
   onConfigChange,
   onAddCategory,
   onUpdateCategory,
   onDeleteCategory,
+  onAddModifier,
+  onUpdateModifier,
+  onDeleteModifier,
 }: GameConfigPanelProps) => {
   const maxImposters = Math.max(1, playerCount - 1);
   const recommendedImposters = playerCount <= 4 ? 1 
@@ -309,6 +317,10 @@ export const GameConfigPanel = ({
         <GameModifiers
           selectedModifiers={config.selectedModifiers}
           onToggle={toggleModifier}
+          customModifiers={customModifiers}
+          onAddModifier={onAddModifier}
+          onUpdateModifier={onUpdateModifier}
+          onDeleteModifier={onDeleteModifier}
         />
 
         <div className="border-t border-border pt-4">
@@ -324,8 +336,12 @@ export const GameConfigPanel = ({
   );
 };
 
-export const getActiveModifierLabels = (modifierIds: string[]) => {
+export const getActiveModifierLabels = (modifierIds: string[], customModifiers: CustomModifier[] = []) => {
+  const allModifiers = [
+    ...AVAILABLE_MODIFIERS,
+    ...customModifiers.map(m => ({ id: m.id, label: m.label, description: m.description })),
+  ];
   return modifierIds
-    .map(id => AVAILABLE_MODIFIERS.find(m => m.id === id)?.label)
+    .map(id => allModifiers.find(m => m.id === id)?.label)
     .filter(Boolean);
 };
