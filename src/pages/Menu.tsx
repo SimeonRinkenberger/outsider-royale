@@ -197,7 +197,7 @@ const Menu = () => {
               }} transition={{
                 duration: 0.3,
                 ease: 'easeOut'
-              }} className="overflow-hidden">
+              }} className="overflow-visible">
                     <div className="pt-4 mt-4 border-t border-border space-y-4">
                       <div className="space-y-2">
                         <label className="text-sm font-medium">Choose a display name</label>
