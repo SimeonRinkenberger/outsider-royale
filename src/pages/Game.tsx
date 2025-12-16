@@ -918,7 +918,7 @@ const Game = () => {
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
                         <span className="text-xs text-muted-foreground w-6">{index + 1}.</span>
-                        <div className="w-7 h-7 rounded-full bg-muted flex items-center justify-center text-sm">
+                        <div className={`w-7 h-7 rounded-full flex items-center justify-center text-base ${avatar ? avatar.color : 'bg-muted'}`}>
                           {avatar ? avatar.emoji : <User className="h-4 w-4 text-muted-foreground" />}
                         </div>
                         <span className="font-medium">
