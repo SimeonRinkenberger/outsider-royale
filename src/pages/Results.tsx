@@ -160,6 +160,87 @@ const Results = () => {
     }
   }, [outsiderGuessedCorrectly, votes.length]);
 
+  // Update user stats when results are ready
+  useEffect(() => {
+    const updateUserStats = async () => {
+      if (!resultsReady || !game?.id || !userId) return;
+      
+      // Check if we already updated stats for this game
+      const statsUpdatedKey = `stats-updated-${game.id}`;
+      if (localStorage.getItem(statsUpdatedKey)) return;
+      
+      // Get current auth session
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return; // Guest users don't track stats
+      
+      // Find current player
+      const currentPlayer = players.find(p => p.user_id === userId);
+      if (!currentPlayer) return;
+      
+      // Determine if this player was an outsider
+      const wasOutsider = outsiders.some(o => o.player_id === currentPlayer.id);
+      
+      // Calculate if this player won
+      const playerWon = wasOutsider ? outsiderWins : groupWins;
+      
+      // Calculate if this player voted correctly (for safe players)
+      const playerVote = votes.find(v => v.voter_player_id === currentPlayer.id);
+      const votedCorrectly = playerVote && outsiders.some(o => o.player_id === playerVote.suspected_outsider_player_id);
+      
+      // Get clues submitted by this player in this game
+      const { data: playerClues } = await supabase
+        .from('clues')
+        .select('id')
+        .eq('player_id', currentPlayer.id);
+      
+      const cluesCount = playerClues?.length || 0;
+      
+      // Fetch current stats
+      const { data: currentStats } = await supabase
+        .from('user_stats')
+        .select('*')
+        .eq('user_id', session.user.id)
+        .maybeSingle();
+      
+      if (!currentStats) {
+        // Create stats if they don't exist
+        await supabase.from('user_stats').insert({ user_id: session.user.id });
+      }
+      
+      // Calculate new streak
+      const newCurrentStreak = playerWon 
+        ? (currentStats?.current_win_streak || 0) + 1 
+        : 0;
+      const newBestStreak = Math.max(newCurrentStreak, currentStats?.best_win_streak || 0);
+      
+      // Update stats
+      const { error } = await supabase
+        .from('user_stats')
+        .update({
+          games_played: (currentStats?.games_played || 0) + 1,
+          games_played_as_outsider: (currentStats?.games_played_as_outsider || 0) + (wasOutsider ? 1 : 0),
+          games_played_as_safe: (currentStats?.games_played_as_safe || 0) + (wasOutsider ? 0 : 1),
+          games_won_as_outsider: (currentStats?.games_won_as_outsider || 0) + (wasOutsider && playerWon ? 1 : 0),
+          games_won_as_safe: (currentStats?.games_won_as_safe || 0) + (!wasOutsider && playerWon ? 1 : 0),
+          current_win_streak: newCurrentStreak,
+          best_win_streak: newBestStreak,
+          total_clues_submitted: (currentStats?.total_clues_submitted || 0) + cluesCount,
+          total_votes_cast: (currentStats?.total_votes_cast || 0) + (playerVote ? 1 : 0),
+          total_correct_votes: (currentStats?.total_correct_votes || 0) + (votedCorrectly ? 1 : 0),
+        })
+        .eq('user_id', session.user.id);
+      
+      if (!error) {
+        localStorage.setItem(statsUpdatedKey, 'true');
+        console.log('Stats updated successfully');
+      } else {
+        console.error('Failed to update stats:', error);
+      }
+    };
+    
+    updateUserStats();
+  }, [resultsReady, game?.id, userId, players, outsiders, outsiderWins, groupWins, votes]);
+
   // Trigger confetti on group win - must be before early return
   useEffect(() => {
     if (resultsReady && groupWins && game && secretWord) {
