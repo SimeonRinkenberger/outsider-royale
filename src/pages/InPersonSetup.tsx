@@ -4,15 +4,41 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
-import { Plus, Trash2, Play, Users } from 'lucide-react';
+import { Plus, Trash2, Play, Users, ChevronDown, ChevronUp } from 'lucide-react';
 import { toast } from 'sonner';
 import { motion, AnimatePresence } from 'framer-motion';
 import GameHeader from '@/components/GameHeader';
+import { GameConfigPanel, GameConfig } from '@/components/GameConfigPanel';
+import { useCustomContent } from '@/hooks/useCustomContent';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 
 const InPersonSetup = () => {
   const navigate = useNavigate();
   const [players, setPlayers] = useState<string[]>(['', '']);
-  const [numOutsiders, setNumOutsiders] = useState(1);
+  const [showConfig, setShowConfig] = useState(false);
+  
+  const {
+    customCategories,
+    customModifiers,
+    addCategory,
+    updateCategory,
+    deleteCategory,
+    addModifier,
+    updateModifier,
+    deleteModifier,
+  } = useCustomContent();
+
+  const [config, setConfig] = useState<GameConfig>({
+    selectedCategories: ['animal', 'food', 'movie'],
+    selectedCustomCategories: [],
+    selectedModifiers: [],
+    imposterCount: 1,
+    randomImposters: false,
+    roundCount: 3,
+    gameMode: 'classic',
+    showOutsiderCount: true,
+    votesPerPlayer: 1,
+  });
 
   const addPlayer = () => {
     if (players.length >= 20) {
@@ -44,8 +70,17 @@ const InPersonSetup = () => {
       return;
     }
 
+    const numOutsiders = config.randomImposters 
+      ? Math.floor(Math.random() * Math.min(config.imposterCount, validPlayers.length - 1)) + 1
+      : config.imposterCount;
+
     if (numOutsiders >= validPlayers.length) {
       toast.error('Too many outsiders for the number of players');
+      return;
+    }
+
+    if (config.selectedCategories.length === 0 && config.selectedCustomCategories.length === 0) {
+      toast.error('Please select at least one category');
       return;
     }
 
@@ -54,7 +89,16 @@ const InPersonSetup = () => {
       players: validPlayers,
       numOutsiders,
       currentPlayerIndex: 0,
-      phase: 'word-reveal'
+      phase: 'word-reveal',
+      gameMode: config.gameMode,
+      roundCount: config.roundCount,
+      selectedCategories: config.selectedCategories,
+      selectedCustomCategories: config.selectedCustomCategories,
+      selectedModifiers: config.selectedModifiers,
+      showOutsiderCount: config.showOutsiderCount,
+      votesPerPlayer: config.votesPerPlayer,
+      customCategories: customCategories.filter(c => config.selectedCustomCategories.includes(c.id)),
+      customModifiers: customModifiers.filter(m => config.selectedModifiers.includes(m.id)),
     };
     
     localStorage.setItem('inPersonGame', JSON.stringify(gameConfig));
@@ -114,32 +158,30 @@ const InPersonSetup = () => {
           </div>
         </Card>
 
-        {/* Outsiders Section */}
-        <Card className="p-4">
-          <Label className="mb-2 block">Number of Outsiders</Label>
-          <div className="flex items-center gap-4">
-            <Button
-              variant="outline"
-              size="icon"
-              onClick={() => setNumOutsiders(Math.max(1, numOutsiders - 1))}
-              disabled={numOutsiders <= 1}
-            >
-              -
+        {/* Game Configuration */}
+        <Collapsible open={showConfig} onOpenChange={setShowConfig}>
+          <CollapsibleTrigger asChild>
+            <Button variant="outline" className="w-full justify-between">
+              Game Settings
+              {showConfig ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
             </Button>
-            <span className="text-2xl font-bold w-8 text-center">{numOutsiders}</span>
-            <Button
-              variant="outline"
-              size="icon"
-              onClick={() => setNumOutsiders(Math.min(validPlayerCount - 1, numOutsiders + 1))}
-              disabled={numOutsiders >= validPlayerCount - 1}
-            >
-              +
-            </Button>
-          </div>
-          <p className="text-xs text-muted-foreground mt-2">
-            Recommended: {recommendedOutsiders} outsider{recommendedOutsiders > 1 ? 's' : ''} for {validPlayerCount} players
-          </p>
-        </Card>
+          </CollapsibleTrigger>
+          <CollapsibleContent className="pt-4">
+            <GameConfigPanel
+              playerCount={validPlayerCount || 3}
+              customCategories={customCategories}
+              customModifiers={customModifiers}
+              config={config}
+              onConfigChange={setConfig}
+              onAddCategory={addCategory}
+              onUpdateCategory={updateCategory}
+              onDeleteCategory={deleteCategory}
+              onAddModifier={addModifier}
+              onUpdateModifier={updateModifier}
+              onDeleteModifier={deleteModifier}
+            />
+          </CollapsibleContent>
+        </Collapsible>
 
         {/* Start Game Button */}
         <Button
