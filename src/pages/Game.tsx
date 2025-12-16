@@ -141,24 +141,49 @@ const Game = () => {
 
     const channel = supabase.channel(`game-metadata-${game.id}`);
     
-    // Non-hosts listen for metadata broadcast
+    // Listen for metadata broadcast
     channel.on('broadcast', { event: 'metadata' }, (payload) => {
       if (payload.payload?.metadata) {
         console.log('Received game metadata from host:', payload.payload.metadata);
         setGameMetadata(payload.payload.metadata);
       }
-    }).subscribe();
+    });
 
-    // If host has metadata, broadcast it
-    if (currentPlayer.is_host && gameMetadata) {
-      setTimeout(() => {
+    // Non-hosts request metadata when joining
+    channel.on('broadcast', { event: 'request-metadata' }, () => {
+      // Host responds to metadata requests
+      if (currentPlayer.is_host && gameMetadata) {
         channel.send({
           type: 'broadcast',
           event: 'metadata',
           payload: { metadata: gameMetadata }
         });
-      }, 500);
-    }
+      }
+    });
+
+    channel.subscribe((status) => {
+      if (status === 'SUBSCRIBED') {
+        // If host has metadata, broadcast it immediately
+        if (currentPlayer.is_host && gameMetadata) {
+          setTimeout(() => {
+            channel.send({
+              type: 'broadcast',
+              event: 'metadata',
+              payload: { metadata: gameMetadata }
+            });
+          }, 300);
+        } else if (!currentPlayer.is_host) {
+          // Non-hosts request metadata
+          setTimeout(() => {
+            channel.send({
+              type: 'broadcast',
+              event: 'request-metadata',
+              payload: {}
+            });
+          }, 500);
+        }
+      }
+    });
 
     return () => {
       supabase.removeChannel(channel);
@@ -451,6 +476,18 @@ const Game = () => {
   const submitClue = async () => {
     if (!currentPlayer || !currentRound || !clueInput.trim() || !game) return;
 
+    const clueText = clueInput.trim();
+    
+    // Enforce one-word clues rule
+    const isOneWordRequired = gameMetadata?.modifiers?.includes('one-word') ?? false;
+    if (isOneWordRequired) {
+      const wordCount = clueText.split(/\s+/).filter(w => w.length > 0).length;
+      if (wordCount !== 1) {
+        toast.error('One-word clues only! Your clue must be exactly one word.');
+        return;
+      }
+    }
+
     setIsSubmitting(true);
     try {
       // Server-side validation: get clue count for CURRENT ROUND ONLY
@@ -475,7 +512,7 @@ const Game = () => {
         .insert({
           round_id: currentRound.id,
           player_id: currentPlayer.id,
-          clue_text: clueInput.trim()
+          clue_text: clueText
         });
 
       setClueInput('');
@@ -492,7 +529,16 @@ const Game = () => {
   const handleSpeedRoundTimeUp = useCallback(async () => {
     if (!currentPlayer || !currentRound || !game || hasSubmittedClue || !isMyTurn) return;
     
-    const clueToSubmit = clueInput.trim() || '⏱️';
+    // For one-word rule, only submit if valid or use default emoji
+    const isOneWordRequired = gameMetadata?.modifiers?.includes('one-word') ?? false;
+    let clueToSubmit = clueInput.trim() || '⏱️';
+    
+    if (isOneWordRequired && clueToSubmit !== '⏱️') {
+      const wordCount = clueToSubmit.split(/\s+/).filter(w => w.length > 0).length;
+      if (wordCount !== 1) {
+        clueToSubmit = '⏱️'; // Default to emoji if clue doesn't meet one-word requirement
+      }
+    }
     
     try {
       await supabase
@@ -509,7 +555,7 @@ const Game = () => {
       console.error('Error auto-submitting clue:', error);
       toast.error('Failed to auto-submit clue');
     }
-  }, [currentPlayer, currentRound, game, hasSubmittedClue, isMyTurn, clueInput]);
+  }, [currentPlayer, currentRound, game, hasSubmittedClue, isMyTurn, clueInput, gameMetadata?.modifiers]);
 
   // Check if speed round modifier is active
   const isSpeedRound = gameMetadata?.modifiers?.includes('speed-round') ?? false;
@@ -527,6 +573,23 @@ const Game = () => {
         // Outsider wins! Move directly to results
         toast.success("Correct! You've won the game!");
         
+        // Store the win reason in localStorage
+        const updatedMetadata = {
+          ...(gameMetadata || {}),
+          outsiderGuessedCorrectly: true,
+          outsiderGuesser: currentPlayer.display_name,
+        };
+        localStorage.setItem(`game-metadata-${game.id}`, JSON.stringify(updatedMetadata));
+        
+        // Broadcast the updated metadata to all players so they see the win reason
+        const channel = supabase.channel(`game-metadata-${game.id}`);
+        await channel.subscribe();
+        channel.send({
+          type: 'broadcast',
+          event: 'metadata',
+          payload: { metadata: updatedMetadata }
+        });
+        
         // Update game status to results
         await supabase
           .from('games')
@@ -537,14 +600,6 @@ const Game = () => {
           .from('lobbies')
           .update({ status: 'results' })
           .eq('id', lobbyId);
-          
-        // Store the win reason in localStorage
-        const existingMetadata = gameMetadata || {};
-        localStorage.setItem(`game-metadata-${game.id}`, JSON.stringify({
-          ...existingMetadata,
-          outsiderGuessedCorrectly: true,
-          outsiderGuesser: currentPlayer.display_name,
-        }));
       } else {
         toast.error("Wrong guess! Keep playing...");
         setHasGuessed(true);

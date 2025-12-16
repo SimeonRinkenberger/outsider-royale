@@ -99,6 +99,7 @@ const Results = () => {
   
   useEffect(() => {
     if (game?.id) {
+      // Load from localStorage first
       const stored = localStorage.getItem(`game-metadata-${game.id}`);
       if (stored) {
         try {
@@ -107,6 +108,23 @@ const Results = () => {
           console.error('Failed to parse game metadata:', e);
         }
       }
+      
+      // Also listen for real-time metadata updates (in case outsider guessed and broadcast)
+      const channel = supabase
+        .channel(`game-metadata-${game.id}`)
+        .on('broadcast', { event: 'metadata' }, (payload) => {
+          if (payload.payload?.metadata) {
+            console.log('Received metadata on results page:', payload.payload.metadata);
+            setGameMetadata(payload.payload.metadata);
+            // Also save to localStorage for persistence
+            localStorage.setItem(`game-metadata-${game.id}`, JSON.stringify(payload.payload.metadata));
+          }
+        })
+        .subscribe();
+      
+      return () => {
+        supabase.removeChannel(channel);
+      };
     }
   }, [game?.id]);
 
