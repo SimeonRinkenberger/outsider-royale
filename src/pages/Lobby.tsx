@@ -303,7 +303,7 @@ const Lobby = () => {
         customModifiersData: selectedCustomModifiers,
         imposterCustomWord: imposterWordText,
         showOutsiderCount: gameConfig.showOutsiderCount,
-        votesPerPlayer: gameConfig.votesPerPlayer,
+        votesPerPlayer: gameConfig.randomImposters ? players.length - 1 : gameConfig.votesPerPlayer,
         outsiderCount: selectedOutsiders.length,
         timedRoundDuration: gameConfig.timedRoundDuration,
       };

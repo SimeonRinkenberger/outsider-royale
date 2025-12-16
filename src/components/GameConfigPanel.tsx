@@ -206,18 +206,31 @@ export const GameConfigPanel = ({
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium">Votes Per Player</p>
-                <p className="text-xs text-muted-foreground">How many players each person can vote for</p>
+                <p className="text-xs text-muted-foreground">
+                  {config.randomImposters 
+                    ? "Auto-set to hide imposter count" 
+                    : "How many players each person can vote for"}
+                </p>
               </div>
-              <span className="text-sm font-bold text-primary">{config.votesPerPlayer}</span>
+              <span className="text-sm font-bold text-primary">
+                {config.randomImposters ? playerCount - 1 : config.votesPerPlayer}
+              </span>
             </div>
-            <Slider
-              value={[config.votesPerPlayer]}
-              onValueChange={([val]) => updateConfig({ votesPerPlayer: val })}
-              min={1}
-              max={Math.max(1, playerCount - 1)}
-              step={1}
-              className="w-full"
-            />
+            {!config.randomImposters && (
+              <Slider
+                value={[config.votesPerPlayer]}
+                onValueChange={([val]) => updateConfig({ votesPerPlayer: val })}
+                min={1}
+                max={Math.max(1, playerCount - 1)}
+                step={1}
+                className="w-full"
+              />
+            )}
+            {config.randomImposters && (
+              <p className="text-xs text-muted-foreground italic">
+                Everyone gets {playerCount - 1} votes so imposter count stays hidden
+              </p>
+            )}
           </div>
         </div>
 

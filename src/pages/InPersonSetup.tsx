@@ -97,7 +97,7 @@ const InPersonSetup = () => {
       selectedCustomCategories: config.selectedCustomCategories,
       selectedModifiers: config.selectedModifiers,
       showOutsiderCount: config.showOutsiderCount,
-      votesPerPlayer: config.votesPerPlayer,
+      votesPerPlayer: config.randomImposters ? validPlayers.length - 1 : config.votesPerPlayer,
       customCategories: customCategories.filter(c => config.selectedCustomCategories.includes(c.id)),
       customModifiers: customModifiers.filter(m => config.selectedModifiers.includes(m.id)),
     };
