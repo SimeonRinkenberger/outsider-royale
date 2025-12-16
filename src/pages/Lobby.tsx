@@ -464,20 +464,21 @@ const Lobby = () => {
           </div>
         </div>
 
-        {isHost && (
-          <Collapsible open={settingsOpen} onOpenChange={setSettingsOpen}>
-            <CollapsibleTrigger asChild>
-              <Card className="p-4 bg-gradient-card border-border cursor-pointer hover:bg-muted/50 transition-colors">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <Settings className="h-5 w-5 text-primary" />
-                    <span className="font-medium">Game Settings</span>
-                  </div>
-                  <ChevronDown className={`h-5 w-5 text-muted-foreground transition-transform ${settingsOpen ? 'rotate-180' : ''}`} />
+        <Collapsible open={settingsOpen} onOpenChange={setSettingsOpen}>
+          <CollapsibleTrigger asChild>
+            <Card className="p-4 bg-gradient-card border-border cursor-pointer hover:bg-muted/50 transition-colors">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Settings className="h-5 w-5 text-primary" />
+                  <span className="font-medium">Game Settings</span>
+                  {!isHost && <span className="text-xs text-muted-foreground">(View Only)</span>}
                 </div>
-              </Card>
-            </CollapsibleTrigger>
-            <CollapsibleContent className="mt-4">
+                <ChevronDown className={`h-5 w-5 text-muted-foreground transition-transform ${settingsOpen ? 'rotate-180' : ''}`} />
+              </div>
+            </Card>
+          </CollapsibleTrigger>
+          <CollapsibleContent className="mt-4">
+            {isHost ? (
               <GameConfigPanel
                 playerCount={players.length}
                 customCategories={customCategories}
@@ -491,9 +492,53 @@ const Lobby = () => {
                 onUpdateModifier={updateModifier}
                 onDeleteModifier={deleteModifier}
               />
-            </CollapsibleContent>
-          </Collapsible>
-        )}
+            ) : (
+              <Card className="p-4 bg-gradient-card border-border space-y-3">
+                <div className="grid grid-cols-2 gap-3 text-sm">
+                  <div>
+                    <p className="text-muted-foreground text-xs">Game Mode</p>
+                    <p className="font-medium capitalize">{gameConfig.gameMode.replace('_', ' ')}</p>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground text-xs">Rounds</p>
+                    <p className="font-medium">{gameConfig.gameMode === 'elimination' ? 'Until end' : gameConfig.roundCount}</p>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground text-xs">Outsiders</p>
+                    <p className="font-medium">{gameConfig.randomImposters ? 'Random' : gameConfig.imposterCount}</p>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground text-xs">Votes per Player</p>
+                    <p className="font-medium">{gameConfig.votesPerPlayer}</p>
+                  </div>
+                </div>
+                {gameConfig.selectedModifiers.length > 0 && (
+                  <div>
+                    <p className="text-muted-foreground text-xs mb-1">Active Modifiers</p>
+                    <div className="flex flex-wrap gap-1">
+                      {getActiveModifierLabels(gameConfig.selectedModifiers, customModifiers).map((label, i) => (
+                        <span key={i} className="text-xs bg-primary/20 text-primary px-2 py-0.5 rounded-full">
+                          {label}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                <div>
+                  <p className="text-muted-foreground text-xs mb-1">Categories</p>
+                  <p className="text-sm">
+                    {[
+                      ...gameConfig.selectedCategories.map(c => c.charAt(0).toUpperCase() + c.slice(1)),
+                      ...customCategories
+                        .filter(c => gameConfig.selectedCustomCategories.includes(c.id))
+                        .map(c => c.name)
+                    ].join(', ') || 'None selected'}
+                  </p>
+                </div>
+              </Card>
+            )}
+          </CollapsibleContent>
+        </Collapsible>
 
         {isHost && (
           <div className="fixed bottom-6 left-0 right-0 px-4 max-w-md mx-auto space-y-3">
