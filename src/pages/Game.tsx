@@ -588,8 +588,13 @@ const Game = () => {
       <div className="min-h-screen bg-background pb-24">
         <header className="bg-card border-b border-border p-4 sticky top-0 z-10">
           <div className="max-w-md mx-auto flex items-center justify-between">
-            <div className="w-10" />
-            <div className="text-center">
+            <ActiveModifiersDisplay 
+              modifiers={gameMetadata?.modifiers || []} 
+              customModifiers={customModifiers}
+              gameMode={game.game_mode}
+              compact
+            />
+            <div className="text-center flex-1">
               <p className="text-sm text-muted-foreground">
                 {isEliminationMode ? `Round ${game.current_round_number}` : `Round ${game.current_round_number} of ${game.total_rounds}`}
               </p>
@@ -616,14 +621,6 @@ const Game = () => {
         </header>
 
         <main className="p-4 max-w-md mx-auto space-y-6 py-6">
-          {/* Active Modifiers Banner - always show if game mode or modifiers exist */}
-          {game && (
-            <ActiveModifiersDisplay 
-              modifiers={gameMetadata?.modifiers || []} 
-              customModifiers={customModifiers}
-              gameMode={game.game_mode}
-            />
-          )}
           
           {isSpectator ? (
             <Card className="p-6 bg-muted/50 border-border">
@@ -760,6 +757,7 @@ const Game = () => {
               {/* Speed Round Timer */}
               {isSpeedRound && (
                 <SpeedRoundTimer
+                  key={`timer-${currentTurnPlayer?.id}-${game.current_round_number}`}
                   isActive={isMyTurn && !hasSubmittedClue}
                   duration={15}
                   onTimeUp={handleSpeedRoundTimeUp}
@@ -873,8 +871,13 @@ const Game = () => {
       <div className="min-h-screen bg-background pb-24">
         <header className="bg-card border-b border-border p-4 sticky top-0 z-10">
           <div className="max-w-md mx-auto flex items-center justify-between">
-            <div className="w-10" />
-            <div className="text-center">
+            <ActiveModifiersDisplay 
+              modifiers={gameMetadata?.modifiers || []} 
+              customModifiers={customModifiers}
+              gameMode={game.game_mode}
+              compact
+            />
+            <div className="text-center flex-1">
               <h1 className="text-xl font-bold">
                 {isEliminationMode ? `Round ${game.current_round_number} Voting` : 'Vote for the Outsider'}
               </h1>
@@ -897,15 +900,6 @@ const Game = () => {
         </header>
 
         <main className="p-4 max-w-md mx-auto space-y-6 py-6">
-          {/* Active Modifiers Banner */}
-          {game && (
-            <ActiveModifiersDisplay 
-              modifiers={gameMetadata?.modifiers || []} 
-              customModifiers={customModifiers}
-              gameMode={game.game_mode}
-              compact 
-            />
-          )}
           
           {isSpectator ? (
             <Card className="p-6 bg-muted/50 border-border text-center">
