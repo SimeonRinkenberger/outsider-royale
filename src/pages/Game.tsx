@@ -191,9 +191,13 @@ const Game = () => {
     // Only host handles vote results transition
     if (!currentPlayer.is_host) return;
 
+    // Count unique voters (not total votes, since votesPerPlayer can be > 1)
+    const uniqueVoters = new Set(votes.map(v => v.voter_player_id)).size;
+
     console.log('Vote check:', {
       gameStatus: game.status,
       votesCount: votes.length,
+      uniqueVoters,
       shuffledPlayersCount: shuffledPlayers.length,
       activePlayersCount: activePlayers.length,
       playersCount: players.length,
@@ -203,14 +207,15 @@ const Game = () => {
 
     const timer = setTimeout(async () => {
       // Check if all votes submitted (for non-elimination modes)
-      // Use players.length for classic mode since all players vote
-      if (!isEliminationMode && game.status === 'voting' && votes.length === players.filter(p => !p.is_spectator).length) {
+      // Use unique voters count since votesPerPlayer can be > 1
+      const nonSpectatorCount = players.filter(p => !p.is_spectator).length;
+      if (!isEliminationMode && game.status === 'voting' && uniqueVoters === nonSpectatorCount) {
         console.log('Moving to results - classic mode');
         moveToResults();
       }
       
       // For elimination mode: check if all active players voted (including skips)
-      if (isEliminationMode && game.status === 'voting' && votes.length === activePlayers.length) {
+      if (isEliminationMode && game.status === 'voting' && uniqueVoters === activePlayers.length) {
         console.log('Processing elimination votes');
         await processEliminationVotes();
       }
