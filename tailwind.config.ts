@@ -151,7 +151,7 @@ export default {
         "bounce-in": "bounce-in 0.6s ease-out",
         "shake": "shake 0.5s ease-in-out",
         "wiggle": "wiggle 0.3s ease-in-out",
-        "pulse-glow": "pulse-glow 6s ease-in-out infinite",
+        "pulse-glow": "pulse-glow 10s ease-in-out infinite",
         "float": "float 3s ease-in-out infinite",
         "slide-up": "slide-up 0.4s ease-out",
         "slide-down": "slide-down 0.4s ease-out",
