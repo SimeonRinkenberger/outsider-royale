@@ -9,9 +9,9 @@ import { useTurnChime } from '@/hooks/useTurnChime';
 import { getStoredUserId } from '@/lib/gameUtils';
 import { toast } from 'sonner';
 import { Send, Eye, EyeOff, Users, CheckCircle2, DoorOpen, FastForward, ArrowRight, Lightbulb, User } from 'lucide-react';
-import { useNavigate as useNav } from 'react-router-dom';
 import { ActiveModifiersDisplay } from '@/components/ActiveModifiersDisplay';
 import { SpeedRoundTimer } from '@/components/SpeedRoundTimer';
+import { getAvatarById } from '@/components/AvatarPicker';
 
 interface GameMetadata {
   customWord: string | null;
@@ -59,7 +59,31 @@ const Game = () => {
   const [guessInput, setGuessInput] = useState('');
   const [showGuessInput, setShowGuessInput] = useState(false);
   const [hasGuessed, setHasGuessed] = useState(false);
+  const [playerAvatars, setPlayerAvatars] = useState<Record<string, string | null>>({});
   const userId = getStoredUserId();
+
+  // Fetch avatars for all players
+  useEffect(() => {
+    const fetchAvatars = async () => {
+      if (players.length === 0) return;
+      
+      const userIds = players.map(p => p.user_id);
+      const { data: profiles } = await supabase
+        .from('profiles')
+        .select('id, avatar_url')
+        .in('id', userIds);
+      
+      if (profiles) {
+        const avatarMap: Record<string, string | null> = {};
+        profiles.forEach(p => {
+          avatarMap[p.id] = p.avatar_url;
+        });
+        setPlayerAvatars(avatarMap);
+      }
+    };
+    
+    fetchAvatars();
+  }, [players]);
 
   // Load game metadata (modifiers, custom words) from localStorage
   useEffect(() => {
@@ -573,7 +597,7 @@ const Game = () => {
                   <span className="hidden sm:inline">Skip</span>
                 </Button>
               )}
-              <Button variant="ghost" size="icon" onClick={() => navigate('/stats')}>
+              <Button variant="ghost" size="icon" onClick={() => navigate('/stats', { state: { fromGame: true } })}>
                 <User className="h-5 w-5" />
               </Button>
               <Button variant="ghost" size="sm" onClick={leaveLobby} className="gap-1 text-muted-foreground">
@@ -784,6 +808,9 @@ const Game = () => {
               {shuffledPlayers.map((player, index) => {
                 const playerClue = clues.find(c => c.player_id === player.id);
                 const isCurrentTurn = index === currentTurnIndex && !playerClue;
+                const avatarId = playerAvatars[player.user_id];
+                const avatar = avatarId ? getAvatarById(avatarId) : null;
+                
                 return (
                   <Card 
                     key={player.id} 
@@ -796,6 +823,9 @@ const Game = () => {
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
                         <span className="text-xs text-muted-foreground w-6">{index + 1}.</span>
+                        <div className="w-7 h-7 rounded-full bg-muted flex items-center justify-center text-sm">
+                          {avatar ? avatar.emoji : <User className="h-4 w-4 text-muted-foreground" />}
+                        </div>
                         <span className="font-medium">
                           {player.display_name}
                           {player.id === currentPlayer?.id && ' (You)'}
@@ -844,7 +874,7 @@ const Game = () => {
               </p>
             </div>
             <div className="flex items-center gap-2">
-              <Button variant="ghost" size="icon" onClick={() => navigate('/stats')}>
+              <Button variant="ghost" size="icon" onClick={() => navigate('/stats', { state: { fromGame: true } })}>
                 <User className="h-5 w-5" />
               </Button>
               <Button variant="ghost" size="sm" onClick={leaveLobby} className="gap-1 text-muted-foreground">
