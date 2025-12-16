@@ -35,6 +35,7 @@ export interface GameConfig {
   gameMode: GameMode;
   showOutsiderCount: boolean;
   votesPerPlayer: number;
+  timedRoundDuration: number;
 }
 
 interface GameConfigPanelProps {
@@ -322,6 +323,27 @@ export const GameConfigPanel = ({
           onUpdateModifier={onUpdateModifier}
           onDeleteModifier={onDeleteModifier}
         />
+
+        {/* Timed Round Duration - show when timed-round modifier is selected */}
+        {config.selectedModifiers.includes('timed-round') && (
+          <div className="space-y-3 border-t border-border pt-4">
+            <div className="flex items-center justify-between">
+              <Label className="text-sm">Time Per Clue</Label>
+              <span className="text-sm font-bold text-primary">{config.timedRoundDuration}s</span>
+            </div>
+            <Slider
+              value={[config.timedRoundDuration]}
+              onValueChange={([val]) => updateConfig({ timedRoundDuration: val })}
+              min={10}
+              max={120}
+              step={5}
+              className="w-full"
+            />
+            <p className="text-xs text-muted-foreground">
+              Players have {config.timedRoundDuration} seconds to submit each clue
+            </p>
+          </div>
+        )}
 
         <div className="border-t border-border pt-4">
           <CustomCategoryManager

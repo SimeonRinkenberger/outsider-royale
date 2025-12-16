@@ -49,6 +49,7 @@ const Lobby = () => {
     gameMode: 'classic',
     showOutsiderCount: false,
     votesPerPlayer: 1,
+    timedRoundDuration: 30,
   });
   const userId = getStoredUserId();
 
@@ -326,6 +327,7 @@ const Lobby = () => {
         showOutsiderCount: gameConfig.showOutsiderCount,
         votesPerPlayer: gameConfig.votesPerPlayer,
         outsiderCount: selectedOutsiders.length,
+        timedRoundDuration: gameConfig.timedRoundDuration,
       };
       
       localStorage.setItem(`game-metadata-${game.id}`, JSON.stringify(gameMetadata));

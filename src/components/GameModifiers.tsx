@@ -5,7 +5,7 @@ import { CustomModifierManager } from '@/components/CustomModifierManager';
 import { Sparkles, Shield, AlertTriangle } from 'lucide-react';
 
 // IDs of modifiers that are actually enforced by the system
-const ENFORCED_MODIFIER_IDS = ['one-word', 'speed-round', 'outsider-guess'];
+const ENFORCED_MODIFIER_IDS = ['one-word', 'timed-round', 'outsider-guess'];
 
 interface GameModifiersProps {
   selectedModifiers: string[];
