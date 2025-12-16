@@ -124,5 +124,5 @@ All colors MUST be HSL.
 }
 
 .animate-pulse-glow {
-  animation: pulse-glow-slow 8s ease-in-out infinite;
+  animation: pulse-glow-slow 6s ease-in-out infinite;
 }
