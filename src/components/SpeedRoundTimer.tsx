@@ -74,7 +74,7 @@ export const SpeedRoundTimer = ({
             <span className={`text-sm font-semibold ${
               isCritical ? 'text-destructive' : isUrgent ? 'text-orange-500' : 'text-foreground'
             }`}>
-              Speed Round
+              Timed Round
             </span>
             <motion.span 
               key={timeLeft}

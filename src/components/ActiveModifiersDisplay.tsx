@@ -13,7 +13,7 @@ const GAME_MODE_INFO: Record<GameMode, { label: string; description: string }> =
 };
 
 // Track which modifiers are actually enforced by code
-const ENFORCED_MODIFIERS = ['one-word', 'speed-round', 'outsider-guess'];
+const ENFORCED_MODIFIERS = ['one-word', 'timed-round', 'outsider-guess'];
 
 interface ModifierData {
   id: string;

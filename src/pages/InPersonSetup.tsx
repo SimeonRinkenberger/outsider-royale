@@ -38,6 +38,7 @@ const InPersonSetup = () => {
     gameMode: 'classic',
     showOutsiderCount: true,
     votesPerPlayer: 1,
+    timedRoundDuration: 30,
   });
 
   const addPlayer = () => {

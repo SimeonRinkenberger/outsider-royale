@@ -29,6 +29,7 @@ interface GameMetadata {
   showOutsiderCount?: boolean;
   votesPerPlayer?: number;
   outsiderCount?: number;
+  timedRoundDuration?: number;
 }
 
 // Seeded random shuffle - ensures all clients get the same order for a given seed
@@ -564,8 +565,9 @@ const Game = () => {
     }
   }, [currentPlayer, currentRound, game, hasSubmittedClue, isMyTurn, clueInput, gameMetadata?.modifiers]);
 
-  // Check if speed round modifier is active
-  const isSpeedRound = gameMetadata?.modifiers?.includes('speed-round') ?? false;
+  // Check if timed round modifier is active
+  const isTimedRound = gameMetadata?.modifiers?.includes('timed-round') ?? false;
+  const timedRoundDuration = gameMetadata?.timedRoundDuration ?? 30;
   const canOutsiderGuess = gameMetadata?.modifiers?.includes('outsider-guess') ?? false;
 
   // Outsider guess submission
@@ -840,12 +842,12 @@ const Game = () => {
 
           {!isSpectator && !hasSubmittedClue && isMyTurn ? (
             <div className="space-y-4">
-              {/* Speed Round Timer */}
-              {isSpeedRound && (
+              {/* Timed Round Timer */}
+              {isTimedRound && (
                 <SpeedRoundTimer
                   key={`timer-${currentTurnPlayer?.id}-${game.current_round_number}`}
                   isActive={isMyTurn && !hasSubmittedClue}
-                  duration={15}
+                  duration={timedRoundDuration}
                   onTimeUp={handleSpeedRoundTimeUp}
                 />
               )}
@@ -857,12 +859,12 @@ const Game = () => {
                   value={clueInput}
                   onChange={(e) => setClueInput(e.target.value)}
                   maxLength={30}
-                  className={`h-12 text-base ${isSpeedRound ? 'border-primary focus:ring-primary' : ''}`}
+                  className={`h-12 text-base ${isTimedRound ? 'border-primary focus:ring-primary' : ''}`}
                   onKeyDown={(e) => e.key === 'Enter' && submitClue()}
-                  autoFocus={isSpeedRound}
+                  autoFocus={isTimedRound}
                 />
                 <p className="text-xs text-muted-foreground">
-                  {isSpeedRound ? 'Quick! Submit before time runs out!' : 'Keep it short and relevant!'}
+                  {isTimedRound ? 'Quick! Submit before time runs out!' : 'Keep it short and relevant!'}
                 </p>
               </div>
               <Button
