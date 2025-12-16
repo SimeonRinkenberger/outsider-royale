@@ -1,7 +1,11 @@
 import { Checkbox } from '@/components/ui/checkbox';
+import { Badge } from '@/components/ui/badge';
 import { AVAILABLE_MODIFIERS, CustomModifier } from '@/hooks/useCustomContent';
 import { CustomModifierManager } from '@/components/CustomModifierManager';
-import { Sparkles } from 'lucide-react';
+import { Sparkles, Shield, AlertTriangle } from 'lucide-react';
+
+// IDs of modifiers that are actually enforced by the system
+const ENFORCED_MODIFIER_IDS = ['one-word', 'speed-round', 'outsider-guess'];
 
 interface GameModifiersProps {
   selectedModifiers: string[];
@@ -20,17 +24,21 @@ export const GameModifiers = ({
   onUpdateModifier,
   onDeleteModifier,
 }: GameModifiersProps) => {
-  const allModifiers = [
-    ...AVAILABLE_MODIFIERS,
-    ...customModifiers.map(m => ({ id: m.id, label: m.label, description: m.description })),
-  ];
+  const isEnforced = (modifierId: string) => ENFORCED_MODIFIER_IDS.includes(modifierId);
 
   return (
     <div className="space-y-3">
       <h4 className="text-sm font-medium">Game Modifiers</h4>
-      <p className="text-xs text-muted-foreground">
-        Optional rules to spice up the game
-      </p>
+      <div className="flex items-center gap-3 text-xs text-muted-foreground">
+        <span className="flex items-center gap-1">
+          <Shield className="h-3 w-3 text-green-500" />
+          <span>Enforced by game</span>
+        </span>
+        <span className="flex items-center gap-1">
+          <AlertTriangle className="h-3 w-3 text-amber-500" />
+          <span>Honor system</span>
+        </span>
+      </div>
       <div className="grid grid-cols-1 gap-2">
         {AVAILABLE_MODIFIERS.map((modifier) => (
           <div
@@ -45,9 +53,22 @@ export const GameModifiers = ({
               className="mt-0.5"
             />
             <div className="flex-1">
-              <label htmlFor={modifier.id} className="text-sm font-medium cursor-pointer block">
-                {modifier.label}
-              </label>
+              <div className="flex items-center gap-2">
+                <label htmlFor={modifier.id} className="text-sm font-medium cursor-pointer">
+                  {modifier.label}
+                </label>
+                {isEnforced(modifier.id) ? (
+                  <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4 bg-green-500/10 text-green-600 border-green-500/30">
+                    <Shield className="h-2.5 w-2.5 mr-0.5" />
+                    Enforced
+                  </Badge>
+                ) : (
+                  <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4 bg-amber-500/10 text-amber-600 border-amber-500/30">
+                    <AlertTriangle className="h-2.5 w-2.5 mr-0.5" />
+                    Honor
+                  </Badge>
+                )}
+              </div>
               <p className="text-xs text-muted-foreground">{modifier.description}</p>
             </div>
           </div>
@@ -72,10 +93,16 @@ export const GameModifiers = ({
                   className="mt-0.5"
                 />
                 <div className="flex-1">
-                  <label htmlFor={modifier.id} className="text-sm font-medium cursor-pointer block flex items-center gap-1">
-                    <Sparkles className="h-3 w-3 text-primary" />
-                    {modifier.label}
-                  </label>
+                  <div className="flex items-center gap-2">
+                    <label htmlFor={modifier.id} className="text-sm font-medium cursor-pointer flex items-center gap-1">
+                      <Sparkles className="h-3 w-3 text-primary" />
+                      {modifier.label}
+                    </label>
+                    <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4 bg-amber-500/10 text-amber-600 border-amber-500/30">
+                      <AlertTriangle className="h-2.5 w-2.5 mr-0.5" />
+                      Honor
+                    </Badge>
+                  </div>
                   <p className="text-xs text-muted-foreground">{modifier.description}</p>
                 </div>
               </div>

@@ -15,9 +15,15 @@ const GAME_MODE_INFO: Record<GameMode, { label: string; description: string }> =
 // Track which modifiers are actually enforced by code
 const ENFORCED_MODIFIERS = ['one-word', 'speed-round', 'outsider-guess'];
 
+interface ModifierData {
+  id: string;
+  label: string;
+  description: string;
+}
+
 interface ActiveModifiersDisplayProps {
   modifiers: string[];
-  customModifiers?: CustomModifier[];
+  customModifiers?: ModifierData[];
   gameMode?: GameMode;
   compact?: boolean;
 }
