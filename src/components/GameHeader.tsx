@@ -1,6 +1,10 @@
 import { useNavigate } from 'react-router-dom';
+import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, User, BarChart3 } from 'lucide-react';
+import { ArrowLeft, User } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
+import { getStoredUserId } from '@/lib/gameUtils';
+import { getAvatarById } from '@/components/AvatarPicker';
 
 interface GameHeaderProps {
   title: string;
@@ -12,6 +16,27 @@ interface GameHeaderProps {
 
 const GameHeader = ({ title, showBack = true, backPath, onBack, rightContent }: GameHeaderProps) => {
   const navigate = useNavigate();
+  const [avatarEmoji, setAvatarEmoji] = useState<string | null>(null);
+  const userId = getStoredUserId();
+
+  useEffect(() => {
+    const fetchAvatar = async () => {
+      if (!userId) return;
+      
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('avatar_url')
+        .eq('id', userId)
+        .single();
+      
+      if (profile?.avatar_url) {
+        const avatar = getAvatarById(profile.avatar_url);
+        if (avatar) setAvatarEmoji(avatar.emoji);
+      }
+    };
+    
+    fetchAvatar();
+  }, [userId]);
 
   const handleBack = () => {
     if (onBack) {
@@ -24,7 +49,7 @@ const GameHeader = ({ title, showBack = true, backPath, onBack, rightContent }: 
   };
 
   const handleProfileClick = () => {
-    navigate('/stats');
+    navigate('/stats', { state: { fromGame: true } });
   };
 
   return (
@@ -40,8 +65,12 @@ const GameHeader = ({ title, showBack = true, backPath, onBack, rightContent }: 
         </div>
         <div className="flex items-center gap-2">
           {rightContent}
-          <Button variant="ghost" size="icon" onClick={handleProfileClick}>
-            <User className="h-5 w-5" />
+          <Button variant="ghost" size="icon" onClick={handleProfileClick} className="relative">
+            {avatarEmoji ? (
+              <span className="text-lg">{avatarEmoji}</span>
+            ) : (
+              <User className="h-5 w-5" />
+            )}
           </Button>
         </div>
       </div>

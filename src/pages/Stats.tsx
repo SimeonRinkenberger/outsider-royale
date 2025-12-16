@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { supabase } from '@/integrations/supabase/client';
@@ -25,11 +25,15 @@ interface UserStats {
 
 const Stats = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const [stats, setStats] = useState<UserStats | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [profileId, setProfileId] = useState<string | null>(null);
   const displayName = getStoredDisplayName();
+  
+  // Check if we came from a game/lobby context
+  const fromGame = location.state?.fromGame || false;
 
   useEffect(() => {
     const fetchStats = async () => {
@@ -112,12 +116,20 @@ const Stats = () => {
   const safeWinRate = stats ? calculatePercentage(stats.games_won_as_safe, stats.games_played_as_safe) : 0;
   const voteAccuracy = stats ? calculatePercentage(stats.total_correct_votes, stats.total_votes_cast) : 0;
 
+  const handleBack = () => {
+    if (fromGame) {
+      navigate(-1); // Go back to the game/lobby
+    } else {
+      navigate('/menu');
+    }
+  };
+
   return (
     <div className="min-h-screen bg-background">
       <header className="bg-card border-b border-border p-4">
         <div className="max-w-md mx-auto flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <Button variant="ghost" size="icon" onClick={() => navigate('/menu')}>
+            <Button variant="ghost" size="icon" onClick={handleBack}>
               <ArrowLeft className="h-5 w-5" />
             </Button>
             <h1 className="text-xl font-bold">Your Stats</h1>

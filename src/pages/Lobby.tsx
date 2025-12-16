@@ -7,11 +7,13 @@ import { useGameState } from '@/hooks/useGameState';
 import { useCustomContent } from '@/hooks/useCustomContent';
 import { getStoredUserId } from '@/lib/gameUtils';
 import { toast } from 'sonner';
-import { Copy, Users, Crown, Play, X } from 'lucide-react';
+import { Copy, Users, Crown, Play, X, Settings, ChevronDown } from 'lucide-react';
 import { GameMode } from '@/types/game';
 import { GameConfigPanel, GameConfig, getActiveModifierLabels } from '@/components/GameConfigPanel';
 import GameHeader from '@/components/GameHeader';
 import { copyToClipboard } from '@/lib/platform';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { getAvatarById } from '@/components/AvatarPicker';
 
 const Lobby = () => {
   const { lobbyId } = useParams();
@@ -35,6 +37,8 @@ const Lobby = () => {
   } = useCustomContent();
   
   const [isStarting, setIsStarting] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [playerAvatars, setPlayerAvatars] = useState<Record<string, string | null>>({});
   const [gameConfig, setGameConfig] = useState<GameConfig>({
     selectedCategories: ['animal', 'brand', 'food', 'movie', 'person', 'place', 'thing'],
     selectedCustomCategories: [],
@@ -47,6 +51,29 @@ const Lobby = () => {
     votesPerPlayer: 1,
   });
   const userId = getStoredUserId();
+
+  // Fetch avatars for all players
+  useEffect(() => {
+    const fetchAvatars = async () => {
+      if (players.length === 0) return;
+      
+      const userIds = players.map(p => p.user_id);
+      const { data: profiles } = await supabase
+        .from('profiles')
+        .select('id, avatar_url')
+        .in('id', userIds);
+      
+      if (profiles) {
+        const avatarMap: Record<string, string | null> = {};
+        profiles.forEach(p => {
+          avatarMap[p.id] = p.avatar_url;
+        });
+        setPlayerAvatars(avatarMap);
+      }
+    };
+    
+    fetchAvatars();
+  }, [players]);
 
   const isHost = lobby?.host_user_id === userId;
   const canStart = players.length >= 3;
@@ -375,60 +402,80 @@ const Lobby = () => {
           </div>
 
           <div className="space-y-2">
-            {players.map((player) => (
-              <Card key={player.id} className="p-4 bg-gradient-card border-border">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
-                      <Users className="h-5 w-5 text-primary" />
+            {players.map((player) => {
+              const avatarId = playerAvatars[player.user_id];
+              const avatar = avatarId ? getAvatarById(avatarId) : null;
+              
+              return (
+                <Card key={player.id} className="p-4 bg-gradient-card border-border">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-xl">
+                        {avatar ? avatar.emoji : <Users className="h-5 w-5 text-primary" />}
+                      </div>
+                      <div>
+                        <p className="font-medium">{player.display_name}</p>
+                        {player.is_host && (
+                          <p className="text-xs text-primary flex items-center gap-1">
+                            <Crown className="h-3 w-3" />
+                            Host
+                          </p>
+                        )}
+                      </div>
                     </div>
-                    <div>
-                      <p className="font-medium">{player.display_name}</p>
-                      {player.is_host && (
-                        <p className="text-xs text-primary flex items-center gap-1">
-                          <Crown className="h-3 w-3" />
-                          Host
-                        </p>
+                    <div className="flex items-center gap-2">
+                      {isHost && !player.is_host && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => kickPlayer(player.id, player.display_name)}
+                          className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      )}
+                      {player.is_connected ? (
+                        <div className="w-2 h-2 rounded-full bg-green-500" />
+                      ) : (
+                        <div className="w-2 h-2 rounded-full bg-gray-400" />
                       )}
                     </div>
                   </div>
-                  <div className="flex items-center gap-2">
-                    {isHost && !player.is_host && (
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => kickPlayer(player.id, player.display_name)}
-                        className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
-                      >
-                        <X className="h-4 w-4" />
-                      </Button>
-                    )}
-                    {player.is_connected ? (
-                      <div className="w-2 h-2 rounded-full bg-green-500" />
-                    ) : (
-                      <div className="w-2 h-2 rounded-full bg-gray-400" />
-                    )}
-                  </div>
-                </div>
-              </Card>
-            ))}
+                </Card>
+              );
+            })}
           </div>
         </div>
 
         {isHost && (
-          <GameConfigPanel
-            playerCount={players.length}
-            customCategories={customCategories}
-            customModifiers={customModifiers}
-            config={gameConfig}
-            onConfigChange={setGameConfig}
-            onAddCategory={addCategory}
-            onUpdateCategory={updateCategory}
-            onDeleteCategory={deleteCategory}
-            onAddModifier={addModifier}
-            onUpdateModifier={updateModifier}
-            onDeleteModifier={deleteModifier}
-          />
+          <Collapsible open={settingsOpen} onOpenChange={setSettingsOpen}>
+            <CollapsibleTrigger asChild>
+              <Card className="p-4 bg-gradient-card border-border cursor-pointer hover:bg-muted/50 transition-colors">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Settings className="h-5 w-5 text-primary" />
+                    <span className="font-medium">Game Settings</span>
+                  </div>
+                  <ChevronDown className={`h-5 w-5 text-muted-foreground transition-transform ${settingsOpen ? 'rotate-180' : ''}`} />
+                </div>
+              </Card>
+            </CollapsibleTrigger>
+            <CollapsibleContent className="mt-4">
+              <GameConfigPanel
+                playerCount={players.length}
+                customCategories={customCategories}
+                customModifiers={customModifiers}
+                config={gameConfig}
+                onConfigChange={setGameConfig}
+                onAddCategory={addCategory}
+                onUpdateCategory={updateCategory}
+                onDeleteCategory={deleteCategory}
+                onAddModifier={addModifier}
+                onUpdateModifier={updateModifier}
+                onDeleteModifier={deleteModifier}
+              />
+            </CollapsibleContent>
+          </Collapsible>
         )}
 
         {isHost && (
