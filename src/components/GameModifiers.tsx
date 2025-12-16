@@ -29,7 +29,7 @@ export const GameModifiers = ({
     <div className="space-y-3">
       <h4 className="text-sm font-medium">Game Modifiers</h4>
       <p className="text-xs text-muted-foreground">
-        Optional rules to spice up the game (honor system)
+        Optional rules to spice up the game
       </p>
       <div className="grid grid-cols-1 gap-2">
         {AVAILABLE_MODIFIERS.map((modifier) => (

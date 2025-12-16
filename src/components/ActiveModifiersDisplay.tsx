@@ -77,9 +77,6 @@ export const ActiveModifiersDisplay = ({ modifiers, customModifiers = [], gameMo
               )}
             </div>
             
-            <p className="text-xs text-muted-foreground pt-2 border-t border-border">
-              Honor system - follow the rules!
-            </p>
           </div>
         </PopoverContent>
       </Popover>
@@ -116,7 +113,7 @@ export const ActiveModifiersDisplay = ({ modifiers, customModifiers = [], gameMo
         </div>
       )}
       
-      <p className="text-xs text-muted-foreground pt-2 border-t border-primary/20">Honor system - follow the rules!</p>
+      
     </div>
   );
 };
