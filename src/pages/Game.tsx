@@ -609,9 +609,12 @@ const Game = () => {
         </header>
 
         <main className="p-4 max-w-md mx-auto space-y-6 py-6">
-          {/* Active Modifiers Banner */}
-          {gameMetadata?.modifiers && gameMetadata.modifiers.length > 0 && (
-            <ActiveModifiersDisplay modifiers={gameMetadata.modifiers} />
+          {/* Active Modifiers Banner - always show if game mode or modifiers exist */}
+          {game && (
+            <ActiveModifiersDisplay 
+              modifiers={gameMetadata?.modifiers || []} 
+              gameMode={game.game_mode}
+            />
           )}
           
           {isSpectator ? (
@@ -887,8 +890,12 @@ const Game = () => {
 
         <main className="p-4 max-w-md mx-auto space-y-6 py-6">
           {/* Active Modifiers Banner */}
-          {gameMetadata?.modifiers && gameMetadata.modifiers.length > 0 && (
-            <ActiveModifiersDisplay modifiers={gameMetadata.modifiers} compact />
+          {game && (
+            <ActiveModifiersDisplay 
+              modifiers={gameMetadata?.modifiers || []} 
+              gameMode={game.game_mode}
+              compact 
+            />
           )}
           
           {isSpectator ? (
