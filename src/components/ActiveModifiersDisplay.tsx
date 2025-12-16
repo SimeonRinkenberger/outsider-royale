@@ -44,25 +44,24 @@ export const ActiveModifiersDisplay = ({ modifiers, customModifiers = [], gameMo
             className="h-7 gap-1 text-xs text-primary hover:text-primary"
           >
             <Sparkles className="h-3 w-3" />
-            {gameModeInfo?.label}{modifiers.length > 0 && ` + ${modifiers.length} rule${modifiers.length > 1 ? 's' : ''}`}
+            {gameModeInfo?.label || 'Classic'}{activeModifiers.length > 0 && ` + ${activeModifiers.length} rule${activeModifiers.length > 1 ? 's' : ''}`}
             <ChevronDown className="h-3 w-3" />
           </Button>
         </PopoverTrigger>
-        <PopoverContent className="w-72 p-3" align="end">
+        <PopoverContent className="w-72 p-3 z-50 bg-popover border border-border shadow-lg" align="start" sideOffset={5}>
           <div className="space-y-3">
-            {gameModeInfo && (
-              <div>
-                <div className="flex items-center gap-2 mb-1">
-                  <Gamepad2 className="h-3 w-3 text-primary" />
-                  <p className="text-xs font-semibold text-muted-foreground">Game Mode</p>
-                </div>
-                <Badge variant="default" className="text-xs">{gameModeInfo.label}</Badge>
-                <p className="text-xs text-muted-foreground mt-1">{gameModeInfo.description}</p>
+            <div>
+              <div className="flex items-center gap-2 mb-1">
+                <Gamepad2 className="h-3 w-3 text-primary" />
+                <p className="text-xs font-semibold text-muted-foreground">Game Mode</p>
               </div>
-            )}
-            {activeModifiers.length > 0 && (
-              <div className={gameModeInfo ? 'pt-2 border-t border-border' : ''}>
-                <p className="text-xs font-semibold text-muted-foreground mb-2">Active Rules</p>
+              <Badge variant="default" className="text-xs">{gameModeInfo?.label || 'Classic'}</Badge>
+              <p className="text-xs text-muted-foreground mt-1">{gameModeInfo?.description || 'All rounds complete, then vote once to find the outsider.'}</p>
+            </div>
+            
+            <div className="pt-2 border-t border-border">
+              <p className="text-xs font-semibold text-muted-foreground mb-2">Active Rules</p>
+              {activeModifiers.length > 0 ? (
                 <div className="space-y-2">
                   {activeModifiers.map(mod => (
                     <div key={mod.id}>
@@ -73,8 +72,11 @@ export const ActiveModifiersDisplay = ({ modifiers, customModifiers = [], gameMo
                     </div>
                   ))}
                 </div>
-              </div>
-            )}
+              ) : (
+                <p className="text-xs text-muted-foreground">No special rules active</p>
+              )}
+            </div>
+            
             <p className="text-xs text-muted-foreground pt-2 border-t border-border">
               Honor system - follow the rules!
             </p>
