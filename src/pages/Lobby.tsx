@@ -45,6 +45,8 @@ const Lobby = () => {
   const [isStarting, setIsStarting] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [playerAvatars, setPlayerAvatars] = useState<Record<string, string | null>>({});
+  const [previousPlayers, setPreviousPlayers] = useState<Map<string, string>>(new Map());
+  const [isInitialLoad, setIsInitialLoad] = useState(true);
   const [gameConfig, setGameConfig] = useState<GameConfig>({
     selectedCategories: ['animal', 'brand', 'food', 'movie', 'person', 'place', 'thing'],
     selectedCustomCategories: [],
@@ -58,6 +60,45 @@ const Lobby = () => {
     timedRoundDuration: 30,
   });
   const userId = getStoredUserId();
+
+  // Track player joins/leaves and show toasts
+  useEffect(() => {
+    if (players.length === 0 && previousPlayers.size === 0) return;
+
+    const currentPlayersMap = new Map(players.map(p => [p.id, p.display_name]));
+    
+    // Skip toast on initial load
+    if (isInitialLoad) {
+      setPreviousPlayers(currentPlayersMap);
+      setIsInitialLoad(false);
+      return;
+    }
+
+    // Find new players (joined)
+    const joinedPlayers = players.filter(p => !previousPlayers.has(p.id));
+    
+    // Find removed players (left)
+    const leftPlayers: { id: string; name: string }[] = [];
+    previousPlayers.forEach((name, id) => {
+      if (!currentPlayersMap.has(id)) {
+        leftPlayers.push({ id, name });
+      }
+    });
+
+    // Show toasts for joins (skip if it's the current user)
+    joinedPlayers.forEach(player => {
+      if (player.user_id !== userId) {
+        toast.success(`${player.display_name} joined the lobby`);
+      }
+    });
+
+    // Show toasts for leaves
+    leftPlayers.forEach(player => {
+      toast.info(`${player.name} left the lobby`);
+    });
+
+    setPreviousPlayers(currentPlayersMap);
+  }, [players, userId, isInitialLoad]);
 
   // Fetch avatars for all players
   useEffect(() => {
