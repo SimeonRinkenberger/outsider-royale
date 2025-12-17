@@ -8,19 +8,30 @@ import { generateLobbyCode, getStoredUserId, getStoredDisplayName } from '@/lib/
 import { toast } from 'sonner';
 import { Plus, LogIn } from 'lucide-react';
 import GameHeader from '@/components/GameHeader';
+import { usePageTransition } from '@/components/PageTransition';
 
 const Home = () => {
   const [joinCode, setJoinCode] = useState('');
   const [isCreating, setIsCreating] = useState(false);
   const [isJoining, setIsJoining] = useState(false);
   const navigate = useNavigate();
+  const { navigateWithTransitionFromCoords } = usePageTransition();
 
-  const createLobby = async () => {
+  const createLobby = async (event?: React.MouseEvent<HTMLButtonElement>) => {
     const userId = getStoredUserId();
     const displayName = getStoredDisplayName();
     if (!userId || !displayName) {
       navigate('/');
       return;
+    }
+
+    // Capture button position before async
+    let buttonX = window.innerWidth / 2;
+    let buttonY = window.innerHeight / 2;
+    if (event?.currentTarget) {
+      const rect = event.currentTarget.getBoundingClientRect();
+      buttonX = rect.left + rect.width / 2;
+      buttonY = rect.top + rect.height / 2;
     }
 
     setIsCreating(true);
@@ -47,16 +58,16 @@ const Home = () => {
       if (playerError) throw playerError;
 
       toast.success('Lobby created!');
-      navigate(`/lobby/${lobby.id}`);
+      setIsCreating(false);
+      navigateWithTransitionFromCoords(`/lobby/${lobby.id}`, buttonX, buttonY);
     } catch (error) {
       console.error('Error creating lobby:', error);
       toast.error('Failed to create lobby');
-    } finally {
       setIsCreating(false);
     }
   };
 
-  const joinLobby = async () => {
+  const joinLobby = async (event?: React.MouseEvent<HTMLButtonElement>) => {
     const userId = getStoredUserId();
     const displayName = getStoredDisplayName();
     if (!userId || !displayName) {
@@ -67,6 +78,15 @@ const Home = () => {
     if (!joinCode.trim()) {
       toast.error('Please enter a lobby code');
       return;
+    }
+
+    // Capture button position before async
+    let buttonX = window.innerWidth / 2;
+    let buttonY = window.innerHeight / 2;
+    if (event?.currentTarget) {
+      const rect = event.currentTarget.getBoundingClientRect();
+      buttonX = rect.left + rect.width / 2;
+      buttonY = rect.top + rect.height / 2;
     }
 
     setIsJoining(true);
@@ -94,8 +114,8 @@ const Home = () => {
         .single();
 
       if (existing) {
-        navigate(`/lobby/${lobby.id}`);
         setIsJoining(false);
+        navigateWithTransitionFromCoords(`/lobby/${lobby.id}`, buttonX, buttonY);
         return;
       }
 
@@ -114,11 +134,11 @@ const Home = () => {
       if (playerError) throw playerError;
 
       toast.success('Joined lobby!');
-      navigate(`/lobby/${lobby.id}`);
+      setIsJoining(false);
+      navigateWithTransitionFromCoords(`/lobby/${lobby.id}`, buttonX, buttonY);
     } catch (error) {
       console.error('Error joining lobby:', error);
       toast.error('Failed to join lobby');
-    } finally {
       setIsJoining(false);
     }
   };
@@ -137,7 +157,7 @@ const Home = () => {
 
         <div className="space-y-4 animate-fade-in" style={{ animationDelay: '0.1s' }}>
           <Button
-            onClick={createLobby}
+            onClick={(e) => createLobby(e)}
             disabled={isCreating}
             className="w-full h-14 text-lg transition-all duration-200 hover:scale-[1.02] active:scale-95"
             size="lg"
@@ -165,7 +185,7 @@ const Home = () => {
               onKeyDown={(e) => e.key === 'Enter' && joinLobby()}
             />
             <Button
-              onClick={joinLobby}
+              onClick={(e) => joinLobby(e)}
               disabled={isJoining || !joinCode.trim()}
               variant="secondary"
               className="w-full h-14 text-lg transition-all duration-200 hover:scale-[1.02] active:scale-95"
