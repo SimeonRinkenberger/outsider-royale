@@ -488,24 +488,24 @@ const Lobby = () => {
             </AnimatePresence>
           </motion.div>
 
-          <motion.div className="space-y-2" layout>
-            <AnimatePresence mode="popLayout">
-              {players.map((player, index) => {
+          <motion.div className="space-y-2" layout="position">
+            <AnimatePresence initial={false} mode="popLayout">
+              {players.map((player) => {
                 const avatarId = playerAvatars[player.user_id];
                 const avatar = avatarId ? getAvatarById(avatarId) : null;
+                const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
                 
                 return (
                   <motion.div
                     key={player.id}
-                    layout
-                    initial={{ opacity: 0, x: -50, scale: 0.8 }}
-                    animate={{ opacity: 1, x: 0, scale: 1 }}
-                    exit={{ opacity: 0, x: 50, scale: 0.8 }}
+                    layout="position"
+                    initial={prefersReducedMotion ? false : { opacity: 0, x: -24 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={prefersReducedMotion ? { opacity: 0 } : { opacity: 0, x: 24 }}
                     transition={{ 
-                      duration: 0.4,
-                      delay: index * 0.05,
-                      ease: [0.25, 0.46, 0.45, 0.94],
-                      layout: { duration: 0.3 }
+                      duration: 0.32,
+                      ease: [0.2, 0.8, 0.2, 1],
+                      layout: { duration: 0.32, ease: [0.2, 0.8, 0.2, 1] }
                     }}
                   >
                     <Card className="p-4 bg-gradient-card border-border">
@@ -548,9 +548,15 @@ const Lobby = () => {
         {/* Game Settings (Host Only) */}
         {isHost && (
           <motion.div
+            layout="position"
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.2, ease: [0.25, 0.46, 0.45, 0.94] }}
+            transition={{ 
+              duration: 0.5, 
+              delay: 0.2, 
+              ease: [0.25, 0.46, 0.45, 0.94],
+              layout: { duration: 0.32, ease: [0.2, 0.8, 0.2, 1] }
+            }}
           >
             <Collapsible open={settingsOpen} onOpenChange={setSettingsOpen}>
               <CollapsibleTrigger asChild>
