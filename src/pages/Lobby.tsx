@@ -503,9 +503,9 @@ const Lobby = () => {
                     animate={{ opacity: 1, x: 0 }}
                     exit={prefersReducedMotion ? { opacity: 0 } : { opacity: 0, x: 24 }}
                     transition={{ 
-                      duration: 0.45,
+                      duration: 0.8,
                       ease: [0.2, 0.8, 0.2, 1],
-                      layout: { duration: 0.45, ease: [0.2, 0.8, 0.2, 1] }
+                      layout: { duration: 0.8, ease: [0.2, 0.8, 0.2, 1] }
                     }}
                   >
                     <Card className="p-4 bg-gradient-card border-border">
@@ -555,7 +555,7 @@ const Lobby = () => {
               duration: 0.5, 
               delay: 0.2, 
               ease: [0.25, 0.46, 0.45, 0.94],
-              layout: { duration: 0.45, ease: [0.2, 0.8, 0.2, 1] }
+              layout: { duration: 0.8, ease: [0.2, 0.8, 0.2, 1] }
             }}
           >
             <Collapsible open={settingsOpen} onOpenChange={setSettingsOpen}>
