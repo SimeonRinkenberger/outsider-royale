@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -14,11 +14,14 @@ import GameHeader from '@/components/GameHeader';
 import { copyToClipboard } from '@/lib/platform';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { getAvatarById } from '@/components/AvatarPicker';
+import { usePageTransition } from '@/components/PageTransition';
 
 const Lobby = () => {
   const { lobbyId } = useParams();
   const navigate = useNavigate();
+  const { navigateWithTransitionFromCoords } = usePageTransition();
   const { lobby, players } = useGameState(lobbyId || null);
+  const pendingTransitionRef = useRef<{ x: number; y: number } | null>(null);
   const {
     customCategories,
     customModifiers,
@@ -111,9 +114,14 @@ const Lobby = () => {
 
   useEffect(() => {
     if (lobby?.current_game_id) {
-      navigate(`/game/${lobbyId}`);
+      if (pendingTransitionRef.current) {
+        navigateWithTransitionFromCoords(`/game/${lobbyId}`, pendingTransitionRef.current.x, pendingTransitionRef.current.y);
+        pendingTransitionRef.current = null;
+      } else {
+        navigate(`/game/${lobbyId}`);
+      }
     }
-  }, [lobby?.current_game_id, lobbyId, navigate]);
+  }, [lobby?.current_game_id, lobbyId, navigate, navigateWithTransitionFromCoords]);
 
   const copyCode = async () => {
     if (lobby?.code) {
@@ -145,8 +153,17 @@ const Lobby = () => {
   };
 
 
-  const startGame = async () => {
+  const startGame = async (event?: React.MouseEvent<HTMLButtonElement>) => {
     if (!isHost || !lobbyId || !canStart) return;
+
+    // Capture button position before async
+    if (event?.currentTarget) {
+      const rect = event.currentTarget.getBoundingClientRect();
+      pendingTransitionRef.current = {
+        x: rect.left + rect.width / 2,
+        y: rect.top + rect.height / 2,
+      };
+    }
 
     const hasAnyCategory = gameConfig.selectedCategories.length > 0 || gameConfig.selectedCustomCategories.length > 0;
     if (!hasAnyCategory) {
@@ -481,7 +498,7 @@ const Lobby = () => {
               </div>
             )}
             <Button
-              onClick={startGame}
+              onClick={(e) => startGame(e)}
               disabled={!canStart || isStarting || (gameConfig.selectedCategories.length === 0 && gameConfig.selectedCustomCategories.length === 0)}
               className="w-full h-14 text-lg shadow-lg"
               size="lg"
