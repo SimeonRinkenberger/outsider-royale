@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -16,7 +16,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import { getAvatarById } from '@/components/AvatarPicker';
 import { usePageTransition } from '@/components/PageTransition';
 import { useBackTransition } from '@/components/BackTransition';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence, LayoutGroup } from 'framer-motion';
 
 const Lobby = () => {
   const { lobbyId } = useParams();
@@ -60,6 +60,55 @@ const Lobby = () => {
     timedRoundDuration: 30,
   });
   const userId = getStoredUserId();
+
+  // Reduced motion preference
+  const prefersReducedMotion = useMemo(() => 
+    typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches,
+    []
+  );
+
+  // Animation variants for player cards
+  const playerCardVariants = {
+    initial: prefersReducedMotion 
+      ? { opacity: 0 }
+      : { x: -36, opacity: 0, scale: 0.985, filter: 'blur(2px)' },
+    animate: { 
+      x: 0, 
+      opacity: 1, 
+      scale: 1, 
+      filter: 'blur(0px)'
+    },
+    exit: prefersReducedMotion 
+      ? { opacity: 0 }
+      : { 
+          x: 36, 
+          opacity: 0, 
+          scale: 0.985, 
+          filter: 'blur(2px)'
+        }
+  };
+
+  // Container variants for stagger effect
+  const containerVariants = {
+    animate: {
+      transition: {
+        staggerChildren: 0.06,
+        delayChildren: 0.02
+      }
+    }
+  };
+
+  // Transition config
+  const playerCardTransition = {
+    duration: 0.32,
+    ease: [0.2, 0.8, 0.2, 1] as const,
+    layout: { duration: 0.32, ease: [0.2, 0.8, 0.2, 1] as const }
+  };
+
+  const exitTransition = {
+    duration: 0.24,
+    ease: [0.2, 0.8, 0.2, 1] as const
+  };
 
   // Track player joins/leaves and show toasts
   useEffect(() => {
@@ -458,136 +507,144 @@ const Lobby = () => {
           </Card>
         </motion.div>
 
-        {/* Players Section */}
-        <motion.div
-          initial={{ opacity: 0, y: 30 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.1, ease: [0.25, 0.46, 0.45, 0.94] }}
-          className="space-y-3"
-        >
-          <motion.div 
-            className="flex items-center justify-between px-1"
+        {/* Players + Game Settings in same layout scope */}
+        <LayoutGroup>
+          {/* Players Section */}
+          <motion.div
             layout
+            initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.1, ease: [0.25, 0.46, 0.45, 0.94] }}
+            className="space-y-3"
           >
-            <h3 className="text-sm font-semibold text-muted-foreground flex items-center gap-2">
-              <Users className="h-4 w-4" />
-              Players ({players.length})
-            </h3>
-            <AnimatePresence mode="wait">
-              {!canStart && (
-                <motion.p
-                  key="need-more"
-                  initial={{ opacity: 0, x: 10 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: -10 }}
-                  className="text-xs text-muted-foreground"
-                >
-                  Need {3 - players.length} more
-                </motion.p>
-              )}
-            </AnimatePresence>
-          </motion.div>
-
-          <motion.div className="space-y-2" layout="position">
-            <AnimatePresence initial={false} mode="popLayout">
-              {players.map((player) => {
-                const avatarId = playerAvatars[player.user_id];
-                const avatar = avatarId ? getAvatarById(avatarId) : null;
-                const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-                
-                return (
-                  <motion.div
-                    key={player.id}
-                    layout="position"
-                    initial={prefersReducedMotion ? false : { opacity: 0, x: -24 }}
+            <motion.div 
+              className="flex items-center justify-between px-1"
+              layout
+            >
+              <h3 className="text-sm font-semibold text-muted-foreground flex items-center gap-2">
+                <Users className="h-4 w-4" />
+                Players ({players.length})
+              </h3>
+              <AnimatePresence mode="wait">
+                {!canStart && (
+                  <motion.p
+                    key="need-more"
+                    initial={{ opacity: 0, x: 10 }}
                     animate={{ opacity: 1, x: 0 }}
-                    exit={prefersReducedMotion ? { opacity: 0 } : { opacity: 0, x: 24 }}
-                    transition={{ 
-                      duration: 1.5,
-                      ease: [0.2, 0.8, 0.2, 1],
-                      layout: { duration: 1.5, ease: [0.2, 0.8, 0.2, 1] }
-                    }}
+                    exit={{ opacity: 0, x: -10 }}
+                    className="text-xs text-muted-foreground"
                   >
-                    <Card className="p-4 bg-gradient-card border-border">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                          <div className={`w-10 h-10 rounded-full flex items-center justify-center text-xl ${avatar ? avatar.color : 'bg-primary/10'}`}>
-                            {avatar ? avatar.emoji : <Users className="h-5 w-5 text-primary" />}
+                    Need {3 - players.length} more
+                  </motion.p>
+                )}
+              </AnimatePresence>
+            </motion.div>
+
+            <motion.div 
+              className="space-y-2" 
+              layout
+              variants={containerVariants}
+              animate="animate"
+            >
+              <AnimatePresence initial={false} mode="popLayout">
+                {players.map((player) => {
+                  const avatarId = playerAvatars[player.user_id];
+                  const avatar = avatarId ? getAvatarById(avatarId) : null;
+                  
+                  return (
+                    <motion.div
+                      key={player.id}
+                      layout
+                      initial={playerCardVariants.initial}
+                      animate={playerCardVariants.animate}
+                      exit={playerCardVariants.exit}
+                      transition={{
+                        duration: 0.32,
+                        ease: [0.2, 0.8, 0.2, 1] as const,
+                        layout: { duration: 0.32, ease: [0.2, 0.8, 0.2, 1] as const }
+                      }}
+                    >
+                      <Card className="p-4 bg-gradient-card border-border">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <div className={`w-10 h-10 rounded-full flex items-center justify-center text-xl ${avatar ? avatar.color : 'bg-primary/10'}`}>
+                              {avatar ? avatar.emoji : <Users className="h-5 w-5 text-primary" />}
+                            </div>
+                            <div>
+                              <p className="font-medium">{player.display_name}</p>
+                              {player.is_host && (
+                                <p className="text-xs text-primary flex items-center gap-1">
+                                  <Crown className="h-3 w-3" />
+                                  Host
+                                </p>
+                              )}
+                            </div>
                           </div>
-                          <div>
-                            <p className="font-medium">{player.display_name}</p>
-                            {player.is_host && (
-                              <p className="text-xs text-primary flex items-center gap-1">
-                                <Crown className="h-3 w-3" />
-                                Host
-                              </p>
+                          <div className="flex items-center gap-2">
+                            {player.is_connected ? (
+                              <motion.div 
+                                className="w-2 h-2 rounded-full bg-green-500"
+                                initial={{ scale: 0 }}
+                                animate={{ scale: 1 }}
+                                transition={{ delay: 0.2 }}
+                              />
+                            ) : (
+                              <div className="w-2 h-2 rounded-full bg-gray-400" />
                             )}
                           </div>
                         </div>
-                        <div className="flex items-center gap-2">
-                          {player.is_connected ? (
-                            <motion.div 
-                              className="w-2 h-2 rounded-full bg-green-500"
-                              initial={{ scale: 0 }}
-                              animate={{ scale: 1 }}
-                              transition={{ delay: 0.2 }}
-                            />
-                          ) : (
-                            <div className="w-2 h-2 rounded-full bg-gray-400" />
-                          )}
-                        </div>
-                      </div>
-                    </Card>
-                  </motion.div>
-                );
-              })}
-            </AnimatePresence>
+                      </Card>
+                    </motion.div>
+                  );
+                })}
+              </AnimatePresence>
+            </motion.div>
           </motion.div>
-        </motion.div>
 
-        {/* Game Settings (Host Only) */}
-        {isHost && (
-          <motion.div
-            layout="position"
-            initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ 
-              duration: 0.5, 
-              delay: 0.2, 
-              ease: [0.25, 0.46, 0.45, 0.94],
-              layout: { duration: 1.5, ease: [0.2, 0.8, 0.2, 1] }
-            }}
-          >
-            <Collapsible open={settingsOpen} onOpenChange={setSettingsOpen}>
-              <CollapsibleTrigger asChild>
-                <Card className="p-4 bg-gradient-card border-border cursor-pointer hover:bg-muted/50 transition-colors">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <Settings className="h-5 w-5 text-primary" />
-                      <span className="font-medium">Game Settings</span>
+          {/* Game Settings (Host Only) */}
+          {isHost && (
+            <motion.div
+              layout
+              initial={{ opacity: 0, y: 30 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ 
+                duration: 0.5, 
+                delay: 0.2, 
+                ease: [0.25, 0.46, 0.45, 0.94],
+                layout: { duration: 0.32, ease: [0.2, 0.8, 0.2, 1] }
+              }}
+            >
+              <Collapsible open={settingsOpen} onOpenChange={setSettingsOpen}>
+                <CollapsibleTrigger asChild>
+                  <Card className="p-4 bg-gradient-card border-border cursor-pointer hover:bg-muted/50 transition-colors">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Settings className="h-5 w-5 text-primary" />
+                        <span className="font-medium">Game Settings</span>
+                      </div>
+                      <ChevronDown className={`h-5 w-5 text-muted-foreground transition-transform ${settingsOpen ? 'rotate-180' : ''}`} />
                     </div>
-                    <ChevronDown className={`h-5 w-5 text-muted-foreground transition-transform ${settingsOpen ? 'rotate-180' : ''}`} />
-                  </div>
-                </Card>
-              </CollapsibleTrigger>
-              <CollapsibleContent className="mt-4">
-                <GameConfigPanel
-                  playerCount={Math.max(3, players.length)}
-                  customCategories={customCategories}
-                  customModifiers={customModifiers}
-                  config={gameConfig}
-                  onConfigChange={setGameConfig}
-                  onAddCategory={addCategory}
-                  onUpdateCategory={updateCategory}
-                  onDeleteCategory={deleteCategory}
-                  onAddModifier={addModifier}
-                  onUpdateModifier={updateModifier}
-                  onDeleteModifier={deleteModifier}
-                />
-              </CollapsibleContent>
-            </Collapsible>
-          </motion.div>
-        )}
+                  </Card>
+                </CollapsibleTrigger>
+                <CollapsibleContent className="mt-4">
+                  <GameConfigPanel
+                    playerCount={Math.max(3, players.length)}
+                    customCategories={customCategories}
+                    customModifiers={customModifiers}
+                    config={gameConfig}
+                    onConfigChange={setGameConfig}
+                    onAddCategory={addCategory}
+                    onUpdateCategory={updateCategory}
+                    onDeleteCategory={deleteCategory}
+                    onAddModifier={addModifier}
+                    onUpdateModifier={updateModifier}
+                    onDeleteModifier={deleteModifier}
+                  />
+                </CollapsibleContent>
+              </Collapsible>
+            </motion.div>
+          )}
+        </LayoutGroup>
 
         {/* Start Game Button (Host Only) */}
         {isHost && (
