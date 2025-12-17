@@ -5,6 +5,7 @@ import { ArrowLeft, User } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { getStoredUserId } from '@/lib/gameUtils';
 import { getAvatarById } from '@/components/AvatarPicker';
+import { useBackTransition } from '@/components/BackTransition';
 
 interface GameHeaderProps {
   title: string;
@@ -16,7 +17,9 @@ interface GameHeaderProps {
 
 const GameHeader = ({ title, showBack = true, backPath, onBack, rightContent }: GameHeaderProps) => {
   const navigate = useNavigate();
+  const { navigateBack } = useBackTransition();
   const [avatarEmoji, setAvatarEmoji] = useState<string | null>(null);
+  const [isNavigating, setIsNavigating] = useState(false);
   const userId = getStoredUserId();
 
   useEffect(() => {
@@ -39,13 +42,20 @@ const GameHeader = ({ title, showBack = true, backPath, onBack, rightContent }: 
   }, [userId]);
 
   const handleBack = () => {
+    if (isNavigating) return;
+    setIsNavigating(true);
+
     if (onBack) {
+      // onBack handles its own navigation
       onBack();
     } else if (backPath) {
-      navigate(backPath);
+      navigateBack(backPath);
     } else {
       navigate(-1);
     }
+
+    // Reset after animation
+    setTimeout(() => setIsNavigating(false), 500);
   };
 
   const handleProfileClick = () => {
@@ -57,7 +67,7 @@ const GameHeader = ({ title, showBack = true, backPath, onBack, rightContent }: 
       <div className="max-w-md mx-auto flex items-center justify-between">
         <div className="flex items-center gap-4">
           {showBack && (
-            <Button variant="ghost" size="icon" onClick={handleBack}>
+            <Button variant="ghost" size="icon" onClick={handleBack} disabled={isNavigating}>
               <ArrowLeft className="h-5 w-5" />
             </Button>
           )}

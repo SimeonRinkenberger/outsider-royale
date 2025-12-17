@@ -15,11 +15,13 @@ import { copyToClipboard } from '@/lib/platform';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { getAvatarById } from '@/components/AvatarPicker';
 import { usePageTransition } from '@/components/PageTransition';
+import { useBackTransition } from '@/components/BackTransition';
 
 const Lobby = () => {
   const { lobbyId } = useParams();
   const navigate = useNavigate();
   const { navigateWithTransitionFromCoords } = usePageTransition();
+  const { navigateBack } = useBackTransition();
   const { lobby, players } = useGameState(lobbyId || null);
   const pendingTransitionRef = useRef<{ x: number; y: number } | null>(null);
   const {
@@ -145,13 +147,12 @@ const Lobby = () => {
         .eq('user_id', userId);
 
       toast.success('Left lobby');
-      navigate('/home');
+      navigateBack('/home');
     } catch (error) {
       console.error('Error leaving lobby:', error);
       toast.error('Failed to leave lobby');
     }
   };
-
 
   const startGame = async (event?: React.MouseEvent<HTMLButtonElement>) => {
     if (!isHost || !lobbyId || !canStart) return;
