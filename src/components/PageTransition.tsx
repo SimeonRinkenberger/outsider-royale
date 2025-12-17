@@ -23,7 +23,13 @@ export const usePageTransition = () => {
       return;
     }
 
-    const rect = (event.currentTarget as HTMLElement).getBoundingClientRect();
+    const target = event.currentTarget as HTMLElement | null;
+    if (!target) {
+      navigate(path);
+      return;
+    }
+
+    const rect = target.getBoundingClientRect();
     const x = rect.left + rect.width / 2;
     const y = rect.top + rect.height / 2;
 

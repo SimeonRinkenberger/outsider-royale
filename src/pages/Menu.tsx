@@ -85,7 +85,9 @@ const Menu = () => {
       setStoredUserId(data.id);
       setStoredDisplayName(data.display_name);
       toast.success(`Welcome, ${data.display_name}!`);
+      setIsCreatingGuest(false);
       
+      // Navigate after successful profile creation (outside try-catch)
       if (event) {
         navigateWithTransition('/home', event);
       } else {
@@ -94,7 +96,6 @@ const Menu = () => {
     } catch (error) {
       console.error('Error creating profile:', error);
       toast.error('Failed to create profile');
-    } finally {
       setIsCreatingGuest(false);
     }
   };
