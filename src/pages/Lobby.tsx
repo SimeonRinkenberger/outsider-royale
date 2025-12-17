@@ -16,6 +16,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import { getAvatarById } from '@/components/AvatarPicker';
 import { usePageTransition } from '@/components/PageTransition';
 import { useBackTransition } from '@/components/BackTransition';
+import { motion, AnimatePresence } from 'framer-motion';
 
 const Lobby = () => {
   const { lobbyId } = useParams();
@@ -385,119 +386,185 @@ const Lobby = () => {
       <GameHeader title="Lobby" showBack={true} onBack={leaveLobby} />
 
       <main className="p-4 max-w-md mx-auto space-y-6 py-6">
-        <Card className="p-6 bg-gradient-primary text-white shadow-card border-0">
-          <div className="text-center space-y-4">
-            <div>
-              <p className="text-white/80 text-sm mb-1">Lobby Code</p>
-              <div className="flex items-center justify-center gap-3">
-                <h2 className="text-4xl font-bold font-mono tracking-wider">
-                  {lobby.code}
-                </h2>
-                <Button
-                  variant="secondary"
-                  size="icon"
-                  onClick={copyCode}
-                  className="bg-white/20 hover:bg-white/30 text-white border-white/30"
-                >
-                  <Copy className="h-4 w-4" />
-                </Button>
+        {/* Lobby Code Card */}
+        <motion.div
+          initial={{ opacity: 0, y: 30 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, ease: [0.25, 0.46, 0.45, 0.94] }}
+        >
+          <Card className="p-6 bg-gradient-primary text-white shadow-card border-0">
+            <div className="text-center space-y-4">
+              <div>
+                <p className="text-white/80 text-sm mb-1">Lobby Code</p>
+                <div className="flex items-center justify-center gap-3">
+                  <h2 className="text-4xl font-bold font-mono tracking-wider">
+                    {lobby.code}
+                  </h2>
+                  <Button
+                    variant="secondary"
+                    size="icon"
+                    onClick={copyCode}
+                    className="bg-white/20 hover:bg-white/30 text-white border-white/30"
+                  >
+                    <Copy className="h-4 w-4" />
+                  </Button>
+                </div>
               </div>
+              <p className="text-white/90 text-sm">
+                Share this code with friends to join
+              </p>
             </div>
-            <p className="text-white/90 text-sm">
-              Share this code with friends to join
-            </p>
-          </div>
-        </Card>
+          </Card>
+        </motion.div>
 
-        <div className="space-y-3">
-          <div className="flex items-center justify-between px-1">
+        {/* Players Section */}
+        <motion.div
+          initial={{ opacity: 0, y: 30 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.1, ease: [0.25, 0.46, 0.45, 0.94] }}
+          className="space-y-3"
+        >
+          <motion.div 
+            className="flex items-center justify-between px-1"
+            layout
+          >
             <h3 className="text-sm font-semibold text-muted-foreground flex items-center gap-2">
               <Users className="h-4 w-4" />
               Players ({players.length})
             </h3>
-            {!canStart && (
-              <p className="text-xs text-muted-foreground">
-                Need {3 - players.length} more
-              </p>
-            )}
-          </div>
+            <AnimatePresence mode="wait">
+              {!canStart && (
+                <motion.p
+                  key="need-more"
+                  initial={{ opacity: 0, x: 10 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -10 }}
+                  className="text-xs text-muted-foreground"
+                >
+                  Need {3 - players.length} more
+                </motion.p>
+              )}
+            </AnimatePresence>
+          </motion.div>
 
-          <div className="space-y-2">
-            {players.map((player) => {
-              const avatarId = playerAvatars[player.user_id];
-              const avatar = avatarId ? getAvatarById(avatarId) : null;
-              
-              return (
-                <Card key={player.id} className="p-4 bg-gradient-card border-border">
+          <motion.div className="space-y-2" layout>
+            <AnimatePresence mode="popLayout">
+              {players.map((player, index) => {
+                const avatarId = playerAvatars[player.user_id];
+                const avatar = avatarId ? getAvatarById(avatarId) : null;
+                
+                return (
+                  <motion.div
+                    key={player.id}
+                    layout
+                    initial={{ opacity: 0, x: -50, scale: 0.8 }}
+                    animate={{ opacity: 1, x: 0, scale: 1 }}
+                    exit={{ opacity: 0, x: 50, scale: 0.8 }}
+                    transition={{ 
+                      duration: 0.4,
+                      delay: index * 0.05,
+                      ease: [0.25, 0.46, 0.45, 0.94],
+                      layout: { duration: 0.3 }
+                    }}
+                  >
+                    <Card className="p-4 bg-gradient-card border-border">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className={`w-10 h-10 rounded-full flex items-center justify-center text-xl ${avatar ? avatar.color : 'bg-primary/10'}`}>
+                            {avatar ? avatar.emoji : <Users className="h-5 w-5 text-primary" />}
+                          </div>
+                          <div>
+                            <p className="font-medium">{player.display_name}</p>
+                            {player.is_host && (
+                              <p className="text-xs text-primary flex items-center gap-1">
+                                <Crown className="h-3 w-3" />
+                                Host
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          {player.is_connected ? (
+                            <motion.div 
+                              className="w-2 h-2 rounded-full bg-green-500"
+                              initial={{ scale: 0 }}
+                              animate={{ scale: 1 }}
+                              transition={{ delay: 0.2 }}
+                            />
+                          ) : (
+                            <div className="w-2 h-2 rounded-full bg-gray-400" />
+                          )}
+                        </div>
+                      </div>
+                    </Card>
+                  </motion.div>
+                );
+              })}
+            </AnimatePresence>
+          </motion.div>
+        </motion.div>
+
+        {/* Game Settings (Host Only) */}
+        {isHost && (
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.2, ease: [0.25, 0.46, 0.45, 0.94] }}
+            layout
+          >
+            <Collapsible open={settingsOpen} onOpenChange={setSettingsOpen}>
+              <CollapsibleTrigger asChild>
+                <Card className="p-4 bg-gradient-card border-border cursor-pointer hover:bg-muted/50 transition-colors">
                   <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className={`w-10 h-10 rounded-full flex items-center justify-center text-xl ${avatar ? avatar.color : 'bg-primary/10'}`}>
-                        {avatar ? avatar.emoji : <Users className="h-5 w-5 text-primary" />}
-                      </div>
-                      <div>
-                        <p className="font-medium">{player.display_name}</p>
-                        {player.is_host && (
-                          <p className="text-xs text-primary flex items-center gap-1">
-                            <Crown className="h-3 w-3" />
-                            Host
-                          </p>
-                        )}
-                      </div>
-                    </div>
                     <div className="flex items-center gap-2">
-                      {player.is_connected ? (
-                        <div className="w-2 h-2 rounded-full bg-green-500" />
-                      ) : (
-                        <div className="w-2 h-2 rounded-full bg-gray-400" />
-                      )}
+                      <Settings className="h-5 w-5 text-primary" />
+                      <span className="font-medium">Game Settings</span>
                     </div>
+                    <ChevronDown className={`h-5 w-5 text-muted-foreground transition-transform ${settingsOpen ? 'rotate-180' : ''}`} />
                   </div>
                 </Card>
-              );
-            })}
-          </div>
-        </div>
-
-        {isHost && (
-          <Collapsible open={settingsOpen} onOpenChange={setSettingsOpen}>
-            <CollapsibleTrigger asChild>
-              <Card className="p-4 bg-gradient-card border-border cursor-pointer hover:bg-muted/50 transition-colors">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <Settings className="h-5 w-5 text-primary" />
-                    <span className="font-medium">Game Settings</span>
-                  </div>
-                  <ChevronDown className={`h-5 w-5 text-muted-foreground transition-transform ${settingsOpen ? 'rotate-180' : ''}`} />
-                </div>
-              </Card>
-            </CollapsibleTrigger>
-            <CollapsibleContent className="mt-4">
-              <GameConfigPanel
-                playerCount={players.length}
-                customCategories={customCategories}
-                customModifiers={customModifiers}
-                config={gameConfig}
-                onConfigChange={setGameConfig}
-                onAddCategory={addCategory}
-                onUpdateCategory={updateCategory}
-                onDeleteCategory={deleteCategory}
-                onAddModifier={addModifier}
-                onUpdateModifier={updateModifier}
-                onDeleteModifier={deleteModifier}
-              />
-            </CollapsibleContent>
-          </Collapsible>
+              </CollapsibleTrigger>
+              <CollapsibleContent className="mt-4">
+                <GameConfigPanel
+                  playerCount={players.length}
+                  customCategories={customCategories}
+                  customModifiers={customModifiers}
+                  config={gameConfig}
+                  onConfigChange={setGameConfig}
+                  onAddCategory={addCategory}
+                  onUpdateCategory={updateCategory}
+                  onDeleteCategory={deleteCategory}
+                  onAddModifier={addModifier}
+                  onUpdateModifier={updateModifier}
+                  onDeleteModifier={deleteModifier}
+                />
+              </CollapsibleContent>
+            </Collapsible>
+          </motion.div>
         )}
 
+        {/* Start Game Button (Host Only) */}
         {isHost && (
-          <div className="fixed bottom-6 left-0 right-0 px-4 max-w-md mx-auto space-y-3">
-            {gameConfig.selectedModifiers.length > 0 && (
-              <div className="bg-card/90 backdrop-blur-sm rounded-lg p-2 text-center">
-                <p className="text-xs text-muted-foreground">
-                  Active: {getActiveModifierLabels(gameConfig.selectedModifiers, customModifiers).join(', ')}
-                </p>
-              </div>
-            )}
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.3, ease: [0.25, 0.46, 0.45, 0.94] }}
+            className="fixed bottom-6 left-0 right-0 px-4 max-w-md mx-auto space-y-3"
+          >
+            <AnimatePresence>
+              {gameConfig.selectedModifiers.length > 0 && (
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: 10 }}
+                  className="bg-card/90 backdrop-blur-sm rounded-lg p-2 text-center"
+                >
+                  <p className="text-xs text-muted-foreground">
+                    Active: {getActiveModifierLabels(gameConfig.selectedModifiers, customModifiers).join(', ')}
+                  </p>
+                </motion.div>
+              )}
+            </AnimatePresence>
             <Button
               onClick={(e) => startGame(e)}
               disabled={!canStart || isStarting || (gameConfig.selectedCategories.length === 0 && gameConfig.selectedCustomCategories.length === 0)}
@@ -507,12 +574,19 @@ const Lobby = () => {
               <Play className="h-5 w-5 mr-2" />
               {isStarting ? 'Starting...' : 'Start Game'}
             </Button>
-            {!canStart && (
-              <p className="text-center text-sm text-muted-foreground">
-                At least 3 players needed (4+ recommended)
-              </p>
-            )}
-          </div>
+            <AnimatePresence>
+              {!canStart && (
+                <motion.p
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  className="text-center text-sm text-muted-foreground"
+                >
+                  At least 3 players needed (4+ recommended)
+                </motion.p>
+              )}
+            </AnimatePresence>
+          </motion.div>
         )}
       </main>
     </div>
