@@ -201,7 +201,7 @@ const Menu = () => {
                     <div className="pt-4 mt-4 border-t border-border space-y-4">
                       <div className="space-y-2">
                         <label className="text-sm font-medium" htmlFor="guest-name-input">Choose a display name</label>
-                        <div className="relative">
+                        <div className="relative overflow-hidden">
                           <Input 
                             id="guest-name-input"
                             placeholder="" 
@@ -216,9 +216,11 @@ const Menu = () => {
                           {guestName.length === 0 && (
                             <span 
                               aria-hidden="true" 
-                              className="absolute left-3 top-1/2 -translate-y-1/2 text-base pointer-events-none animated-placeholder"
+                              className="absolute inset-y-0 left-0 flex items-center pl-3 pr-3 pointer-events-none max-w-full"
                             >
-                              Enter your name
+                              <span className="animated-placeholder text-base truncate">
+                                Enter your name
+                              </span>
                             </span>
                           )}
                         </div>
