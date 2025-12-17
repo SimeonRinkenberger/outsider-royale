@@ -12,7 +12,7 @@ import { usePageTransition } from '@/components/PageTransition';
 
 const Menu = () => {
   const navigate = useNavigate();
-  const { navigateWithTransition } = usePageTransition();
+  const { navigateWithTransition, navigateWithTransitionFromCoords } = usePageTransition();
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [displayName, setDisplayName] = useState<string | null>(null);
@@ -73,6 +73,16 @@ const Menu = () => {
       toast.error('Please enter a name (1-50 characters)');
       return;
     }
+    
+    // Capture button position before async operation
+    let buttonX = window.innerWidth / 2;
+    let buttonY = window.innerHeight / 2;
+    if (event?.currentTarget) {
+      const rect = event.currentTarget.getBoundingClientRect();
+      buttonX = rect.left + rect.width / 2;
+      buttonY = rect.top + rect.height / 2;
+    }
+    
     setIsCreatingGuest(true);
     try {
       const {
@@ -87,12 +97,8 @@ const Menu = () => {
       toast.success(`Welcome, ${data.display_name}!`);
       setIsCreatingGuest(false);
       
-      // Navigate after successful profile creation (outside try-catch)
-      if (event) {
-        navigateWithTransition('/home', event);
-      } else {
-        navigate('/home');
-      }
+      // Navigate with pre-captured coordinates
+      navigateWithTransitionFromCoords('/home', buttonX, buttonY);
     } catch (error) {
       console.error('Error creating profile:', error);
       toast.error('Failed to create profile');

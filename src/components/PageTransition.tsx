@@ -36,7 +36,18 @@ export const usePageTransition = () => {
     triggerTransition(x, y, path);
   }, [navigate]);
 
-  return { navigateWithTransition };
+  const navigateWithTransitionFromCoords = useCallback((path: string, x: number, y: number) => {
+    const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    
+    if (prefersReducedMotion || !triggerTransition) {
+      navigate(path);
+      return;
+    }
+
+    triggerTransition(x, y, path);
+  }, [navigate]);
+
+  return { navigateWithTransition, navigateWithTransitionFromCoords };
 };
 
 export const PageTransitionOverlay = () => {
