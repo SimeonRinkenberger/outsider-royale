@@ -572,7 +572,7 @@ const Lobby = () => {
               </CollapsibleTrigger>
               <CollapsibleContent className="mt-4">
                 <GameConfigPanel
-                  playerCount={players.length}
+                  playerCount={Math.max(3, players.length)}
                   customCategories={customCategories}
                   customModifiers={customModifiers}
                   config={gameConfig}
