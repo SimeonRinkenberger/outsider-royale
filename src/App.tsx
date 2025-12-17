@@ -9,6 +9,7 @@ import { getStoredUserId } from './lib/gameUtils';
 
 import ThemeToggle from './components/ThemeToggle';
 import ForceUpdateButton from './components/ForceUpdateButton';
+import { PageTransitionOverlay } from './components/PageTransition';
 import Menu from './pages/Menu';
 import Onboarding from './pages/Onboarding';
 import Home from './pages/Home';
@@ -54,6 +55,7 @@ const App = () => (
         <BrowserRouter>
           <ThemeToggle />
           <ForceUpdateButton />
+          <PageTransitionOverlay />
           
           <Routes>
             <Route path="/" element={<Menu />} />

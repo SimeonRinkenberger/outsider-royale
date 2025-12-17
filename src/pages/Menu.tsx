@@ -8,8 +8,11 @@ import { getStoredUserId, getStoredDisplayName, clearStorage, setStoredUserId, s
 import { Users, Wifi, User, LogIn, BarChart3 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
+import { usePageTransition } from '@/components/PageTransition';
+
 const Menu = () => {
   const navigate = useNavigate();
+  const { navigateWithTransition } = usePageTransition();
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [displayName, setDisplayName] = useState<string | null>(null);
@@ -55,17 +58,17 @@ const Menu = () => {
   const handleInPerson = () => {
     navigate('/in-person');
   };
-  const handleOnline = () => {
+  const handleOnline = (event: React.MouseEvent) => {
     // Check if user has a profile (guest or authenticated)
     const userId = getStoredUserId();
     if (userId) {
-      navigate('/home');
+      navigateWithTransition('/home', event);
     } else {
       // Show the guest input instead of navigating
       setShowGuestInput(true);
     }
   };
-  const handleGuestContinue = async () => {
+  const handleGuestContinue = async (event?: React.MouseEvent<HTMLButtonElement>) => {
     if (!guestName.trim() || guestName.length > 50) {
       toast.error('Please enter a name (1-50 characters)');
       return;
@@ -82,7 +85,12 @@ const Menu = () => {
       setStoredUserId(data.id);
       setStoredDisplayName(data.display_name);
       toast.success(`Welcome, ${data.display_name}!`);
-      navigate('/home');
+      
+      if (event) {
+        navigateWithTransition('/home', event);
+      } else {
+        navigate('/home');
+      }
     } catch (error) {
       console.error('Error creating profile:', error);
       toast.error('Failed to create profile');
@@ -202,32 +210,34 @@ const Menu = () => {
                     <div className="pt-4 mt-4 border-t border-border space-y-4">
                       <div className="space-y-2">
                         <label className="text-sm font-medium" htmlFor="guest-name-input">Choose a display name</label>
-                        <div className="relative overflow-hidden">
-                          <Input 
-                            id="guest-name-input"
-                            placeholder="" 
-                            value={guestName} 
-                            onChange={e => setGuestName(e.target.value)} 
-                            maxLength={50} 
-                            onKeyDown={e => e.key === 'Enter' && handleGuestContinue()} 
-                            autoFocus 
-                            onClick={e => e.stopPropagation()} 
-                            onFocus={() => setHasAnimated(true)}
-                            className="h-12 text-base pl-3" 
-                          />
-                          {guestName.length === 0 && (
-                            <span 
-                              aria-hidden="true" 
-                              className="absolute inset-y-0 left-0 flex items-center pl-3 pr-3 pointer-events-none max-w-full"
-                            >
-                              <span className="relative text-base truncate">
-                                <span className="placeholder-base">Enter your name</span>
-                                {hasAnimated && (
-                                  <span className="placeholder-highlight" aria-hidden="true">Enter your name</span>
-                                )}
+                        <div className="relative rounded-md focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2 focus-within:ring-offset-background">
+                          <div className="relative overflow-hidden rounded-md">
+                            <Input 
+                              id="guest-name-input"
+                              placeholder="" 
+                              value={guestName} 
+                              onChange={e => setGuestName(e.target.value)} 
+                              maxLength={50} 
+                              onKeyDown={e => e.key === 'Enter' && handleGuestContinue()} 
+                              autoFocus 
+                              onClick={e => e.stopPropagation()} 
+                              onFocus={() => setHasAnimated(true)}
+                              className="h-12 text-base pl-3 focus-visible:ring-0 focus-visible:ring-offset-0" 
+                            />
+                            {guestName.length === 0 && (
+                              <span 
+                                aria-hidden="true" 
+                                className="absolute inset-y-0 left-0 flex items-center pl-3 pr-3 pointer-events-none max-w-full z-10"
+                              >
+                                <span className="relative text-base truncate">
+                                  <span className="placeholder-base">Enter your name</span>
+                                  {hasAnimated && (
+                                    <span className="placeholder-highlight" aria-hidden="true">Enter your name</span>
+                                  )}
+                                </span>
                               </span>
-                            </span>
-                          )}
+                            )}
+                          </div>
                         </div>
                         <p className="text-xs text-muted-foreground">
                           {guestName.length}/50 characters
@@ -245,7 +255,7 @@ const Menu = () => {
                         </Button>
                         <Button onClick={e => {
                       e.stopPropagation();
-                      handleGuestContinue();
+                      handleGuestContinue(e);
                     }} disabled={isCreatingGuest || !guestName.trim()} className="flex-1">
                           {isCreatingGuest ? 'Creating...' : 'Continue'}
                         </Button>
