@@ -71,7 +71,7 @@ const Lobby = () => {
   const playerCardVariants = {
     initial: prefersReducedMotion 
       ? { opacity: 0 }
-      : { x: -48, opacity: 0, scale: 0.98, filter: 'blur(3px)' },
+      : { x: -56, opacity: 0, scale: 0.97, filter: 'blur(4px)' },
     animate: { 
       x: 0, 
       opacity: 1, 
@@ -81,11 +81,22 @@ const Lobby = () => {
     exit: prefersReducedMotion 
       ? { opacity: 0 }
       : { 
-          x: 48, 
+          x: 56, 
           opacity: 0, 
-          scale: 0.98, 
-          filter: 'blur(3px)'
+          scale: 0.97, 
+          filter: 'blur(4px)'
         }
+  };
+
+  // Animation timing
+  const enterTransition = {
+    duration: 0.6,
+    ease: [0.2, 0.8, 0.2, 1] as const
+  };
+  
+  const exitTransition = {
+    duration: 0.7,
+    ease: [0.2, 0.8, 0.2, 1] as const
   };
 
   // Container variants for stagger effect
@@ -98,9 +109,9 @@ const Lobby = () => {
     }
   };
 
-  // Slower animation durations
-  const animationDuration = 0.55;
-  const exitDuration = 0.45;
+  // Animation durations
+  const animationDuration = 0.6;
+  const exitDuration = 0.7;
 
   // Track player joins/leaves and show toasts
   useEffect(() => {
@@ -551,7 +562,7 @@ const Lobby = () => {
                       animate={playerCardVariants.animate}
                       exit={playerCardVariants.exit}
                       transition={{
-                        duration: animationDuration,
+                        duration: exitDuration,
                         ease: [0.2, 0.8, 0.2, 1] as const,
                         layout: { duration: animationDuration, ease: [0.2, 0.8, 0.2, 1] as const }
                       }}
