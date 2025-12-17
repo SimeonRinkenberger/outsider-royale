@@ -127,47 +127,105 @@ All colors MUST be HSL.
   animation: pulse-glow-slow 3s ease-in-out infinite;
 }
 
-/* Animated placeholder overlay */
+/* Apple-inspired animated placeholder */
 @keyframes placeholder-shimmer {
   0% {
-    background-position: -200% center;
+    background-position: -100% center;
   }
   100% {
     background-position: 200% center;
   }
 }
 
-@keyframes placeholder-wave {
-  0%, 100% {
-    transform: translateY(0);
+@keyframes placeholder-mask-slide {
+  0% {
+    -webkit-mask-position: -100% center;
+    mask-position: -100% center;
   }
-  50% {
-    transform: translateY(-2px);
+  100% {
+    -webkit-mask-position: 200% center;
+    mask-position: 200% center;
   }
 }
 
-.animated-placeholder {
+@keyframes placeholder-slingshot {
+  0%, 100% {
+    transform: scaleX(1) skewX(0deg);
+  }
+  25% {
+    transform: scaleX(1.02) skewX(-0.5deg);
+  }
+  50% {
+    transform: scaleX(0.98) skewX(0.5deg);
+  }
+  75% {
+    transform: scaleX(1.01) skewX(-0.25deg);
+  }
+}
+
+/* Base placeholder layer - slightly dim */
+.placeholder-base {
+  color: hsl(var(--muted-foreground) / 0.5);
+}
+
+/* Animated highlight layer */
+.placeholder-highlight {
+  position: absolute;
+  inset: 0;
   background: linear-gradient(
     90deg,
-    hsl(var(--muted-foreground)) 0%,
-    hsl(var(--primary)) 20%,
-    hsl(var(--accent)) 40%,
-    hsl(var(--primary)) 60%,
-    hsl(var(--muted-foreground)) 80%,
-    hsl(var(--muted-foreground)) 100%
+    transparent 0%,
+    hsl(var(--muted-foreground) / 0.7) 35%,
+    hsl(var(--foreground) / 0.85) 50%,
+    hsl(var(--muted-foreground) / 0.7) 65%,
+    transparent 100%
   );
-  background-size: 300% auto;
+  background-size: 50% 100%;
   background-clip: text;
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
-  animation: placeholder-shimmer 2s ease-in-out infinite, placeholder-wave 2s ease-in-out infinite;
+  -webkit-mask-image: linear-gradient(
+    90deg,
+    transparent 0%,
+    black 40%,
+    black 60%,
+    transparent 100%
+  );
+  mask-image: linear-gradient(
+    90deg,
+    transparent 0%,
+    black 40%,
+    black 60%,
+    transparent 100%
+  );
+  -webkit-mask-size: 40% 100%;
+  mask-size: 40% 100%;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  animation: 
+    placeholder-shimmer 2.2s cubic-bezier(0.2, 0.8, 0.2, 1) infinite,
+    placeholder-mask-slide 2.2s cubic-bezier(0.2, 0.8, 0.2, 1) infinite,
+    placeholder-slingshot 2.2s cubic-bezier(0.2, 0.8, 0.2, 1) infinite;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .animated-placeholder {
+  .placeholder-highlight {
     animation: none;
     background: none;
     -webkit-text-fill-color: hsl(var(--muted-foreground));
+    -webkit-mask-image: none;
+    mask-image: none;
+  }
+  .placeholder-base {
     color: hsl(var(--muted-foreground));
+  }
+}
+
+/* Fallback for browsers without mask support */
+@supports not (mask-image: linear-gradient(black, black)) {
+  .placeholder-highlight {
+    -webkit-mask-image: none;
+    mask-image: none;
+    animation: placeholder-shimmer 2.2s cubic-bezier(0.2, 0.8, 0.2, 1) infinite;
   }
 }
