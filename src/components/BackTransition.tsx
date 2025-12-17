@@ -70,12 +70,12 @@ export const BackTransitionOverlay = () => {
     isActive: false,
     targetPath: '',
   });
-  const [phase, setPhase] = useState<'idle' | 'init' | 'slide' | 'done'>('idle');
+  const [phase, setPhase] = useState<'idle' | 'covering' | 'slide' | 'done'>('idle');
 
   useEffect(() => {
     triggerBackTransition = (path: string) => {
       setState({ isActive: true, targetPath: path });
-      setPhase('init');
+      setPhase('covering');
     };
 
     return () => {
@@ -84,8 +84,10 @@ export const BackTransitionOverlay = () => {
   }, []);
 
   useEffect(() => {
-    if (phase === 'init') {
-      // Start the slide animation after a frame to ensure initial state renders
+    if (phase === 'covering') {
+      // Navigate immediately so new page renders underneath
+      navigate(state.targetPath);
+      // Start slide animation after a frame
       const frameTimer = requestAnimationFrame(() => {
         requestAnimationFrame(() => {
           setPhase('slide');
@@ -95,45 +97,35 @@ export const BackTransitionOverlay = () => {
     }
 
     if (phase === 'slide') {
-      // Navigate and cleanup after animation
-      const navTimer = setTimeout(() => {
-        navigate(state.targetPath);
+      // Wait for animation to complete
+      const timer = setTimeout(() => {
         setPhase('done');
-      }, 380);
-      return () => clearTimeout(navTimer);
+      }, 400);
+      return () => clearTimeout(timer);
     }
 
     if (phase === 'done') {
-      const cleanupTimer = setTimeout(() => {
-        setState({ isActive: false, targetPath: '' });
-        setPhase('idle');
-      }, 50);
-      return () => clearTimeout(cleanupTimer);
+      setState({ isActive: false, targetPath: '' });
+      setPhase('idle');
     }
   }, [phase, navigate, state.targetPath]);
 
   if (!state.isActive) return null;
 
-  const isAnimating = phase === 'slide' || phase === 'done';
+  const isSliding = phase === 'slide' || phase === 'done';
 
   return createPortal(
-    <div className="fixed inset-0 z-[9998] pointer-events-none overflow-hidden">
-      {/* Incoming page (slides in from left) */}
+    <div 
+      className="fixed inset-0 z-[9998] overflow-hidden"
+      style={{ pointerEvents: phase === 'done' ? 'none' : 'auto' }}
+    >
+      {/* Outgoing page overlay - slides right to reveal new page underneath */}
       <div
         className="absolute inset-0 bg-background"
         style={{
-          transform: isAnimating ? 'translateX(0)' : 'translateX(-30%)',
-          opacity: isAnimating ? 1 : 0.7,
-          transition: phase === 'init' ? 'none' : 'transform 400ms cubic-bezier(0.2, 0.8, 0.2, 1), opacity 400ms cubic-bezier(0.2, 0.8, 0.2, 1)',
-        }}
-      />
-      {/* Outgoing page overlay (slides out to right) */}
-      <div
-        className="absolute inset-0 bg-background"
-        style={{
-          transform: isAnimating ? 'translateX(100%)' : 'translateX(0)',
-          transition: phase === 'init' ? 'none' : 'transform 400ms cubic-bezier(0.2, 0.8, 0.2, 1)',
-          boxShadow: '-10px 0 30px rgba(0, 0, 0, 0.15)',
+          transform: isSliding ? 'translateX(100%)' : 'translateX(0)',
+          transition: phase === 'covering' ? 'none' : 'transform 400ms cubic-bezier(0.25, 0.46, 0.45, 0.94)',
+          boxShadow: isSliding ? 'none' : '-8px 0 24px rgba(0, 0, 0, 0.12)',
         }}
       />
     </div>,
