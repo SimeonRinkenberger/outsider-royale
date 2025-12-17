@@ -55,8 +55,8 @@ const Menu = () => {
     checkAuth();
     return () => subscription.unsubscribe();
   }, []);
-  const handleInPerson = () => {
-    navigate('/in-person');
+  const handleInPerson = (event: React.MouseEvent) => {
+    navigateWithTransition('/in-person', event);
   };
   const handleOnline = (event: React.MouseEvent) => {
     // Check if user has a profile (guest or authenticated)
@@ -159,7 +159,7 @@ const Menu = () => {
           duration: 0.5,
           delay: 0.1
         }}>
-            <Card className="p-6 cursor-pointer hover:scale-[1.02] transition-all duration-300 border-2 hover:border-primary/50" onClick={handleInPerson}>
+            <Card className="p-6 cursor-pointer hover:scale-[1.02] transition-all duration-300 border-2 hover:border-primary/50" onClick={(e) => handleInPerson(e)}>
               <div className="flex items-center gap-4">
                 <div className="p-3 rounded-xl bg-gradient-primary">
                   <Users className="h-8 w-8 text-white" />
