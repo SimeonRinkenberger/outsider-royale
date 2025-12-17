@@ -423,7 +423,7 @@ const Lobby = () => {
   }
 
   return (
-    <div className="min-h-screen bg-background pb-48">
+    <div className="min-h-screen bg-background pb-48" style={{ scrollbarGutter: 'stable' }}>
       <GameHeader title="Lobby" showBack={true} onBack={leaveLobby} />
 
       <main className="p-4 max-w-md mx-auto space-y-6 py-6">
