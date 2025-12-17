@@ -203,9 +203,9 @@ All colors MUST be HSL.
   -webkit-mask-repeat: no-repeat;
   mask-repeat: no-repeat;
   animation: 
-    placeholder-shimmer 2.2s cubic-bezier(0.2, 0.8, 0.2, 1) infinite,
-    placeholder-mask-slide 2.2s cubic-bezier(0.2, 0.8, 0.2, 1) infinite,
-    placeholder-slingshot 2.2s cubic-bezier(0.2, 0.8, 0.2, 1) infinite;
+    placeholder-shimmer 1.8s cubic-bezier(0.2, 0.8, 0.2, 1) forwards,
+    placeholder-mask-slide 1.8s cubic-bezier(0.2, 0.8, 0.2, 1) forwards,
+    placeholder-slingshot 1.8s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
 }
 
 @media (prefers-reduced-motion: reduce) {

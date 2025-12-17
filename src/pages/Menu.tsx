@@ -15,6 +15,7 @@ const Menu = () => {
   const [displayName, setDisplayName] = useState<string | null>(null);
   const [showGuestInput, setShowGuestInput] = useState(false);
   const [guestName, setGuestName] = useState('');
+  const [hasAnimated, setHasAnimated] = useState(false);
   const [isCreatingGuest, setIsCreatingGuest] = useState(false);
   useEffect(() => {
     const checkAuth = async () => {
@@ -211,6 +212,7 @@ const Menu = () => {
                             onKeyDown={e => e.key === 'Enter' && handleGuestContinue()} 
                             autoFocus 
                             onClick={e => e.stopPropagation()} 
+                            onFocus={() => setHasAnimated(true)}
                             className="h-12 text-base pl-3" 
                           />
                           {guestName.length === 0 && (
@@ -220,7 +222,9 @@ const Menu = () => {
                             >
                               <span className="relative text-base truncate">
                                 <span className="placeholder-base">Enter your name</span>
-                                <span className="placeholder-highlight" aria-hidden="true">Enter your name</span>
+                                {hasAnimated && (
+                                  <span className="placeholder-highlight" aria-hidden="true">Enter your name</span>
+                                )}
                               </span>
                             </span>
                           )}
@@ -235,6 +239,7 @@ const Menu = () => {
                       e.stopPropagation();
                       setShowGuestInput(false);
                       setGuestName('');
+                      setHasAnimated(false);
                     }} className="flex-1">
                           Cancel
                         </Button>
