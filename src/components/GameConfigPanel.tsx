@@ -66,9 +66,9 @@ export const GameConfigPanel = ({
   onUpdateModifier,
   onDeleteModifier,
 }: GameConfigPanelProps) => {
-  const [gameModeOpen, setGameModeOpen] = useState(true);
-  const [gameSettingsOpen, setGameSettingsOpen] = useState(true);
-  const [customizeOpen, setCustomizeOpen] = useState(true);
+  const [gameModeOpen, setGameModeOpen] = useState(false);
+  const [gameSettingsOpen, setGameSettingsOpen] = useState(false);
+  const [customizeOpen, setCustomizeOpen] = useState(false);
 
   const maxImposters = Math.max(1, playerCount - 1);
   const recommendedImposters = playerCount <= 4 ? 1 
