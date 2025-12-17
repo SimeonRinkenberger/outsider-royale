@@ -218,8 +218,9 @@ const Menu = () => {
                               aria-hidden="true" 
                               className="absolute inset-y-0 left-0 flex items-center pl-3 pr-3 pointer-events-none max-w-full"
                             >
-                              <span className="animated-placeholder text-base truncate">
-                                Enter your name
+                              <span className="relative text-base truncate">
+                                <span className="placeholder-base">Enter your name</span>
+                                <span className="placeholder-highlight" aria-hidden="true">Enter your name</span>
                               </span>
                             </span>
                           )}
