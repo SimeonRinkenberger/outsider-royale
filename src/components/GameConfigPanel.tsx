@@ -1,14 +1,15 @@
+import { useState } from 'react';
 import { Card } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Slider } from '@/components/ui/slider';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Button } from '@/components/ui/button';
-import { Settings, Gamepad2, Palette, Sparkles } from 'lucide-react';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { Settings, Gamepad2, Palette, Sparkles, ChevronDown } from 'lucide-react';
 import { GameMode } from '@/types/game';
 import { CustomCategoryManager } from '@/components/CustomCategoryManager';
 import { GameModifiers } from '@/components/GameModifiers';
 import { CustomCategory, CustomModifier, AVAILABLE_MODIFIERS } from '@/hooks/useCustomContent';
-
 const CATEGORIES = [
   { value: 'animal', label: 'Animals' },
   { value: 'brand', label: 'Brands' },
@@ -65,6 +66,10 @@ export const GameConfigPanel = ({
   onUpdateModifier,
   onDeleteModifier,
 }: GameConfigPanelProps) => {
+  const [gameModeOpen, setGameModeOpen] = useState(true);
+  const [gameSettingsOpen, setGameSettingsOpen] = useState(true);
+  const [customizeOpen, setCustomizeOpen] = useState(true);
+
   const maxImposters = Math.max(1, playerCount - 1);
   const recommendedImposters = playerCount <= 4 ? 1 
     : playerCount <= 7 ? 2 
@@ -107,43 +112,55 @@ export const GameConfigPanel = ({
   return (
     <div className="space-y-4">
       {/* Game Mode */}
-      <Card className="p-4 bg-gradient-card border-border space-y-5">
-        <div className="flex items-center gap-2 text-sm font-semibold text-muted-foreground">
-          <Gamepad2 className="h-4 w-4" />
-          Game Mode
-        </div>
-
-        <div className="space-y-2">
-          {GAME_MODES.map((mode) => (
-            <div 
-              key={mode.value}
-              onClick={() => updateConfig({ gameMode: mode.value })}
-              className={`p-3 rounded-lg border cursor-pointer transition-colors ${
-                config.gameMode === mode.value 
-                  ? 'border-primary bg-primary/10' 
-                  : 'border-border hover:bg-muted/50'
-              }`}
-            >
-              <div className="flex items-center gap-2">
-                <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${
-                  config.gameMode === mode.value ? 'border-primary' : 'border-muted-foreground'
-                }`}>
-                  {config.gameMode === mode.value && <div className="w-2 h-2 rounded-full bg-primary" />}
-                </div>
-                <span className="font-medium">{mode.label}</span>
-              </div>
-              <p className="text-xs text-muted-foreground mt-1 ml-6">{mode.description}</p>
+      <Collapsible open={gameModeOpen} onOpenChange={setGameModeOpen}>
+        <Card className="p-4 bg-gradient-card border-border">
+          <CollapsibleTrigger className="flex items-center justify-between w-full">
+            <div className="flex items-center gap-2 text-sm font-semibold text-muted-foreground">
+              <Gamepad2 className="h-4 w-4" />
+              Game Mode
             </div>
-          ))}
-        </div>
-      </Card>
+            <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform duration-200 ${gameModeOpen ? 'rotate-180' : ''}`} />
+          </CollapsibleTrigger>
+          <CollapsibleContent>
+            <div className="space-y-2 pt-4">
+              {GAME_MODES.map((mode) => (
+                <div 
+                  key={mode.value}
+                  onClick={() => updateConfig({ gameMode: mode.value })}
+                  className={`p-3 rounded-lg border cursor-pointer transition-colors ${
+                    config.gameMode === mode.value 
+                      ? 'border-primary bg-primary/10' 
+                      : 'border-border hover:bg-muted/50'
+                  }`}
+                >
+                  <div className="flex items-center gap-2">
+                    <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${
+                      config.gameMode === mode.value ? 'border-primary' : 'border-muted-foreground'
+                    }`}>
+                      {config.gameMode === mode.value && <div className="w-2 h-2 rounded-full bg-primary" />}
+                    </div>
+                    <span className="font-medium">{mode.label}</span>
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1 ml-6">{mode.description}</p>
+                </div>
+              ))}
+            </div>
+          </CollapsibleContent>
+        </Card>
+      </Collapsible>
 
       {/* Game Settings */}
-      <Card className="p-4 bg-gradient-card border-border space-y-5">
-        <div className="flex items-center gap-2 text-sm font-semibold text-muted-foreground">
-          <Settings className="h-4 w-4" />
-          Game Settings
-        </div>
+      <Collapsible open={gameSettingsOpen} onOpenChange={setGameSettingsOpen}>
+        <Card className="p-4 bg-gradient-card border-border">
+          <CollapsibleTrigger className="flex items-center justify-between w-full">
+            <div className="flex items-center gap-2 text-sm font-semibold text-muted-foreground">
+              <Settings className="h-4 w-4" />
+              Game Settings
+            </div>
+            <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform duration-200 ${gameSettingsOpen ? 'rotate-180' : ''}`} />
+          </CollapsibleTrigger>
+          <CollapsibleContent>
+            <div className="space-y-5 pt-4">
 
         {/* Outsider Count */}
         <div className="space-y-3">
@@ -319,54 +336,65 @@ export const GameConfigPanel = ({
             <p className="text-xs text-destructive">Select at least one category</p>
           )}
         </div>
-      </Card>
+            </div>
+          </CollapsibleContent>
+        </Card>
+      </Collapsible>
 
       {/* Customize Game */}
-      <Card className="p-4 bg-gradient-card border-border space-y-5">
-        <div className="flex items-center gap-2 text-sm font-semibold text-muted-foreground">
-          <Palette className="h-4 w-4" />
-          Customize Game
-        </div>
-
-        <GameModifiers
-          selectedModifiers={config.selectedModifiers}
-          onToggle={toggleModifier}
-          customModifiers={customModifiers}
-          onAddModifier={onAddModifier}
-          onUpdateModifier={onUpdateModifier}
-          onDeleteModifier={onDeleteModifier}
-        />
-
-        {/* Timed Round Duration - show when timed-round modifier is selected */}
-        {config.selectedModifiers.includes('timed-round') && (
-          <div className="space-y-3 border-t border-border pt-4">
-            <div className="flex items-center justify-between">
-              <Label className="text-sm">Time Per Clue</Label>
-              <span className="text-sm font-bold text-primary">{config.timedRoundDuration}s</span>
+      <Collapsible open={customizeOpen} onOpenChange={setCustomizeOpen}>
+        <Card className="p-4 bg-gradient-card border-border">
+          <CollapsibleTrigger className="flex items-center justify-between w-full">
+            <div className="flex items-center gap-2 text-sm font-semibold text-muted-foreground">
+              <Palette className="h-4 w-4" />
+              Customize Game
             </div>
-            <Slider
-              value={[config.timedRoundDuration]}
-              onValueChange={([val]) => updateConfig({ timedRoundDuration: val })}
-              min={10}
-              max={120}
-              step={5}
-              className="w-full"
-            />
-            <p className="text-xs text-muted-foreground">
-              Players have {config.timedRoundDuration} seconds to submit each clue
-            </p>
-          </div>
-        )}
+            <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform duration-200 ${customizeOpen ? 'rotate-180' : ''}`} />
+          </CollapsibleTrigger>
+          <CollapsibleContent>
+            <div className="space-y-5 pt-4">
+              <GameModifiers
+                selectedModifiers={config.selectedModifiers}
+                onToggle={toggleModifier}
+                customModifiers={customModifiers}
+                onAddModifier={onAddModifier}
+                onUpdateModifier={onUpdateModifier}
+                onDeleteModifier={onDeleteModifier}
+              />
 
-        <div className="border-t border-border pt-4">
-          <CustomCategoryManager
-            categories={customCategories}
-            onAdd={onAddCategory}
-            onUpdate={onUpdateCategory}
-            onDelete={onDeleteCategory}
-          />
-        </div>
-      </Card>
+              {/* Timed Round Duration - show when timed-round modifier is selected */}
+              {config.selectedModifiers.includes('timed-round') && (
+                <div className="space-y-3 border-t border-border pt-4">
+                  <div className="flex items-center justify-between">
+                    <Label className="text-sm">Time Per Clue</Label>
+                    <span className="text-sm font-bold text-primary">{config.timedRoundDuration}s</span>
+                  </div>
+                  <Slider
+                    value={[config.timedRoundDuration]}
+                    onValueChange={([val]) => updateConfig({ timedRoundDuration: val })}
+                    min={10}
+                    max={120}
+                    step={5}
+                    className="w-full"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Players have {config.timedRoundDuration} seconds to submit each clue
+                  </p>
+                </div>
+              )}
+
+              <div className="border-t border-border pt-4">
+                <CustomCategoryManager
+                  categories={customCategories}
+                  onAdd={onAddCategory}
+                  onUpdate={onUpdateCategory}
+                  onDelete={onDeleteCategory}
+                />
+              </div>
+            </div>
+          </CollapsibleContent>
+        </Card>
+      </Collapsible>
     </div>
   );
 };
