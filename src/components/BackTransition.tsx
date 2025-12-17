@@ -70,12 +70,12 @@ export const BackTransitionOverlay = () => {
     isActive: false,
     targetPath: '',
   });
-  const [phase, setPhase] = useState<'idle' | 'slide' | 'done'>('idle');
+  const [phase, setPhase] = useState<'idle' | 'init' | 'slide' | 'done'>('idle');
 
   useEffect(() => {
     triggerBackTransition = (path: string) => {
       setState({ isActive: true, targetPath: path });
-      setPhase('slide');
+      setPhase('init');
     };
 
     return () => {
@@ -84,6 +84,16 @@ export const BackTransitionOverlay = () => {
   }, []);
 
   useEffect(() => {
+    if (phase === 'init') {
+      // Start the slide animation after a frame to ensure initial state renders
+      const frameTimer = requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          setPhase('slide');
+        });
+      });
+      return () => cancelAnimationFrame(frameTimer);
+    }
+
     if (phase === 'slide') {
       // Navigate and cleanup after animation
       const navTimer = setTimeout(() => {
@@ -104,24 +114,26 @@ export const BackTransitionOverlay = () => {
 
   if (!state.isActive) return null;
 
+  const isAnimating = phase === 'slide' || phase === 'done';
+
   return createPortal(
     <div className="fixed inset-0 z-[9998] pointer-events-none overflow-hidden">
-      {/* Incoming page (from left) */}
+      {/* Incoming page (slides in from left) */}
       <div
         className="absolute inset-0 bg-background"
         style={{
-          transform: phase === 'slide' || phase === 'done' ? 'translateX(0)' : 'translateX(-30%)',
-          opacity: phase === 'slide' || phase === 'done' ? 1 : 0.5,
-          transition: 'transform 400ms cubic-bezier(0.2, 0.8, 0.2, 1), opacity 400ms cubic-bezier(0.2, 0.8, 0.2, 1)',
+          transform: isAnimating ? 'translateX(0)' : 'translateX(-30%)',
+          opacity: isAnimating ? 1 : 0.7,
+          transition: phase === 'init' ? 'none' : 'transform 400ms cubic-bezier(0.2, 0.8, 0.2, 1), opacity 400ms cubic-bezier(0.2, 0.8, 0.2, 1)',
         }}
       />
-      {/* Outgoing page overlay (slides right) */}
+      {/* Outgoing page overlay (slides out to right) */}
       <div
-        className="absolute inset-0 bg-background shadow-2xl"
+        className="absolute inset-0 bg-background"
         style={{
-          transform: phase === 'slide' || phase === 'done' ? 'translateX(100%)' : 'translateX(0)',
-          transition: 'transform 400ms cubic-bezier(0.2, 0.8, 0.2, 1)',
-          boxShadow: '-10px 0 30px rgba(0, 0, 0, 0.1)',
+          transform: isAnimating ? 'translateX(100%)' : 'translateX(0)',
+          transition: phase === 'init' ? 'none' : 'transform 400ms cubic-bezier(0.2, 0.8, 0.2, 1)',
+          boxShadow: '-10px 0 30px rgba(0, 0, 0, 0.15)',
         }}
       />
     </div>,
