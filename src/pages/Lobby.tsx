@@ -71,7 +71,7 @@ const Lobby = () => {
   const playerCardVariants = {
     initial: prefersReducedMotion 
       ? { opacity: 0 }
-      : { x: -36, opacity: 0, scale: 0.985, filter: 'blur(2px)' },
+      : { x: -48, opacity: 0, scale: 0.98, filter: 'blur(3px)' },
     animate: { 
       x: 0, 
       opacity: 1, 
@@ -81,10 +81,10 @@ const Lobby = () => {
     exit: prefersReducedMotion 
       ? { opacity: 0 }
       : { 
-          x: 36, 
+          x: 48, 
           opacity: 0, 
-          scale: 0.985, 
-          filter: 'blur(2px)'
+          scale: 0.98, 
+          filter: 'blur(3px)'
         }
   };
 
@@ -92,23 +92,15 @@ const Lobby = () => {
   const containerVariants = {
     animate: {
       transition: {
-        staggerChildren: 0.06,
-        delayChildren: 0.02
+        staggerChildren: 0.08,
+        delayChildren: 0.03
       }
     }
   };
 
-  // Transition config
-  const playerCardTransition = {
-    duration: 0.32,
-    ease: [0.2, 0.8, 0.2, 1] as const,
-    layout: { duration: 0.32, ease: [0.2, 0.8, 0.2, 1] as const }
-  };
-
-  const exitTransition = {
-    duration: 0.24,
-    ease: [0.2, 0.8, 0.2, 1] as const
-  };
+  // Slower animation durations
+  const animationDuration = 0.55;
+  const exitDuration = 0.45;
 
   // Track player joins/leaves and show toasts
   useEffect(() => {
@@ -559,9 +551,9 @@ const Lobby = () => {
                       animate={playerCardVariants.animate}
                       exit={playerCardVariants.exit}
                       transition={{
-                        duration: 0.32,
+                        duration: animationDuration,
                         ease: [0.2, 0.8, 0.2, 1] as const,
-                        layout: { duration: 0.32, ease: [0.2, 0.8, 0.2, 1] as const }
+                        layout: { duration: animationDuration, ease: [0.2, 0.8, 0.2, 1] as const }
                       }}
                     >
                       <Card className="p-4 bg-gradient-card border-border">
@@ -611,7 +603,7 @@ const Lobby = () => {
                 duration: 0.5, 
                 delay: 0.2, 
                 ease: [0.25, 0.46, 0.45, 0.94],
-                layout: { duration: 0.32, ease: [0.2, 0.8, 0.2, 1] }
+                layout: { duration: animationDuration, ease: [0.2, 0.8, 0.2, 1] as const }
               }}
             >
               <Collapsible open={settingsOpen} onOpenChange={setSettingsOpen}>

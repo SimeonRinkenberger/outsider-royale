@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Card } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
-import { Slider } from '@/components/ui/slider';
+import { FluidSlider } from '@/components/ui/fluid-slider';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Button } from '@/components/ui/button';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
@@ -170,9 +170,9 @@ export const GameConfigPanel = ({
               {config.randomImposters ? '?' : config.imposterCount}
             </span>
           </div>
-          <Slider
+          <FluidSlider
             value={[config.imposterCount]}
-            onValueChange={([val]) => updateConfig({ imposterCount: val })}
+            onValueChange={([val]) => updateConfig({ imposterCount: Math.round(val) })}
             min={1}
             max={maxImposters}
             step={1}
@@ -234,9 +234,9 @@ export const GameConfigPanel = ({
               </span>
             </div>
             {!config.randomImposters && (
-              <Slider
+              <FluidSlider
                 value={[config.votesPerPlayer]}
-                onValueChange={([val]) => updateConfig({ votesPerPlayer: val })}
+                onValueChange={([val]) => updateConfig({ votesPerPlayer: Math.round(val) })}
                 min={1}
                 max={Math.max(1, playerCount - 1)}
                 step={1}
@@ -258,9 +258,9 @@ export const GameConfigPanel = ({
               <Label className="text-sm">Rounds</Label>
               <span className="text-sm font-bold text-primary">{config.roundCount}</span>
             </div>
-            <Slider
+            <FluidSlider
               value={[config.roundCount]}
-              onValueChange={([val]) => updateConfig({ roundCount: val })}
+              onValueChange={([val]) => updateConfig({ roundCount: Math.round(val) })}
               min={1}
               max={5}
               step={1}
@@ -369,9 +369,9 @@ export const GameConfigPanel = ({
                     <Label className="text-sm">Time Per Clue</Label>
                     <span className="text-sm font-bold text-primary">{config.timedRoundDuration}s</span>
                   </div>
-                  <Slider
+                  <FluidSlider
                     value={[config.timedRoundDuration]}
-                    onValueChange={([val]) => updateConfig({ timedRoundDuration: val })}
+                    onValueChange={([val]) => updateConfig({ timedRoundDuration: Math.round(val) })}
                     min={10}
                     max={120}
                     step={5}
