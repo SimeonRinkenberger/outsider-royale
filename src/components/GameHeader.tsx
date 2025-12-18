@@ -7,6 +7,7 @@ import { getStoredUserId, getStoredAvatarId, setStoredAvatarId } from '@/lib/gam
 import { getAvatarById } from '@/components/AvatarPicker';
 import { useBackTransition } from '@/components/BackTransition';
 import { MusicControls } from '@/components/MusicControls';
+import { usePageTransition } from '@/components/PageTransition';
 
 interface GameHeaderProps {
   title: string;
@@ -20,6 +21,7 @@ const GameHeader = ({ title, showBack = true, backPath, onBack, rightContent }: 
   const navigate = useNavigate();
   const location = useLocation();
   const { navigateBack } = useBackTransition();
+  const { navigateWithTransitionFromCoords } = usePageTransition();
   const userId = getStoredUserId();
   
   // Initialize from localStorage cache immediately
@@ -67,9 +69,11 @@ const GameHeader = ({ title, showBack = true, backPath, onBack, rightContent }: 
     setTimeout(() => setIsNavigating(false), 500);
   };
 
-  const handleProfileClick = () => {
-    // Pass the current route so we can return here after auth
-    navigate('/stats', { state: { fromGame: true, originalFrom: location.pathname } });
+  const handleProfileClick = (event: React.MouseEvent) => {
+    const rect = event.currentTarget.getBoundingClientRect();
+    const x = rect.left + rect.width / 2;
+    const y = rect.top + rect.height / 2;
+    navigateWithTransitionFromCoords('/stats', x, y);
   };
 
   return (
