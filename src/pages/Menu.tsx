@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -11,6 +11,7 @@ import { Users, Wifi, User, LogIn, BarChart3, Volume2, VolumeX } from 'lucide-re
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
 import { usePageTransition } from '@/components/PageTransition';
+import { useMenuMusic } from '@/hooks/useMenuMusic';
 
 const Menu = () => {
   const navigate = useNavigate();
@@ -23,65 +24,8 @@ const Menu = () => {
   const [hasAnimated, setHasAnimated] = useState(false);
   const [isCreatingGuest, setIsCreatingGuest] = useState(false);
   
-  // Music state
-  const audioRef = useRef<HTMLAudioElement>(null);
-  const [isMuted, setIsMuted] = useState(() => localStorage.getItem('menuMusicMuted') === 'true');
-  const [volume, setVolume] = useState(() => {
-    const stored = localStorage.getItem('menuMusicVolume');
-    return stored ? parseFloat(stored) : 0.3;
-  });
-  const [hasInteracted, setHasInteracted] = useState(false);
-
-  // Handle music playback - restart from beginning each time menu mounts
-  useEffect(() => {
-    const audio = audioRef.current;
-    if (!audio) return;
-
-    audio.loop = true;
-    audio.volume = volume;
-    audio.currentTime = 0; // Always restart from beginning
-
-    const tryPlay = () => {
-      if (!isMuted) {
-        audio.currentTime = 0;
-        audio.play().catch(() => {
-          // Autoplay blocked, will play on interaction
-        });
-      }
-    };
-
-    // Try to play immediately
-    tryPlay();
-
-    // Play on first user interaction if autoplay was blocked
-    const handleInteraction = () => {
-      setHasInteracted(true);
-      tryPlay();
-    };
-
-    if (!hasInteracted) {
-      document.addEventListener('click', handleInteraction, { once: true });
-      document.addEventListener('touchstart', handleInteraction, { once: true });
-    }
-
-    return () => {
-      document.removeEventListener('click', handleInteraction);
-      document.removeEventListener('touchstart', handleInteraction);
-      audio.pause();
-      audio.currentTime = 0;
-    };
-  }, [isMuted, volume, hasInteracted]);
-
-  // Persist preferences
-  useEffect(() => {
-    localStorage.setItem('menuMusicMuted', String(isMuted));
-  }, [isMuted]);
-
-  useEffect(() => {
-    localStorage.setItem('menuMusicVolume', String(volume));
-  }, [volume]);
-
-  const toggleMute = () => setIsMuted(!isMuted);
+  // Music hook with fade effects
+  const { isMuted, volume, toggleMute, changeVolume } = useMenuMusic();
   useEffect(() => {
     const checkAuth = async () => {
       const {
@@ -179,9 +123,6 @@ const Menu = () => {
       </div>;
   }
   return <div className="min-h-screen bg-background flex flex-col">
-      {/* Hidden Audio Element */}
-      <audio ref={audioRef} src="/audio/main_menu.mp3" preload="auto" />
-      
       {/* Header */}
       <header className="bg-card border-b border-border p-4">
         <div className="max-w-md mx-auto flex items-center justify-between">
@@ -208,11 +149,7 @@ const Menu = () => {
                     <VolumeX className="h-4 w-4 text-muted-foreground" />
                     <Slider
                       value={[volume]}
-                      onValueChange={([v]) => {
-                        setVolume(v);
-                        if (v > 0 && isMuted) setIsMuted(false);
-                        if (v === 0) setIsMuted(true);
-                      }}
+                      onValueChange={([v]) => changeVolume(v)}
                       max={1}
                       step={0.01}
                       className="flex-1"
