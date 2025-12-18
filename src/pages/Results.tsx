@@ -64,6 +64,7 @@ const Results = () => {
   // Guard refs for idempotency
   const playAgainInFlightRef = useRef(false);
   const hasNavigatedToNewGameRef = useRef<string | null>(null);
+  const hasAnimatedResultRef = useRef<string | null>(null);
 
   const isHost = lobby?.host_user_id === userId;
   const outsiderPlayers = players.filter(p => outsiders.some(o => o.player_id === p.id));
@@ -609,29 +610,41 @@ const Results = () => {
       />
 
       <main className="p-4 max-w-md mx-auto space-y-6 py-6">
-        <Card className={`p-6 shadow-card border-0 text-center animate-bounce-in ${
-          groupWins ? 'bg-gradient-primary text-white' : 'bg-destructive/10 border-destructive/20'
-        }`}>
-          {groupWins ? (
-            <>
-              <Trophy className="h-16 w-16 mx-auto mb-3 text-white animate-float" />
-              <h2 className="text-2xl font-bold mb-2">Group Wins!</h2>
-              <p className="text-white/90">
-                You found the outsider! Great job detectives!
-              </p>
-            </>
-          ) : (
-            <>
-              <XCircle className="h-16 w-16 text-destructive mx-auto mb-3 animate-shake" />
-              <h2 className="text-2xl font-bold text-destructive mb-2">Outsider Wins!</h2>
-              <p className="text-muted-foreground">
-                {outsiderGuessedCorrectly 
-                  ? `${gameMetadata?.outsiderGuesser || 'The outsider'} guessed the word correctly!`
-                  : 'The outsider fooled everyone!'}
-              </p>
-            </>
-          )}
-        </Card>
+        {/* Only animate on first render for this game */}
+        {(() => {
+          const shouldAnimate = hasAnimatedResultRef.current !== game.id;
+          if (shouldAnimate) {
+            hasAnimatedResultRef.current = game.id;
+          }
+          return (
+            <Card 
+              key={game.id}
+              className={`p-6 shadow-card border-0 text-center ${shouldAnimate ? 'animate-bounce-in' : ''} ${
+                groupWins ? 'bg-gradient-primary text-white' : 'bg-destructive/10 border-destructive/20'
+              }`}
+            >
+              {groupWins ? (
+                <>
+                  <Trophy className={`h-16 w-16 mx-auto mb-3 text-white ${shouldAnimate ? 'animate-float' : ''}`} />
+                  <h2 className="text-2xl font-bold mb-2">Group Wins!</h2>
+                  <p className="text-white/90">
+                    You found the outsider! Great job detectives!
+                  </p>
+                </>
+              ) : (
+                <>
+                  <XCircle className={`h-16 w-16 text-destructive mx-auto mb-3 ${shouldAnimate ? 'animate-shake' : ''}`} />
+                  <h2 className="text-2xl font-bold text-destructive mb-2">Outsider Wins!</h2>
+                  <p className="text-muted-foreground">
+                    {outsiderGuessedCorrectly 
+                      ? `${gameMetadata?.outsiderGuesser || 'The outsider'} guessed the word correctly!`
+                      : 'The outsider fooled everyone!'}
+                  </p>
+                </>
+              )}
+            </Card>
+          );
+        })()}
 
         <Card className="p-6 bg-gradient-card border-border">
           <div className="text-center mb-4">
