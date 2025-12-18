@@ -127,7 +127,7 @@ const Stats = () => {
   };
 
   if (isLoading) {
-    return <LoadingScreen text="Loading stats" />;
+    return <LoadingScreen />;
   }
 
   const outsiderWinRate = stats ? calculatePercentage(stats.games_won_as_outsider, stats.games_played_as_outsider) : 0;

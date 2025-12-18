@@ -651,7 +651,7 @@ const Game = () => {
   }, [game?.status, lobbyId, navigate]);
 
   if (!game || !secretWord || !currentRound) {
-    return <LoadingScreen text="Loading game" />;
+    return <LoadingScreen />;
   }
 
   // Clue Round View
