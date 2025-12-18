@@ -85,6 +85,7 @@ const Game = () => {
   // Track displayed status for exit/enter animations between game phases
   const [displayedStatus, setDisplayedStatus] = useState<string | null>(null);
   const [isExiting, setIsExiting] = useState(false);
+  const prevStatusRef = useRef<string | null>(null);
   
   // Track round changes for fly-off/fly-on animations
   const prevRoundRef = useRef<number | null>(null);
@@ -98,11 +99,13 @@ const Game = () => {
     // Initial load - set status immediately
     if (displayedStatus === null) {
       setDisplayedStatus(game.status);
+      prevStatusRef.current = game.status;
       return;
     }
     
     // Status changed - trigger exit animation then update
-    if (game.status !== displayedStatus && !isExiting) {
+    if (game.status !== prevStatusRef.current) {
+      prevStatusRef.current = game.status;
       setIsExiting(true);
       // Wait for exit animation, then show new status
       const timer = setTimeout(() => {
@@ -111,7 +114,7 @@ const Game = () => {
       }, 400); // Match exit animation duration
       return () => clearTimeout(timer);
     }
-  }, [game?.status, displayedStatus, isExiting]);
+  }, [game?.status]);
   
   // Track when we first enter voting to only animate once
   useEffect(() => {
