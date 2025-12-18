@@ -166,17 +166,12 @@ export const PageTransitionOverlay = () => {
           transformOrigin: 'center center',
         }}
       >
-        {/* LoadingScreen inside the circle */}
+        {/* LoadingScreen inside the circle - positioned at viewport center */}
         <div 
-          className="absolute inset-0 flex items-center justify-center"
+          className="fixed inset-0 flex items-center justify-center"
           style={{
-            // Position the loading screen content at the center of the viewport
-            // relative to where the circle is positioned
-            left: '50%',
-            top: '50%',
-            width: '100vw',
-            height: '100vh',
-            transform: 'translate(-50%, -50%)',
+            // Use fixed positioning relative to viewport, not the circle
+            pointerEvents: 'none',
           }}
         >
           <LoadingScreen text="Loading" />

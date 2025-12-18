@@ -12,6 +12,7 @@ import { toast } from 'sonner';
 import { usePageTransition } from '@/components/PageTransition';
 import { useAudio } from '@/contexts/AudioContext';
 import { MusicControls } from '@/components/MusicControls';
+import welcomeFox from '@/assets/welcome_fox.png';
 
 const Menu = () => {
   const navigate = useNavigate();
@@ -160,7 +161,7 @@ const Menu = () => {
       }} transition={{
         duration: 0.5
       }} className="text-center space-y-2">
-          <h2 className="text-3xl font-bold">Welcome!</h2>
+          <img src={welcomeFox} alt="Welcome" className="w-64 h-auto mx-auto" />
           {displayName && <p className="text-muted-foreground">Playing as <span className="font-semibold text-foreground">{displayName}</span></p>}
           <p className="text-muted-foreground">Choose how you want to play</p>
         </motion.div>
