@@ -95,7 +95,7 @@ const Lobby = () => {
           scale: 0.97, 
           filter: 'blur(4px)',
           transition: {
-            duration: 1.2,
+            duration: 0.6,
             ease: [0.2, 0.8, 0.2, 1] as const
           }
         }
