@@ -143,17 +143,8 @@ const Stats = () => {
   const safeWinRate = stats ? calculatePercentage(stats.games_won_as_safe, stats.games_played_as_safe) : 0;
   const voteAccuracy = stats ? calculatePercentage(stats.total_correct_votes, stats.total_votes_cast) : 0;
 
-  const handleBack = (event: React.MouseEvent) => {
-    const target = event.currentTarget as HTMLElement;
-    const rect = target.getBoundingClientRect();
-    const x = rect.left + rect.width / 2;
-    const y = rect.top + rect.height / 2;
-    
-    if (fromGame) {
-      navigate(-1); // Go back to the game/lobby without transition
-    } else {
-      navigateWithTransitionFromCoords('/menu', x, y);
-    }
+  const handleBack = () => {
+    navigate(-1); // Always go back to previous page
   };
 
   return (
