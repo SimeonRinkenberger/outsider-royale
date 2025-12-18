@@ -149,31 +149,19 @@ export const PageTransitionOverlay = () => {
       className="fixed inset-0 z-[9999] pointer-events-none overflow-hidden"
       aria-hidden="true"
     >
-      <div
-        className="absolute bg-background"
+      {/* Loading content - centered in viewport, clipped by circle */}
+      <div 
+        className="fixed inset-0 flex items-center justify-center"
         style={{
-          left: state.x,
-          top: state.y,
-          width: isExpanded ? finalRadius * 2 : 0,
-          height: isExpanded ? finalRadius * 2 : 0,
-          borderRadius: '50%',
-          transform: `translate(-50%, -50%) ${isShrinking ? 'scale(0)' : 'scale(1)'}`,
+          clipPath: `circle(${isExpanded ? finalRadius : 0}px at ${state.x}px ${state.y}px)`,
           transition: isShrinking
-            ? 'transform 400ms cubic-bezier(0.2, 0.8, 0.2, 1)'
+            ? 'clip-path 400ms cubic-bezier(0.2, 0.8, 0.2, 1)'
             : phase === 'expanding'
-              ? 'width 400ms cubic-bezier(0.2, 0.8, 0.2, 1), height 400ms cubic-bezier(0.2, 0.8, 0.2, 1)'
+              ? 'clip-path 400ms cubic-bezier(0.2, 0.8, 0.2, 1)'
               : 'none',
-          transformOrigin: 'center center',
         }}
       >
-        {/* LoadingScreen inside the circle - positioned at viewport center */}
-        <div 
-          className="fixed inset-0 flex items-center justify-center"
-          style={{
-            // Use fixed positioning relative to viewport, not the circle
-            pointerEvents: 'none',
-          }}
-        >
+        <div className="bg-background w-full h-full flex items-center justify-center">
           <LoadingScreen text="Loading" />
         </div>
       </div>
