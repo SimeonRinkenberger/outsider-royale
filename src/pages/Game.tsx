@@ -13,6 +13,7 @@ import { Send, Eye, EyeOff, Users, CheckCircle2, DoorOpen, FastForward, ArrowRig
 import { ActiveModifiersDisplay } from '@/components/ActiveModifiersDisplay';
 import { SpeedRoundTimer } from '@/components/SpeedRoundTimer';
 import { getAvatarById } from '@/components/AvatarPicker';
+import { useAudio } from '@/contexts/AudioContext';
 
 interface CustomModifierData {
   id: string;
@@ -71,6 +72,7 @@ const Game = () => {
   const [playerAvatars, setPlayerAvatars] = useState<Record<string, string | null>>({});
   const { customModifiers } = useCustomContent();
   const userId = getStoredUserId();
+  const { setMusicState } = useAudio();
 
   // Fetch avatars for all players
   useEffect(() => {
@@ -94,6 +96,12 @@ const Game = () => {
     
     fetchAvatars();
   }, [players]);
+
+  // Set game music based on timed modifier
+  useEffect(() => {
+    const isTimedRound = gameMetadata?.modifiers?.includes('timed-round') ?? false;
+    setMusicState(isTimedRound ? 'game_timed' : 'game_standard');
+  }, [gameMetadata?.modifiers, setMusicState]);
 
   // Load game metadata (modifiers, custom words) from localStorage
   useEffect(() => {

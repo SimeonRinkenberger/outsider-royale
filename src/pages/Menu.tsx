@@ -3,15 +3,14 @@ import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { Slider } from '@/components/ui/slider';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { supabase } from '@/integrations/supabase/client';
 import { getStoredUserId, getStoredDisplayName, clearStorage, setStoredUserId, setStoredDisplayName } from '@/lib/gameUtils';
-import { Users, Wifi, User, LogIn, BarChart3, Volume2, VolumeX } from 'lucide-react';
+import { Users, Wifi, User, LogIn, BarChart3 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
 import { usePageTransition } from '@/components/PageTransition';
-import { useMenuMusic } from '@/hooks/useMenuMusic';
+import { useAudio } from '@/contexts/AudioContext';
+import { MusicControls } from '@/components/MusicControls';
 
 const Menu = () => {
   const navigate = useNavigate();
@@ -24,8 +23,13 @@ const Menu = () => {
   const [hasAnimated, setHasAnimated] = useState(false);
   const [isCreatingGuest, setIsCreatingGuest] = useState(false);
   
-  // Music hook with fade effects
-  const { isMuted, volume, toggleMute, changeVolume } = useMenuMusic();
+  // Set menu music on mount
+  const { setMusicState } = useAudio();
+  
+  useEffect(() => {
+    setMusicState('menu');
+  }, [setMusicState]);
+
   useEffect(() => {
     const checkAuth = async () => {
       const {
@@ -61,9 +65,11 @@ const Menu = () => {
     checkAuth();
     return () => subscription.unsubscribe();
   }, []);
+
   const handleInPerson = (event: React.MouseEvent) => {
     navigateWithTransition('/in-person', event);
   };
+
   const handleOnline = (event: React.MouseEvent) => {
     // Check if user has a profile (guest or authenticated)
     const userId = getStoredUserId();
@@ -74,6 +80,7 @@ const Menu = () => {
       setShowGuestInput(true);
     }
   };
+
   const handleGuestContinue = async (event?: React.MouseEvent<HTMLButtonElement>) => {
     if (!guestName.trim() || guestName.length > 50) {
       toast.error('Please enter a name (1-50 characters)');
@@ -111,17 +118,21 @@ const Menu = () => {
       setIsCreatingGuest(false);
     }
   };
+
   const handleAuth = () => {
     navigate('/auth');
   };
+
   const handleStats = () => {
     navigate('/stats');
   };
+
   if (isLoading) {
     return <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="animate-pulse text-muted-foreground">Loading...</div>
       </div>;
   }
+
   return <div className="min-h-screen bg-background flex flex-col">
       {/* Header */}
       <header className="bg-card border-b border-border p-4">
@@ -131,34 +142,7 @@ const Menu = () => {
           </h1>
           <div className="flex items-center gap-2">
             {/* Music Control */}
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button variant="ghost" size="icon" className="relative">
-                  {isMuted ? <VolumeX className="h-5 w-5" /> : <Volume2 className="h-5 w-5" />}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-48 p-3" align="end">
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium">Music</span>
-                    <Button variant="ghost" size="sm" onClick={toggleMute} className="h-8 px-2">
-                      {isMuted ? 'Unmute' : 'Mute'}
-                    </Button>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <VolumeX className="h-4 w-4 text-muted-foreground" />
-                    <Slider
-                      value={[volume]}
-                      onValueChange={([v]) => changeVolume(v)}
-                      max={1}
-                      step={0.01}
-                      className="flex-1"
-                    />
-                    <Volume2 className="h-4 w-4 text-muted-foreground" />
-                  </div>
-                </div>
-              </PopoverContent>
-            </Popover>
+            <MusicControls />
             
             {isAuthenticated ? <Button variant="ghost" size="icon" onClick={handleStats}>
                 <BarChart3 className="h-5 w-5" />
@@ -338,4 +322,5 @@ const Menu = () => {
       </main>
     </div>;
 };
+
 export default Menu;
