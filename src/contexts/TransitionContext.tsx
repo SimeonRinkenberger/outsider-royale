@@ -316,10 +316,10 @@ const TransitionOverlay: React.FC<TransitionOverlayProps> = ({
 }) => {
   const [isOverlayMounted] = useState(true);
 
-  // Overlay is visible during all transition phases EXCEPT idle
-  const isVisible = phase !== 'idle';
+  // Overlay is visible during expanding, loading, and shrinking - NOT during waiting-reveal or idle
+  // During waiting-reveal, the shrink has completed (radius=0), so we don't show anything
+  const isVisible = phase === 'expanding' || phase === 'loading' || phase === 'shrinking';
   const isShrinking = phase === 'shrinking';
-  const isWaitingReveal = phase === 'waiting-reveal';
   
   // Debug UI - ALWAYS render when DEBUG_MODE is true
   const debugUI = DEBUG_MODE ? createPortal(
@@ -341,7 +341,7 @@ const TransitionOverlay: React.FC<TransitionOverlayProps> = ({
         minWidth: 200,
       }}
     >
-      <div>Phase: <strong style={{ color: isShrinking || isWaitingReveal ? '#f00' : phase === 'loading' ? '#ff0' : '#0f0' }}>{phase}</strong></div>
+      <div>Phase: <strong style={{ color: isShrinking ? '#f00' : phase === 'loading' ? '#ff0' : phase === 'waiting-reveal' ? '#f90' : '#0f0' }}>{phase}</strong></div>
       <div>Radius: <strong>{currentRadius}px</strong></div>
       <div>MaxRadius: <strong>{Math.round(maxRadius)}px</strong></div>
       <div>Mounted: <strong style={{ color: '#0f0' }}>{isOverlayMounted ? 'YES' : 'NO'}</strong></div>
@@ -353,22 +353,18 @@ const TransitionOverlay: React.FC<TransitionOverlayProps> = ({
   ) : null;
 
   // ALWAYS render debug UI
-  // Only render overlay content when not idle
+  // Only render overlay content when visible (not during waiting-reveal or idle)
   if (!isVisible) {
     return debugUI;
   }
 
-  // FORCED VISIBILITY PROOF during shrinking/waiting
-  const bgColor = (isShrinking || isWaitingReveal) ? 'rgba(255, 0, 0, 0.25)' : 'hsl(var(--background))';
-  const outline = (isShrinking || isWaitingReveal) ? '3px solid red' : 'none';
+  // FORCED VISIBILITY PROOF during shrinking
+  const bgColor = isShrinking ? 'rgba(255, 0, 0, 0.25)' : 'hsl(var(--background))';
+  const outline = isShrinking ? '3px solid red' : 'none';
 
   // Build clipPath string from radius
   const cx = phase === 'expanding' ? `${origin.x}%` : '50%';
   const cy = phase === 'expanding' ? `${origin.y}%` : '50%';
-
-  // During waiting-reveal phase, keep overlay fully visible (radius at 0 means circle is gone)
-  // We need to show a full-screen overlay instead
-  const showFullOverlay = isWaitingReveal;
 
   return (
     <>
@@ -386,12 +382,11 @@ const TransitionOverlay: React.FC<TransitionOverlayProps> = ({
             outline: outline,
             opacity: 1,
             pointerEvents: 'all',
-            // During waiting-reveal, show full screen (no clipPath)
-            clipPath: showFullOverlay ? 'none' : `circle(${currentRadius}px at ${cx} ${cy})`,
-            WebkitClipPath: showFullOverlay ? 'none' : `circle(${currentRadius}px at ${cx} ${cy})`,
+            clipPath: `circle(${currentRadius}px at ${cx} ${cy})`,
+            WebkitClipPath: `circle(${currentRadius}px at ${cx} ${cy})`,
           }}
         >
-          <LoadingScreen text={loadingText} />
+          <LoadingScreen text={loadingText} isTransitionOverlay={true} />
         </div>,
         document.body
       )}
