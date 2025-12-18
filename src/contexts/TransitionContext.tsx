@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useCallback, useRef, useEffect } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { createPortal } from 'react-dom';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import LoadingScreen from '@/components/LoadingScreen';
 
 // Animation durations in ms
@@ -40,19 +40,16 @@ export const useTransition = () => {
 
 export const TransitionProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const navigate = useNavigate();
-  const location = useLocation();
   
   const [phase, setPhase] = useState<TransitionPhase>('idle');
   const [loadingText, setLoadingText] = useState('Loading');
   const [origin, setOrigin] = useState({ x: 0.5, y: 0.5 }); // Normalized 0-1
   
-  // Guards to prevent double navigation
+  // Guards and refs for state machine
   const transitionLockRef = useRef(false);
   const pendingNavigationRef = useRef<string | null>(null);
+  const prepareCallbackRef = useRef<(() => Promise<string | void>) | null>(null);
   const mountedRef = useRef(true);
-  
-  // Track if we've navigated to prevent re-navigation
-  const hasNavigatedRef = useRef(false);
   
   // Cleanup on unmount
   useEffect(() => {
@@ -61,6 +58,66 @@ export const TransitionProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       mountedRef.current = false;
     };
   }, []);
+
+  // Handle phase transitions via animation completion
+  const handleAnimationComplete = useCallback(async () => {
+    if (!mountedRef.current) return;
+    
+    console.log('[Transition] Animation complete, phase:', phase);
+    
+    if (phase === 'expanding') {
+      // Expand finished -> move to loading and run prepare
+      setPhase('loading');
+      
+      let finalRoute = pendingNavigationRef.current;
+      
+      try {
+        if (prepareCallbackRef.current) {
+          console.log('[Transition] Running prepare()');
+          const dynamicRoute = await prepareCallbackRef.current();
+          if (dynamicRoute) {
+            finalRoute = dynamicRoute;
+            pendingNavigationRef.current = dynamicRoute;
+          }
+        }
+      } catch (error) {
+        console.error('[Transition] Prepare failed:', error);
+        // Reset on error
+        setPhase('idle');
+        transitionLockRef.current = false;
+        pendingNavigationRef.current = null;
+        prepareCallbackRef.current = null;
+        return;
+      }
+      
+      if (!mountedRef.current) return;
+      console.log('[Transition] Prepare complete, navigating to:', finalRoute);
+      
+      // Navigate now (while still covered by overlay)
+      if (finalRoute) {
+        navigate(finalRoute);
+      }
+      
+      // Small delay to let React render the new route (still hidden behind overlay)
+      await new Promise(resolve => requestAnimationFrame(() => {
+        requestAnimationFrame(resolve);
+      }));
+      
+      if (!mountedRef.current) return;
+      
+      // Now trigger shrink animation
+      console.log('[Transition] Starting shrink');
+      setPhase('shrinking');
+      
+    } else if (phase === 'shrinking') {
+      // Shrink finished -> back to idle
+      console.log('[Transition] Shrink complete, going idle');
+      setPhase('idle');
+      transitionLockRef.current = false;
+      pendingNavigationRef.current = null;
+      prepareCallbackRef.current = null;
+    }
+  }, [phase, navigate]);
 
   const startTransition = useCallback(async (toRoute: string, options: TransitionOptions = {}) => {
     // Idempotency guard - prevent double transitions
@@ -81,8 +138,8 @@ export const TransitionProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     
     // Lock transition
     transitionLockRef.current = true;
-    hasNavigatedRef.current = false;
     pendingNavigationRef.current = toRoute;
+    prepareCallbackRef.current = options.prepare || null;
     
     // Set loading text and origin
     setLoadingText(options.loadingText || 'Loading');
@@ -95,68 +152,8 @@ export const TransitionProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       setOrigin({ x: 0.5, y: 0.5 });
     }
     
-    // Phase 1: Expanding
+    // Start expanding phase - the animation completion will handle the rest
     setPhase('expanding');
-    
-    // Wait for expand animation to complete
-    await new Promise(resolve => setTimeout(resolve, EXPAND_DURATION));
-    if (!mountedRef.current) return;
-    
-    console.log('[Transition] Expand complete');
-    
-    // Phase 2: Loading - execute prepare callback
-    setPhase('loading');
-    
-    let finalRoute = pendingNavigationRef.current;
-    
-    try {
-      if (options.prepare) {
-        const dynamicRoute = await options.prepare();
-        // If prepare returns a route, use that instead
-        if (dynamicRoute) {
-          finalRoute = dynamicRoute;
-          pendingNavigationRef.current = dynamicRoute;
-        }
-      }
-    } catch (error) {
-      console.error('[Transition] Prepare failed:', error);
-      // Reset on error
-      setPhase('idle');
-      transitionLockRef.current = false;
-      pendingNavigationRef.current = null;
-      return;
-    }
-    
-    if (!mountedRef.current) return;
-    console.log('[Transition] Prepare complete');
-    
-    // Navigate now (while still covered by overlay)
-    if (!hasNavigatedRef.current && finalRoute) {
-      hasNavigatedRef.current = true;
-      console.log('[Transition] Route changed ->', finalRoute);
-      navigate(finalRoute);
-    }
-    
-    // Small delay to let React render the new route (still hidden)
-    await new Promise(resolve => requestAnimationFrame(() => {
-      requestAnimationFrame(resolve);
-    }));
-    
-    if (!mountedRef.current) return;
-    
-    // Phase 3: Shrinking to reveal new screen
-    setPhase('shrinking');
-    
-    // Wait for shrink animation to complete
-    await new Promise(resolve => setTimeout(resolve, SHRINK_DURATION));
-    
-    if (!mountedRef.current) return;
-    console.log('[Transition] Shrink complete');
-    
-    // Done - cleanup
-    setPhase('idle');
-    transitionLockRef.current = false;
-    pendingNavigationRef.current = null;
   }, [navigate]);
 
   const isTransitioning = phase !== 'idle';
@@ -168,6 +165,7 @@ export const TransitionProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         phase={phase} 
         loadingText={loadingText} 
         origin={origin}
+        onAnimationComplete={handleAnimationComplete}
       />
     </TransitionContext.Provider>
   );
@@ -178,55 +176,64 @@ interface TransitionOverlayProps {
   phase: TransitionPhase;
   loadingText: string;
   origin: { x: number; y: number };
+  onAnimationComplete: () => void;
 }
 
-const TransitionOverlay: React.FC<TransitionOverlayProps> = ({ phase, loadingText, origin }) => {
-  // Calculate clip-path based on phase
+const TransitionOverlay: React.FC<TransitionOverlayProps> = ({ 
+  phase, 
+  loadingText, 
+  origin,
+  onAnimationComplete 
+}) => {
   // Origin is normalized 0-1, convert to percentage
   const originX = `${origin.x * 100}%`;
   const originY = `${origin.y * 100}%`;
   
-  const getClipPath = () => {
-    switch (phase) {
-      case 'expanding':
-        return `circle(150% at ${originX} ${originY})`;
-      case 'loading':
-        return `circle(150% at 50% 50%)`;
-      case 'shrinking':
-        return `circle(0% at 50% 50%)`;
-      case 'idle':
-      default:
-        return `circle(0% at 50% 50%)`;
-    }
+  // Define clip paths for each phase
+  const clipPaths = {
+    idle: `circle(0% at 50% 50%)`,
+    expanding: `circle(150% at ${originX} ${originY})`,
+    loading: `circle(150% at 50% 50%)`,
+    shrinking: `circle(0% at 50% 50%)`,
   };
   
-  const getInitialClipPath = () => {
-    if (phase === 'expanding') {
-      return `circle(0% at ${originX} ${originY})`;
-    }
-    return undefined; // Don't reset initial for other phases
+  const initialClipPath = `circle(0% at ${originX} ${originY})`;
+  
+  // Get animation duration based on phase
+  const getDuration = () => {
+    if (phase === 'expanding') return EXPAND_DURATION / 1000;
+    if (phase === 'shrinking') return SHRINK_DURATION / 1000;
+    return 0.1; // Quick transition for loading phase
   };
 
-  const isActive = phase !== 'idle';
+  const isVisible = phase !== 'idle';
+
+  // Don't render anything when idle
+  if (!isVisible) return null;
 
   return createPortal(
-    <AnimatePresence>
-      {isActive && (
-        <motion.div
-          key="transition-overlay"
-          className="fixed inset-0 z-[9999] flex items-center justify-center bg-background"
-          initial={getInitialClipPath() ? { clipPath: getInitialClipPath() } : false}
-          animate={{ clipPath: getClipPath() }}
-          exit={{ clipPath: 'circle(0% at 50% 50%)' }}
-          transition={{ 
-            duration: phase === 'shrinking' ? SHRINK_DURATION / 1000 : EXPAND_DURATION / 1000,
-            ease: [0.4, 0, 0.2, 1]
-          }}
-        >
-          <LoadingScreen text={loadingText} />
-        </motion.div>
-      )}
-    </AnimatePresence>,
+    <motion.div
+      key="transition-overlay"
+      className="fixed inset-0 z-[9999] flex items-center justify-center bg-background"
+      initial={{ clipPath: initialClipPath }}
+      animate={{ clipPath: clipPaths[phase] }}
+      transition={{ 
+        duration: getDuration(),
+        ease: [0.4, 0, 0.2, 1]
+      }}
+      onAnimationComplete={() => {
+        // Only trigger callback for expanding and shrinking phases
+        if (phase === 'expanding' || phase === 'shrinking') {
+          onAnimationComplete();
+        }
+      }}
+      style={{
+        // Ensure overlay blocks all interaction
+        pointerEvents: 'all',
+      }}
+    >
+      <LoadingScreen text={loadingText} />
+    </motion.div>,
     document.body
   );
 };
