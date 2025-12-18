@@ -1,5 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useState, useEffect } from 'react';
 import foxMascot from '@/assets/fox_mascot.png';
+import { useTransition } from '@/contexts/TransitionContext';
 
 interface LoadingScreenProps {
   text?: string;
@@ -9,13 +10,13 @@ interface LoadingScreenExtendedProps extends LoadingScreenProps {
   isTransitionOverlay?: boolean;
 }
 
+/**
+ * LoadingScreen - ONLY renders for TransitionOverlay or when no transition is active.
+ * This is the "Loader Police" guard to prevent double loaders.
+ */
 const LoadingScreen = ({ text = 'Loading', isTransitionOverlay = false }: LoadingScreenExtendedProps) => {
   const [dots, setDots] = useState('.');
-
-  useEffect(() => {
-    // Log when this component renders to identify source of flashes
-    console.log(`[LOADINGSCREEN] rendered isTransitionOverlay=${isTransitionOverlay}`);
-  }, [isTransitionOverlay]);
+  const { isTransitioning } = useTransition();
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -28,6 +29,17 @@ const LoadingScreen = ({ text = 'Loading', isTransitionOverlay = false }: Loadin
 
     return () => clearInterval(interval);
   }, []);
+
+  // LOADER POLICE: If a transition is active and this is NOT the overlay, render nothing
+  if (isTransitioning && !isTransitionOverlay) {
+    console.log(`[LOADER POLICE] ⛔ Blocked secondary loader: "${text}" (transition active)`);
+    return null;
+  }
+
+  // Log when this component renders
+  useEffect(() => {
+    console.log(`[LOADINGSCREEN] rendered isTransitionOverlay=${isTransitionOverlay} text="${text}"`);
+  }, [isTransitionOverlay, text]);
 
   return (
     <div className="min-h-screen bg-background flex flex-col items-center justify-center gap-4 relative">

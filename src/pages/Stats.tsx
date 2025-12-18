@@ -1,5 +1,4 @@
 import { useState, useEffect, useRef } from 'react';
-import LoadingScreen from '@/components/LoadingScreen';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -137,7 +136,25 @@ const Stats = () => {
   };
 
   if (isLoading) {
-    return <LoadingScreen text="Loading stats" />;
+    // Inline skeleton - TransitionOverlay is the only full-screen loader
+    return (
+      <div className="min-h-screen bg-background">
+        <header className="bg-card border-b border-border p-4">
+          <div className="max-w-md mx-auto flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <div className="h-10 w-10 bg-muted rounded animate-pulse"></div>
+              <div className="h-6 w-24 bg-muted rounded animate-pulse"></div>
+            </div>
+            <div className="h-8 w-20 bg-muted rounded animate-pulse"></div>
+          </div>
+        </header>
+        <main className="p-4 max-w-md mx-auto space-y-4">
+          <div className="h-32 bg-muted rounded-lg animate-pulse"></div>
+          <div className="h-24 bg-muted rounded-lg animate-pulse"></div>
+          <div className="h-24 bg-muted rounded-lg animate-pulse"></div>
+        </main>
+      </div>
+    );
   }
 
   const outsiderWinRate = stats ? calculatePercentage(stats.games_won_as_outsider, stats.games_played_as_outsider) : 0;
