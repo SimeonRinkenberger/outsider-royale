@@ -107,11 +107,11 @@ export const PageTransitionOverlay = () => {
 
     if (phase === 'expanding') {
       // After expand animation completes, hold briefly
-      addTimer(() => setPhase('holding'), 400);
+      addTimer(() => setPhase('holding'), 600);
     }
 
     if (phase === 'holding') {
-      // Brief hold, then navigate
+      // Hold to show loading screen
       addTimer(() => {
         if (!hasNavigatedRef.current) {
           hasNavigatedRef.current = true;
@@ -119,17 +119,17 @@ export const PageTransitionOverlay = () => {
           navigate(state.targetPath);
           setPhase('navigated');
         }
-      }, 200);
+      }, 500);
     }
 
     if (phase === 'navigated') {
       // Give React a frame to mount the new page, then start shrinking
-      addTimer(() => setPhase('shrinking'), 50);
+      addTimer(() => setPhase('shrinking'), 100);
     }
 
     if (phase === 'shrinking') {
       // After shrink animation completes, cleanup
-      addTimer(() => setPhase('done'), 450);
+      addTimer(() => setPhase('done'), 650);
     }
 
     if (phase === 'done') {
@@ -168,7 +168,7 @@ export const PageTransitionOverlay = () => {
         className="fixed inset-0 flex items-center justify-center bg-background"
         style={{
           clipPath: `circle(${getRadius()}px at ${state.x}px ${state.y}px)`,
-          transition: 'clip-path 400ms cubic-bezier(0.2, 0.8, 0.2, 1)',
+          transition: 'clip-path 600ms cubic-bezier(0.4, 0, 0.2, 1)',
         }}
       >
         <LoadingScreen text="Loading" />
