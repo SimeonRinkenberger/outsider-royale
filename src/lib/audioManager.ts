@@ -1,5 +1,5 @@
 // Global Audio Manager for Outsider Royale
-// State-driven, one track at a time, seamless looping, smooth crossfades
+// State-driven, one track at a time, sequential transitions
 
 export type MusicState = 
   | 'menu' 
@@ -34,11 +34,12 @@ const prefersReducedMotion = () =>
 class AudioManager {
   private tracks: Map<string, AudioTrack> = new Map();
   private currentState: MusicState = 'silent';
-  private currentTrack: AudioTrack | null = null;
+  private currentTrackKey: string | null = null;
   private masterVolume: number = 1;
   private isMuted: boolean = false;
   private isInitialized: boolean = false;
   private pendingState: MusicState | null = null;
+  private isTransitioning: boolean = false;
   private listeners: Set<(state: MusicState) => void> = new Set();
   private volumeListeners: Set<(volume: number, muted: boolean) => void> = new Set();
 
@@ -59,14 +60,24 @@ class AudioManager {
   private handleVisibilityChange = () => {
     if (document.hidden) {
       // Pause current track when app is backgrounded
-      this.currentTrack?.audio.pause();
+      this.stopAllTracks();
     } else {
       // Resume when app comes back to foreground
-      if (this.currentTrack && !this.isMuted && this.currentState !== 'silent') {
-        this.currentTrack.audio.play().catch(() => {});
+      if (this.currentTrackKey && !this.isMuted && this.currentState !== 'silent') {
+        const track = this.tracks.get(this.currentTrackKey);
+        if (track) {
+          track.audio.play().catch(() => {});
+        }
       }
     }
   };
+
+  // Stop all tracks immediately
+  private stopAllTracks(): void {
+    this.tracks.forEach(track => {
+      track.audio.pause();
+    });
+  }
 
   // Preload all audio tracks
   async preload(): Promise<void> {
@@ -105,8 +116,9 @@ class AudioManager {
 
     // Play pending state if any
     if (this.pendingState) {
-      this.setState(this.pendingState);
+      const pending = this.pendingState;
       this.pendingState = null;
+      await this.setState(pending);
     }
   }
 
@@ -122,11 +134,11 @@ class AudioManager {
     return prefersReducedMotion() ? 100 : defaultMs;
   }
 
-  // Fade out current track
+  // Fade out a track
   private fadeOut(track: AudioTrack, duration: number): Promise<void> {
     return new Promise((resolve) => {
       const startVolume = track.audio.volume;
-      if (startVolume === 0) {
+      if (startVolume === 0 || track.audio.paused) {
         track.audio.pause();
         track.audio.currentTime = 0;
         resolve();
@@ -162,6 +174,11 @@ class AudioManager {
       track.audio.currentTime = 0;
       
       track.audio.play().then(() => {
+        if (targetVolume === 0) {
+          resolve();
+          return;
+        }
+
         const steps = 20;
         const stepDuration = duration / steps;
         const volumeStep = targetVolume / steps;
@@ -184,20 +201,6 @@ class AudioManager {
     });
   }
 
-  // Sequential transition - fade out completely, then fade in (no overlap)
-  private async transition(fromTrack: AudioTrack | null, toTrack: AudioTrack): Promise<void> {
-    const fadeOutDuration = this.getFadeDuration(300);
-    const fadeInDuration = this.getFadeDuration(400);
-
-    // First, completely stop the old track
-    if (fromTrack && !fromTrack.audio.paused) {
-      await this.fadeOut(fromTrack, fadeOutDuration);
-    }
-
-    // Then start the new track
-    await this.fadeIn(toTrack, fadeInDuration);
-  }
-
   // Set the current music state
   async setState(state: MusicState): Promise<void> {
     // Ignore duplicate state changes
@@ -209,35 +212,59 @@ class AudioManager {
       return;
     }
 
-    const previousState = this.currentState;
+    // If already transitioning, queue this state
+    if (this.isTransitioning) {
+      this.pendingState = state;
+      return;
+    }
+
+    this.isTransitioning = true;
+    const previousTrackKey = this.currentTrackKey;
     this.currentState = state;
     this.notifyListeners();
 
-    // Handle silent state
-    if (state === 'silent') {
-      if (this.currentTrack) {
-        await this.fadeOut(this.currentTrack, this.getFadeDuration(400));
-        this.currentTrack = null;
+    try {
+      // Handle silent state
+      if (state === 'silent') {
+        if (previousTrackKey) {
+          const oldTrack = this.tracks.get(previousTrackKey);
+          if (oldTrack) {
+            await this.fadeOut(oldTrack, this.getFadeDuration(400));
+          }
+        }
+        this.currentTrackKey = null;
+        return;
       }
-      return;
-    }
 
-    const newTrack = this.tracks.get(state);
-    if (!newTrack) return;
+      const newTrack = this.tracks.get(state);
+      if (!newTrack) return;
 
-    // Win states: immediate fade out (200ms) then play win music
-    if (state === 'win_safe' || state === 'win_outsider') {
-      if (this.currentTrack) {
-        await this.fadeOut(this.currentTrack, this.getFadeDuration(200));
+      // ALWAYS stop the old track first
+      if (previousTrackKey && previousTrackKey !== state) {
+        const oldTrack = this.tracks.get(previousTrackKey);
+        if (oldTrack) {
+          // Quick fade out for win states, normal for others
+          const fadeOutDuration = (state === 'win_safe' || state === 'win_outsider') 
+            ? this.getFadeDuration(200) 
+            : this.getFadeDuration(300);
+          await this.fadeOut(oldTrack, fadeOutDuration);
+        }
       }
-      this.currentTrack = newTrack;
-      await this.fadeIn(newTrack, this.getFadeDuration(300));
-      return;
-    }
 
-    // Sequential transition for background music (no overlap to prevent dual playback)
-    await this.transition(this.currentTrack, newTrack);
-    this.currentTrack = newTrack;
+      // Now start the new track
+      this.currentTrackKey = state;
+      await this.fadeIn(newTrack, this.getFadeDuration(400));
+
+    } finally {
+      this.isTransitioning = false;
+      
+      // Process any pending state change
+      if (this.pendingState && this.pendingState !== this.currentState) {
+        const pending = this.pendingState;
+        this.pendingState = null;
+        await this.setState(pending);
+      }
+    }
   }
 
   // Get current state
@@ -251,8 +278,11 @@ class AudioManager {
     localStorage.setItem('audioVolume', String(this.masterVolume));
     
     // Update current track volume
-    if (this.currentTrack && !this.isMuted) {
-      this.currentTrack.audio.volume = this.currentTrack.targetVolume * this.masterVolume;
+    if (this.currentTrackKey && !this.isMuted) {
+      const track = this.tracks.get(this.currentTrackKey);
+      if (track) {
+        track.audio.volume = track.targetVolume * this.masterVolume;
+      }
     }
     
     this.notifyVolumeListeners();
@@ -267,11 +297,14 @@ class AudioManager {
     this.isMuted = muted;
     localStorage.setItem('audioMuted', String(muted));
     
-    if (this.currentTrack) {
-      if (muted) {
-        this.currentTrack.audio.volume = 0;
-      } else {
-        this.currentTrack.audio.volume = this.currentTrack.targetVolume * this.masterVolume;
+    if (this.currentTrackKey) {
+      const track = this.tracks.get(this.currentTrackKey);
+      if (track) {
+        if (muted) {
+          track.audio.volume = 0;
+        } else {
+          track.audio.volume = track.targetVolume * this.masterVolume;
+        }
       }
     }
     
@@ -288,18 +321,22 @@ class AudioManager {
 
   // Duck volume temporarily (for important events)
   async duck(duckAmount: number = 0.2, durationMs: number = 1000): Promise<void> {
-    if (!this.currentTrack || this.isMuted) return;
+    if (!this.currentTrackKey || this.isMuted) return;
 
-    const originalVolume = this.currentTrack.audio.volume;
+    const track = this.tracks.get(this.currentTrackKey);
+    if (!track) return;
+
+    const originalVolume = track.audio.volume;
     const duckedVolume = originalVolume * (1 - duckAmount);
 
-    // Quick fade to ducked volume
-    this.currentTrack.audio.volume = duckedVolume;
+    track.audio.volume = duckedVolume;
 
-    // Restore after duration
     setTimeout(() => {
-      if (this.currentTrack && !this.isMuted) {
-        this.currentTrack.audio.volume = originalVolume;
+      if (this.currentTrackKey && !this.isMuted) {
+        const currentTrack = this.tracks.get(this.currentTrackKey);
+        if (currentTrack) {
+          currentTrack.audio.volume = originalVolume;
+        }
       }
     }, durationMs);
   }
@@ -326,19 +363,22 @@ class AudioManager {
 
   // Try to play (for user interaction unlock)
   async tryPlay(): Promise<void> {
-    if (this.currentTrack && !this.isMuted) {
-      try {
-        await this.currentTrack.audio.play();
-      } catch {
-        // Still blocked
+    if (this.currentTrackKey && !this.isMuted) {
+      const track = this.tracks.get(this.currentTrackKey);
+      if (track) {
+        try {
+          await track.audio.play();
+        } catch {
+          // Still blocked
+        }
       }
     }
   }
 
   // Cleanup
   destroy(): void {
+    this.stopAllTracks();
     this.tracks.forEach(track => {
-      track.audio.pause();
       track.audio.src = '';
     });
     this.tracks.clear();
@@ -349,5 +389,22 @@ class AudioManager {
   }
 }
 
-// Singleton instance
-export const audioManager = new AudioManager();
+// Singleton instance with HMR protection
+let audioManagerInstance: AudioManager | null = null;
+
+// Clean up old instance on HMR
+if (import.meta.hot) {
+  import.meta.hot.dispose(() => {
+    if (audioManagerInstance) {
+      audioManagerInstance.destroy();
+      audioManagerInstance = null;
+    }
+  });
+}
+
+export const audioManager = (() => {
+  if (!audioManagerInstance) {
+    audioManagerInstance = new AudioManager();
+  }
+  return audioManagerInstance;
+})();
