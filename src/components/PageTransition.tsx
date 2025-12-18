@@ -141,8 +141,12 @@ export const PageTransitionOverlay = () => {
   const maxY = Math.max(state.y, window.innerHeight - state.y);
   const finalRadius = Math.sqrt(maxX * maxX + maxY * maxY) + 50;
 
-  const isExpanded = phase === 'expanding' || phase === 'holding' || phase === 'navigated' || phase === 'shrinking';
-  const isShrinking = phase === 'shrinking';
+  // Determine the current radius based on phase
+  const getRadius = () => {
+    if (phase === 'shrinking') return 0;
+    if (phase === 'expanding' || phase === 'holding' || phase === 'navigated') return finalRadius;
+    return 0;
+  };
 
   return createPortal(
     <div
@@ -151,19 +155,13 @@ export const PageTransitionOverlay = () => {
     >
       {/* Loading content - centered in viewport, clipped by circle */}
       <div 
-        className="fixed inset-0 flex items-center justify-center"
+        className="fixed inset-0 flex items-center justify-center bg-background"
         style={{
-          clipPath: `circle(${isExpanded ? finalRadius : 0}px at ${state.x}px ${state.y}px)`,
-          transition: isShrinking
-            ? 'clip-path 400ms cubic-bezier(0.2, 0.8, 0.2, 1)'
-            : phase === 'expanding'
-              ? 'clip-path 400ms cubic-bezier(0.2, 0.8, 0.2, 1)'
-              : 'none',
+          clipPath: `circle(${getRadius()}px at ${state.x}px ${state.y}px)`,
+          transition: 'clip-path 400ms cubic-bezier(0.2, 0.8, 0.2, 1)',
         }}
       >
-        <div className="bg-background w-full h-full flex items-center justify-center">
-          <LoadingScreen text="Loading" />
-        </div>
+        <LoadingScreen text="Loading" />
       </div>
     </div>,
     document.body
