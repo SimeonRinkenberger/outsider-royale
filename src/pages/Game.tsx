@@ -105,14 +105,14 @@ const Game = () => {
         setTransitionPhase('expanding');
         setShowTransition(true);
         
-        // After expand, hold briefly
+        // After expand, hold while DB updates
         setTimeout(() => setTransitionPhase('holding'), 600);
         
-        // Then shrink
-        setTimeout(() => setTransitionPhase('shrinking'), 1000);
+        // Then shrink after DB has time to update
+        setTimeout(() => setTransitionPhase('shrinking'), 1200);
         
         // Hide transition after shrink animation completes
-        setTimeout(() => setShowTransition(false), 1600);
+        setTimeout(() => setShowTransition(false), 1800);
       })
       .subscribe();
 
@@ -506,12 +506,9 @@ const Game = () => {
         }
       });
       
-      // After expand, hold briefly then shrink
-      setTimeout(() => setTransitionPhase('holding'), 600);
-      
-      // DB update happens right when shrink starts - view switches while fully covered
+      // After expand, hold and update DB while fully covered
       setTimeout(async () => {
-        setTransitionPhase('shrinking');
+        setTransitionPhase('holding');
         try {
           // Mark current round as complete
           await supabase
@@ -530,9 +527,11 @@ const Game = () => {
           console.error('Error skipping to voting:', error);
           toast.error('Failed to skip to voting');
         }
-      }, 1000);
+      }, 600);
       
-      setTimeout(() => setShowTransition(false), 1600);
+      // Start shrinking after DB has time to update
+      setTimeout(() => setTransitionPhase('shrinking'), 1200);
+      setTimeout(() => setShowTransition(false), 1800);
     } catch (error) {
       console.error('Error skipping to voting:', error);
       toast.error('Failed to skip to voting');
