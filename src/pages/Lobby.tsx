@@ -81,7 +81,11 @@ const Lobby = () => {
       x: 0, 
       opacity: 1, 
       scale: 1, 
-      filter: 'blur(0px)'
+      filter: 'blur(0px)',
+      transition: {
+        duration: 0.6,
+        ease: [0.2, 0.8, 0.2, 1] as const
+      }
     },
     exit: prefersReducedMotion 
       ? { opacity: 0 }
@@ -89,7 +93,11 @@ const Lobby = () => {
           x: 56, 
           opacity: 0, 
           scale: 0.97, 
-          filter: 'blur(4px)'
+          filter: 'blur(4px)',
+          transition: {
+            duration: 0.7,
+            ease: [0.2, 0.8, 0.2, 1] as const
+          }
         }
   };
 
@@ -543,8 +551,6 @@ const Lobby = () => {
                       animate={playerCardVariants.animate}
                       exit={playerCardVariants.exit}
                       transition={{
-                        duration: exitDuration,
-                        ease: [0.2, 0.8, 0.2, 1] as const,
                         layout: { duration: animationDuration, ease: [0.2, 0.8, 0.2, 1] as const }
                       }}
                     >
