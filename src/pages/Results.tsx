@@ -621,7 +621,7 @@ const Results = () => {
             <Card 
               key={game.id}
               className={`p-6 shadow-card border-0 text-center ${shouldAnimate ? 'animate-bounce-in' : ''} ${
-                groupWins ? 'bg-gradient-primary text-white' : 'bg-destructive/10 border-destructive/20'
+                groupWins ? 'bg-primary/15 border border-primary/30' : 'bg-destructive/10 border-destructive/20'
               }`}
             >
               {groupWins ? (
@@ -629,10 +629,10 @@ const Results = () => {
                   <img 
                     src={cryingFoxImg} 
                     alt="Fox mascot" 
-                    className={`h-24 w-24 mx-auto mb-3 object-contain ${shouldAnimate ? 'animate-float' : ''}`} 
+                    className={`h-36 w-36 mx-auto mb-3 object-contain ${shouldAnimate ? 'animate-float' : ''}`} 
                   />
-                  <h2 className="text-2xl font-bold mb-2">Group Wins!</h2>
-                  <p className="text-white/90">
+                  <h2 className="text-2xl font-bold mb-2 text-primary">Group Wins!</h2>
+                  <p className="text-muted-foreground">
                     You found the outsider! Great job detectives!
                   </p>
                 </>
