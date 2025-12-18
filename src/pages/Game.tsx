@@ -768,8 +768,10 @@ const Game = () => {
 
   // NEVER return null - always render something (overlay covers during transition)
   if (!game || !secretWord || !currentRound) {
+    console.log('[GAME PLACEHOLDER] rendered - data not ready');
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
+        <span className="absolute top-2 left-2 text-[10px] text-muted-foreground/50 font-mono">GAME PLACEHOLDER</span>
         <div className="text-center space-y-4">
           <div className="animate-pulse">
             <div className="h-8 w-48 bg-muted rounded mx-auto mb-4"></div>
