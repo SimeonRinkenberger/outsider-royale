@@ -10,7 +10,7 @@ interface TransitionState {
   targetPath: string;
 }
 
-type Phase = 'idle' | 'expanding' | 'holding' | 'navigated' | 'shrinking' | 'done';
+type Phase = 'idle' | 'mounting' | 'expanding' | 'holding' | 'navigated' | 'shrinking' | 'done';
 
 let triggerTransition: ((x: number, y: number, path: string) => void) | null = null;
 
@@ -85,7 +85,8 @@ export const PageTransitionOverlay = () => {
       // Reset navigation guard for new transition
       hasNavigatedRef.current = false;
       setState({ isActive: true, x, y, targetPath: path });
-      setPhase('expanding');
+      // Start with mounting phase (radius 0), then expand on next frame
+      setPhase('mounting');
     };
 
     return () => {
@@ -96,6 +97,14 @@ export const PageTransitionOverlay = () => {
 
   // Phase state machine
   useEffect(() => {
+    if (phase === 'mounting') {
+      // Use requestAnimationFrame to ensure the initial 0 radius is painted first
+      const raf = requestAnimationFrame(() => {
+        setPhase('expanding');
+      });
+      return () => cancelAnimationFrame(raf);
+    }
+
     if (phase === 'expanding') {
       // After expand animation completes, hold briefly
       addTimer(() => setPhase('holding'), 400);
@@ -143,6 +152,7 @@ export const PageTransitionOverlay = () => {
 
   // Determine the current radius based on phase
   const getRadius = () => {
+    if (phase === 'mounting') return 0; // Start at 0
     if (phase === 'shrinking') return 0;
     if (phase === 'expanding' || phase === 'holding' || phase === 'navigated') return finalRadius;
     return 0;
