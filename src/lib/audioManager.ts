@@ -40,7 +40,7 @@ class AudioManager {
   private isInitialized: boolean = false;
   private pendingState: MusicState | null = null;
   private isTransitioning: boolean = false;
-  private isEnabled: boolean = false; // Disabled for now - set to true to enable audio
+  private isEnabled: boolean = true;
   private listeners: Set<(state: MusicState) => void> = new Set();
   private volumeListeners: Set<(volume: number, muted: boolean) => void> = new Set();
 

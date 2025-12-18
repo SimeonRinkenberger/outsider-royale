@@ -13,8 +13,7 @@ import { Send, Eye, EyeOff, Users, CheckCircle2, DoorOpen, FastForward, ArrowRig
 import { ActiveModifiersDisplay } from '@/components/ActiveModifiersDisplay';
 import { SpeedRoundTimer } from '@/components/SpeedRoundTimer';
 import { getAvatarById } from '@/components/AvatarPicker';
-// Audio disabled for now
-// import { useAudio } from '@/contexts/AudioContext';
+import { useAudio } from '@/contexts/AudioContext';
 
 interface CustomModifierData {
   id: string;
@@ -73,8 +72,7 @@ const Game = () => {
   const [playerAvatars, setPlayerAvatars] = useState<Record<string, string | null>>({});
   const { customModifiers } = useCustomContent();
   const userId = getStoredUserId();
-  // Audio disabled for now
-  // const { setMusicState } = useAudio();
+  const { setMusicState } = useAudio();
 
   // Fetch avatars for all players
   useEffect(() => {
@@ -99,11 +97,10 @@ const Game = () => {
     fetchAvatars();
   }, [players]);
 
-  // Audio disabled for now
-  // useEffect(() => {
-  //   const isTimedRound = gameMetadata?.modifiers?.includes('timed-round') ?? false;
-  //   setMusicState(isTimedRound ? 'game_timed' : 'game_standard');
-  // }, [gameMetadata?.modifiers, setMusicState]);
+  useEffect(() => {
+    const isTimedRound = gameMetadata?.modifiers?.includes('timed-round') ?? false;
+    setMusicState(isTimedRound ? 'game_timed' : 'game_standard');
+  }, [gameMetadata?.modifiers, setMusicState]);
 
   // Load game metadata (modifiers, custom words) from localStorage
   useEffect(() => {
