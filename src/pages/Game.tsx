@@ -727,36 +727,42 @@ const Game = () => {
     return (
       <>
         {/* Circle Transition Overlay for Skip */}
-        {showTransition && (
-          <motion.div
-            className="fixed inset-0 z-[9999] pointer-events-none flex items-center justify-center bg-background"
-            animate={{ 
-              clipPath: transitionPhase === 'shrinking' 
-                ? 'circle(0% at 50% 50%)' 
-                : 'circle(150% at 50% 50%)' 
-            }}
-            initial={{ clipPath: 'circle(0% at 50% 50%)' }}
-            transition={{ duration: 0.6, ease: [0.4, 0, 0.2, 1] }}
-          >
-            <LoadingScreen text="Skipping to voting" />
-          </motion.div>
-        )}
+        <AnimatePresence>
+          {showTransition && (
+            <motion.div
+              key={`skip-transition-${transitionPhase}`}
+              className="fixed inset-0 z-[9999] pointer-events-none flex items-center justify-center bg-background"
+              initial={{ clipPath: transitionPhase === 'expanding' ? 'circle(0% at 50% 50%)' : 'circle(150% at 50% 50%)' }}
+              animate={{ 
+                clipPath: transitionPhase === 'shrinking' 
+                  ? 'circle(0% at 50% 50%)' 
+                  : 'circle(150% at 50% 50%)' 
+              }}
+              transition={{ duration: 0.6, ease: [0.4, 0, 0.2, 1] }}
+            >
+              <LoadingScreen text="Skipping to voting" />
+            </motion.div>
+          )}
+        </AnimatePresence>
         
         {/* Circle Transition Overlay for Results */}
-        {showResultsTransition && (
-          <motion.div
-            className="fixed inset-0 z-[9999] pointer-events-none flex items-center justify-center bg-background"
-            animate={{ 
-              clipPath: resultsTransitionPhase === 'shrinking' 
-                ? 'circle(0% at 50% 50%)' 
-                : 'circle(150% at 50% 50%)' 
-            }}
-            initial={{ clipPath: 'circle(0% at 50% 50%)' }}
-            transition={{ duration: 0.6, ease: [0.4, 0, 0.2, 1] }}
-          >
-            <LoadingScreen text="Tallying votes" />
-          </motion.div>
-        )}
+        <AnimatePresence>
+          {showResultsTransition && (
+            <motion.div
+              key={`results-transition-${resultsTransitionPhase}`}
+              className="fixed inset-0 z-[9999] pointer-events-none flex items-center justify-center bg-background"
+              initial={{ clipPath: resultsTransitionPhase === 'expanding' ? 'circle(0% at 50% 50%)' : 'circle(150% at 50% 50%)' }}
+              animate={{ 
+                clipPath: resultsTransitionPhase === 'shrinking' 
+                  ? 'circle(0% at 50% 50%)' 
+                  : 'circle(150% at 50% 50%)' 
+              }}
+              transition={{ duration: 0.6, ease: [0.4, 0, 0.2, 1] }}
+            >
+              <LoadingScreen text="Tallying votes" />
+            </motion.div>
+          )}
+        </AnimatePresence>
         
         <div className="min-h-screen bg-background pb-24">
         <header className="bg-card border-b border-border p-4 sticky top-0 z-10">
@@ -1048,20 +1054,23 @@ const Game = () => {
     return (
       <>
         {/* Circle Transition Overlay for Results */}
-        {showResultsTransition && (
-          <motion.div
-            className="fixed inset-0 z-[9999] pointer-events-none flex items-center justify-center bg-background"
-            animate={{ 
-              clipPath: resultsTransitionPhase === 'shrinking' 
-                ? 'circle(0% at 50% 50%)' 
-                : 'circle(150% at 50% 50%)' 
-            }}
-            initial={{ clipPath: 'circle(0% at 50% 50%)' }}
-            transition={{ duration: 0.6, ease: [0.4, 0, 0.2, 1] }}
-          >
-            <LoadingScreen text="Tallying votes" />
-          </motion.div>
-        )}
+        <AnimatePresence>
+          {showResultsTransition && (
+            <motion.div
+              key={`results-transition-${resultsTransitionPhase}`}
+              className="fixed inset-0 z-[9999] pointer-events-none flex items-center justify-center bg-background"
+              initial={{ clipPath: resultsTransitionPhase === 'expanding' ? 'circle(0% at 50% 50%)' : 'circle(150% at 50% 50%)' }}
+              animate={{ 
+                clipPath: resultsTransitionPhase === 'shrinking' 
+                  ? 'circle(0% at 50% 50%)' 
+                  : 'circle(150% at 50% 50%)' 
+              }}
+              transition={{ duration: 0.6, ease: [0.4, 0, 0.2, 1] }}
+            >
+              <LoadingScreen text="Tallying votes" />
+            </motion.div>
+          )}
+        </AnimatePresence>
         
         <div className="min-h-screen bg-background pb-24">
         <header className="bg-card border-b border-border p-4 sticky top-0 z-10">
