@@ -47,21 +47,6 @@ export const TransitionProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   
   // Motion value for radius (in pixels)
   const radius = useMotionValue(0);
-  const [currentRadius, setCurrentRadius] = useState(0);
-  const [maxRadius, setMaxRadius] = useState(0);
-  
-  // Track radius changes for debug display
-  useEffect(() => {
-    const unsubscribe = radius.on('change', (v) => {
-      setCurrentRadius(Math.round(v));
-    });
-    return unsubscribe;
-  }, [radius]);
-  
-  // Debug: Log phase changes
-  useEffect(() => {
-    console.log('[TRANSITION] phase ->', phase);
-  }, [phase]);
   
   useEffect(() => {
     mountedRef.current = true;
@@ -107,7 +92,6 @@ export const TransitionProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     
     // Calculate max radius
     const max = getMaxRadius();
-    setMaxRadius(max);
     
     // Start at 0
     radius.set(0);
@@ -197,8 +181,6 @@ export const TransitionProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         loadingText={loadingText} 
         origin={originPoint}
         radius={radius}
-        currentRadius={currentRadius}
-        maxRadius={maxRadius}
       />
     </TransitionContext.Provider>
   );
@@ -209,8 +191,6 @@ interface TransitionOverlayProps {
   loadingText: string;
   origin: { x: number; y: number };
   radius: ReturnType<typeof useMotionValue<number>>;
-  currentRadius: number;
-  maxRadius: number;
 }
 
 const TransitionOverlay: React.FC<TransitionOverlayProps> = ({ 
@@ -218,8 +198,6 @@ const TransitionOverlay: React.FC<TransitionOverlayProps> = ({
   loadingText, 
   origin,
   radius,
-  currentRadius,
-  maxRadius,
 }) => {
   // Create clipPath from radius motion value
   const clipPath = useTransform(radius, (r) => {
@@ -233,55 +211,24 @@ const TransitionOverlay: React.FC<TransitionOverlayProps> = ({
 
   if (!isVisible) return null;
 
-  // Debug styling - bright red during shrinking to prove visibility
-  const isShrinking = phase === 'shrinking';
-  const debugBgColor = isShrinking ? 'rgba(255, 0, 0, 0.35)' : 'hsl(var(--background))';
-  const debugOutline = isShrinking ? '4px solid rgba(255, 0, 0, 0.9)' : 'none';
-
   return createPortal(
-    <>
-      {/* Debug readout - top-left */}
-      <div 
-        style={{
-          position: 'fixed',
-          top: 10,
-          left: 10,
-          zIndex: 1000000,
-          background: 'rgba(0, 0, 0, 0.9)',
-          color: '#0f0',
-          padding: '10px 14px',
-          borderRadius: 6,
-          fontFamily: 'monospace',
-          fontSize: 14,
-          lineHeight: 1.6,
-          border: '2px solid #0f0',
-        }}
-      >
-        <div>Phase: <strong style={{ color: isShrinking ? '#f00' : '#0f0' }}>{phase}</strong></div>
-        <div>Radius: <strong>{currentRadius}px</strong></div>
-        <div>MaxRadius: <strong>{maxRadius}px</strong></div>
-      </div>
-      
-      {/* The actual overlay with clipPath */}
-      <motion.div
-        style={{
-          position: 'fixed',
-          inset: 0,
-          zIndex: 999999,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          backgroundColor: debugBgColor,
-          outline: debugOutline,
-          opacity: 1,
-          pointerEvents: 'all',
-          clipPath: clipPath,
-          WebkitClipPath: clipPath,
-        }}
-      >
-        <LoadingScreen text={loadingText} />
-      </motion.div>
-    </>,
+    <motion.div
+      style={{
+        position: 'fixed',
+        inset: 0,
+        zIndex: 999999,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: 'hsl(var(--background))',
+        opacity: 1,
+        pointerEvents: 'all',
+        clipPath: clipPath,
+        WebkitClipPath: clipPath,
+      }}
+    >
+      <LoadingScreen text={loadingText} />
+    </motion.div>,
     document.body
   );
 };
