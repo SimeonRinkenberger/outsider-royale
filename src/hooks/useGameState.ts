@@ -37,14 +37,21 @@ export const useGameState = (lobbyId: string | null) => {
       if (lobbyData) {
         setLobby(lobbyData as Lobby);
 
-        // Fetch players
+        // Fetch players with their avatars
         const { data: playersData } = await supabase
           .from('lobby_players')
-          .select('*')
+          .select('*, profiles:user_id(avatar_url)')
           .eq('lobby_id', lobbyId)
           .order('joined_at');
         
-        if (playersData) setPlayers(playersData as LobbyPlayer[]);
+        if (playersData) {
+          const playersWithAvatars = playersData.map((p: any) => ({
+            ...p,
+            avatar_url: p.profiles?.avatar_url || null,
+            profiles: undefined
+          }));
+          setPlayers(playersWithAvatars as LobbyPlayer[]);
+        }
 
         // Fetch game if exists
         if (lobbyData.current_game_id) {
@@ -166,12 +173,17 @@ export const useGameState = (lobbyId: string | null) => {
           console.log('Lobby player change received:', payload.eventType);
           const { data } = await supabase
             .from('lobby_players')
-            .select('*')
+            .select('*, profiles:user_id(avatar_url)')
             .eq('lobby_id', lobbyId)
             .order('joined_at');
           if (data) {
             console.log('Updated players:', data.length);
-            setPlayers(data as LobbyPlayer[]);
+            const playersWithAvatars = data.map((p: any) => ({
+              ...p,
+              avatar_url: p.profiles?.avatar_url || null,
+              profiles: undefined
+            }));
+            setPlayers(playersWithAvatars as LobbyPlayer[]);
           }
         }
       )

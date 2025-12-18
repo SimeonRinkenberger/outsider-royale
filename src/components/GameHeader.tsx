@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, User } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
-import { getStoredUserId } from '@/lib/gameUtils';
+import { getStoredUserId, getStoredAvatarId, setStoredAvatarId } from '@/lib/gameUtils';
 import { getAvatarById } from '@/components/AvatarPicker';
 import { useBackTransition } from '@/components/BackTransition';
 
@@ -18,9 +18,13 @@ interface GameHeaderProps {
 const GameHeader = ({ title, showBack = true, backPath, onBack, rightContent }: GameHeaderProps) => {
   const navigate = useNavigate();
   const { navigateBack } = useBackTransition();
-  const [avatarEmoji, setAvatarEmoji] = useState<string | null>(null);
-  const [isNavigating, setIsNavigating] = useState(false);
   const userId = getStoredUserId();
+  
+  // Initialize from localStorage cache immediately
+  const cachedAvatarId = getStoredAvatarId();
+  const cachedAvatar = cachedAvatarId ? getAvatarById(cachedAvatarId) : null;
+  const [avatarEmoji, setAvatarEmoji] = useState<string | null>(cachedAvatar?.emoji || null);
+  const [isNavigating, setIsNavigating] = useState(false);
 
   useEffect(() => {
     const fetchAvatar = async () => {
@@ -30,11 +34,14 @@ const GameHeader = ({ title, showBack = true, backPath, onBack, rightContent }: 
         .from('profiles')
         .select('avatar_url')
         .eq('id', userId)
-        .single();
+        .maybeSingle();
       
       if (profile?.avatar_url) {
         const avatar = getAvatarById(profile.avatar_url);
-        if (avatar) setAvatarEmoji(avatar.emoji);
+        if (avatar) {
+          setAvatarEmoji(avatar.emoji);
+          setStoredAvatarId(profile.avatar_url);
+        }
       }
     };
     

@@ -45,7 +45,6 @@ const Lobby = () => {
   
   const [isStarting, setIsStarting] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [playerAvatars, setPlayerAvatars] = useState<Record<string, string | null>>({});
   const [previousPlayers, setPreviousPlayers] = useState<Map<string, string>>(new Map());
   const [isInitialLoad, setIsInitialLoad] = useState(true);
   const [gameConfig, setGameConfig] = useState<GameConfig>({
@@ -157,29 +156,6 @@ const Lobby = () => {
 
     setPreviousPlayers(currentPlayersMap);
   }, [players, userId, isInitialLoad]);
-
-  // Fetch avatars for all players
-  useEffect(() => {
-    const fetchAvatars = async () => {
-      if (players.length === 0) return;
-      
-      const userIds = players.map(p => p.user_id);
-      const { data: profiles } = await supabase
-        .from('profiles')
-        .select('id, avatar_url')
-        .in('id', userIds);
-      
-      if (profiles) {
-        const avatarMap: Record<string, string | null> = {};
-        profiles.forEach(p => {
-          avatarMap[p.id] = p.avatar_url;
-        });
-        setPlayerAvatars(prev => ({ ...prev, ...avatarMap }));
-      }
-    };
-    
-    fetchAvatars();
-  }, [players]);
 
   const isHost = lobby?.host_user_id === userId;
   const canStart = players.length >= 3;
@@ -557,8 +533,7 @@ const Lobby = () => {
             >
               <AnimatePresence initial={false} mode="popLayout">
                 {players.map((player) => {
-                  const avatarId = playerAvatars[player.user_id];
-                  const avatar = avatarId ? getAvatarById(avatarId) : null;
+                  const avatar = player.avatar_url ? getAvatarById(player.avatar_url) : null;
                   
                   return (
                     <motion.div

@@ -27,6 +27,7 @@ export interface LobbyPlayer {
   is_connected: boolean;
   is_spectator: boolean;
   joined_at: string;
+  avatar_url?: string | null;
 }
 
 export interface Word {
