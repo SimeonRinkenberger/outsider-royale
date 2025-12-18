@@ -74,9 +74,9 @@ const FluidSlider = React.forwardRef<
           disabled={disabled || (value?.[0] ?? min) <= min}
           className={cn(
             "flex items-center justify-center w-8 h-8 rounded-full border border-border",
-            "bg-background hover:bg-muted transition-colors duration-150",
+            "bg-background hover:bg-muted transition-all duration-150",
             "disabled:opacity-40 disabled:cursor-not-allowed",
-            "active:scale-95"
+            "active:scale-90 active:bg-muted/80"
           )}
         >
           <Minus className="h-4 w-4" />
@@ -119,9 +119,9 @@ const FluidSlider = React.forwardRef<
           disabled={disabled || (value?.[0] ?? max) >= max}
           className={cn(
             "flex items-center justify-center w-8 h-8 rounded-full border border-border",
-            "bg-background hover:bg-muted transition-colors duration-150",
+            "bg-background hover:bg-muted transition-all duration-150",
             "disabled:opacity-40 disabled:cursor-not-allowed",
-            "active:scale-95"
+            "active:scale-90 active:bg-muted/80"
           )}
         >
           <Plus className="h-4 w-4" />
