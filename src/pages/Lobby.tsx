@@ -622,7 +622,7 @@ const Lobby = () => {
                   <Card className="p-4 bg-gradient-card border-border cursor-pointer hover:bg-muted/50 transition-colors">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
-                        <Settings className={`h-5 w-5 text-primary transition-transform duration-500 ease-out ${settingsOpen ? 'rotate-90' : ''}`} />
+                        <Settings className={`h-5 w-5 text-primary transition-transform duration-500 ease-out ${settingsOpen ? 'rotate-[360deg]' : ''}`} />
                         <span className="font-medium">Game Settings</span>
                       </div>
                       <ChevronDown className={`h-5 w-5 text-muted-foreground transition-transform ${settingsOpen ? 'rotate-180' : ''}`} />
