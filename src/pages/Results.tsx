@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import LoadingScreen from '@/components/LoadingScreen';
+import LoadingReveal from '@/components/LoadingReveal';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -482,11 +482,10 @@ const Results = () => {
   };
 
 
-  if (!game || !secretWord || outsiderPlayers.length === 0 || !resultsReady) {
-    return <LoadingScreen text="Loading results" />;
-  }
+  const isLoading = !game || !secretWord || outsiderPlayers.length === 0 || !resultsReady;
 
   return (
+    <LoadingReveal isLoading={isLoading} loadingText="Loading results">
     <div className="min-h-screen bg-background pb-24">
       <Confetti isActive={showConfetti} />
       
@@ -641,6 +640,7 @@ const Results = () => {
         </div>
       </main>
     </div>
+    </LoadingReveal>
   );
 };
 

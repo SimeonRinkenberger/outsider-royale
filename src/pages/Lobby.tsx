@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef, useMemo } from 'react';
-import LoadingScreen from '@/components/LoadingScreen';
+import LoadingReveal from '@/components/LoadingReveal';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -458,11 +458,10 @@ const Lobby = () => {
     }
   };
 
-  if (!lobby) {
-    return <LoadingScreen />;
-  }
+  const isLoading = !lobby;
 
   return (
+    <LoadingReveal isLoading={isLoading} loadingText="Loading lobby">
     <div className="min-h-screen bg-background pb-48" style={{ scrollbarGutter: 'stable' }}>
       <GameHeader title="Lobby" showBack={true} onBack={leaveLobby} />
 
@@ -678,6 +677,7 @@ const Lobby = () => {
         )}
       </main>
     </div>
+    </LoadingReveal>
   );
 };
 
