@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import LoadingScreen from '@/components/LoadingScreen';
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -37,11 +38,7 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   }, []);
 
   if (isChecking) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <p className="text-muted-foreground">Loading...</p>
-      </div>
-    );
+    return <LoadingScreen />;
   }
 
   return hasUser ? <>{children}</> : <Navigate to="/onboarding" replace />;

@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import LoadingScreen from '@/components/LoadingScreen';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -126,11 +127,7 @@ const Stats = () => {
   };
 
   if (isLoading) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="animate-pulse text-muted-foreground">Loading stats...</div>
-      </div>
-    );
+    return <LoadingScreen text="Loading stats" />;
   }
 
   const outsiderWinRate = stats ? calculatePercentage(stats.games_won_as_outsider, stats.games_played_as_outsider) : 0;

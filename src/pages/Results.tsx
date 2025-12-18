@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import LoadingScreen from '@/components/LoadingScreen';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -482,11 +483,7 @@ const Results = () => {
 
 
   if (!game || !secretWord || outsiderPlayers.length === 0 || !resultsReady) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <p className="text-muted-foreground">Loading results...</p>
-      </div>
-    );
+    return <LoadingScreen text="Loading results" />;
   }
 
   return (
