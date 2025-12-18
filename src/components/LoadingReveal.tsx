@@ -8,9 +8,10 @@ interface LoadingRevealProps {
 }
 
 const LoadingReveal = ({ isLoading, children, loadingText = 'Loading' }: LoadingRevealProps) => {
-  const [phase, setPhase] = useState<'loading' | 'ready' | 'revealing' | 'done'>('loading');
+  const [phase, setPhase] = useState<'loading' | 'ready' | 'revealing' | 'done'>(isLoading ? 'loading' : 'done');
   const [dimensions, setDimensions] = useState({ centerX: 500, centerY: 500, radius: 1000 });
   const rafRef = useRef<number | null>(null);
+  const hasRevealedRef = useRef(false);
 
   useEffect(() => {
     // Calculate dimensions on mount and resize
@@ -29,11 +30,15 @@ const LoadingReveal = ({ isLoading, children, loadingText = 'Loading' }: Loading
   }, []);
 
   useEffect(() => {
+    // Once we've revealed, don't go back to loading
+    if (hasRevealedRef.current) return;
+    
     if (!isLoading && phase === 'loading') {
       // Check for reduced motion preference
       const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
       
       if (prefersReducedMotion) {
+        hasRevealedRef.current = true;
         setPhase('done');
         return;
       }
@@ -58,19 +63,13 @@ const LoadingReveal = ({ isLoading, children, loadingText = 'Loading' }: Loading
     }
 
     if (phase === 'revealing') {
+      hasRevealedRef.current = true;
       const timer = setTimeout(() => {
         setPhase('done');
       }, 550);
       return () => clearTimeout(timer);
     }
   }, [phase]);
-
-  // Reset when loading starts again
-  useEffect(() => {
-    if (isLoading && phase !== 'loading') {
-      setPhase('loading');
-    }
-  }, [isLoading, phase]);
 
   // During done phase, just render children normally
   if (phase === 'done') {
