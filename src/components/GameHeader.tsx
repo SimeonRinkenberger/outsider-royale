@@ -6,6 +6,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { getStoredUserId, getStoredAvatarId, setStoredAvatarId } from '@/lib/gameUtils';
 import { getAvatarById } from '@/components/AvatarPicker';
 import { useBackTransition } from '@/components/BackTransition';
+import { MusicControls } from '@/components/MusicControls';
 
 interface GameHeaderProps {
   title: string;
@@ -80,8 +81,9 @@ const GameHeader = ({ title, showBack = true, backPath, onBack, rightContent }: 
           )}
           <h1 className="text-xl font-bold truncate">{title}</h1>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1">
           {rightContent}
+          <MusicControls />
           <Button variant="ghost" size="icon" onClick={handleProfileClick} className="relative">
             {avatarEmoji ? (
               <span className="text-lg">{avatarEmoji}</span>
