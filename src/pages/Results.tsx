@@ -588,9 +588,10 @@ const Results = () => {
 
   const isLoading = !game || !secretWord || outsiderPlayers.length === 0 || !resultsReady;
 
-  // Show a lightweight skeleton while loading - no full-screen transition
-  if (isLoading) {
-    console.log('[RESULTS] mounted, hasResults=', false);
+  // If transition is in progress, don't show any loading state - overlay handles it
+  // Otherwise show a lightweight skeleton (not full-screen loader)
+  if (isLoading && !isTransitioning) {
+    console.log('[RESULTS] mounted, hasResults=', false, 'isTransitioning=', isTransitioning);
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center space-y-4">
@@ -602,6 +603,12 @@ const Results = () => {
         </div>
       </div>
     );
+  }
+
+  // During transition, render nothing (overlay covers everything)
+  if (isLoading && isTransitioning) {
+    console.log('[RESULTS] mounted during transition, returning null');
+    return null;
   }
 
   console.log('[RESULTS] mounted, hasResults=', true);

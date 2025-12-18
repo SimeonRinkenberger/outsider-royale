@@ -73,10 +73,10 @@ const Game = () => {
   const [guessInput, setGuessInput] = useState('');
   const [showGuessInput, setShowGuessInput] = useState(false);
   const [hasGuessed, setHasGuessed] = useState(false);
-  const [showTransition, setShowTransition] = useState(false);
-  const [transitionPhase, setTransitionPhase] = useState<'expanding' | 'holding' | 'shrinking'>('expanding');
-  // Ref to track if we've already navigated to results
+  // Ref to track if we've already navigated to results (for non-host players)
   const hasNavigatedToResultsRef = useRef(false);
+  // Ref to track if host is currently moving to results (prevent double trigger)
+  const moveToResultsInProgressRef = useRef(false);
   const { customModifiers } = useCustomContent();
   const userId = getStoredUserId();
   const { setMusicState } = useAudio();
@@ -129,31 +129,7 @@ const Game = () => {
     }
   }, [game?.status]);
 
-  // Listen for skip transition broadcast
-  useEffect(() => {
-    if (!lobbyId) return;
-
-    const channel = supabase.channel(`game-transition-${lobbyId}`)
-      .on('broadcast', { event: 'skip-to-voting' }, () => {
-        // Start with expanding phase
-        setTransitionPhase('expanding');
-        setShowTransition(true);
-        
-        // After expand, hold while DB updates
-        setTimeout(() => setTransitionPhase('holding'), 600);
-        
-        // Then shrink after DB has time to update
-        setTimeout(() => setTransitionPhase('shrinking'), 1200);
-        
-        // Hide transition after shrink animation completes
-        setTimeout(() => setShowTransition(false), 1800);
-      })
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [lobbyId]);
+  // Listen for skip transition broadcast (non-hosts react to status change via realtime subscription)
 
   // Detect round changes for fly-off/fly-on animations
   useEffect(() => {
@@ -517,68 +493,55 @@ const Game = () => {
   };
 
   const moveToResults = async () => {
-    if (!game) return;
-
-    try {
-      await supabase
-        .from('games')
-        .update({ status: 'results' })
-        .eq('id', game.id);
-
-      await supabase
-        .from('lobbies')
-        .update({ status: 'results' })
-        .eq('id', lobbyId);
-    } catch (error) {
-      console.error('Error moving to results:', error);
+    if (!game || !lobbyId) return;
+    
+    // Guard: prevent double trigger
+    if (moveToResultsInProgressRef.current || hasNavigatedToResultsRef.current) {
+      console.log('[Game] moveToResults blocked - already in progress');
+      return;
     }
+    
+    moveToResultsInProgressRef.current = true;
+    hasNavigatedToResultsRef.current = true;
+    
+    console.log('[Game] Host initiating moveToResults with startTransition');
+    
+    // Use startTransition with prepare() - single atomic transition
+    startTransition(`/results/${lobbyId}`, {
+      loadingText: 'Tallying votes',
+      reason: 'voting-complete',
+      prepare: async () => {
+        // Update game and lobby status while overlay is showing
+        await supabase
+          .from('games')
+          .update({ status: 'results' })
+          .eq('id', game.id);
+
+        await supabase
+          .from('lobbies')
+          .update({ status: 'results' })
+          .eq('id', lobbyId);
+      }
+    });
   };
 
   const skipToVoting = async () => {
     if (!game || !currentPlayer?.is_host || !currentRound) return;
 
     try {
-      // Show transition for the host immediately
-      setTransitionPhase('expanding');
-      setShowTransition(true);
-      
-      // Broadcast transition to all other players
-      const channel = supabase.channel(`game-transition-${lobbyId}`);
-      channel.subscribe((status) => {
-        if (status === 'SUBSCRIBED') {
-          channel.send({
-            type: 'broadcast',
-            event: 'skip-to-voting',
-          });
-        }
-      });
-      
-      // After expand, hold and update DB while fully covered
-      setTimeout(async () => {
-        setTransitionPhase('holding');
-        try {
-          // Mark current round as complete
-          await supabase
-            .from('rounds')
-            .update({ is_complete: true })
-            .eq('id', currentRound.id);
+      // Mark current round as complete
+      await supabase
+        .from('rounds')
+        .update({ is_complete: true })
+        .eq('id', currentRound.id);
 
-          // Skip directly to voting
-          await supabase
-            .from('games')
-            .update({ status: 'voting' })
-            .eq('id', game.id);
+      // Skip directly to voting
+      await supabase
+        .from('games')
+        .update({ status: 'voting' })
+        .eq('id', game.id);
 
-          toast.success('Skipped to voting!');
-        } catch (error) {
-          console.error('Error skipping to voting:', error);
-          toast.error('Failed to skip to voting');
-        }
-      }, 600);
-      
-      // Start shrinking after DB has time to update
-      setTimeout(() => setTransitionPhase('shrinking'), 1200);
-      setTimeout(() => setShowTransition(false), 1800);
+      toast.success('Skipped to voting!');
     } catch (error) {
       console.error('Error skipping to voting:', error);
       toast.error('Failed to skip to voting');
@@ -766,49 +729,39 @@ const Game = () => {
     }
   };
 
-  // Navigate to results when game status changes (for non-hosts)
+  // Navigate to results when game status changes (for NON-HOST players only)
+  // Host handles this via moveToResults() with startTransition
   useEffect(() => {
-    if (game?.status === 'results' && !hasNavigatedToResultsRef.current) {
+    // Only non-hosts react to status change
+    if (!currentPlayer?.is_host && game?.status === 'results' && !hasNavigatedToResultsRef.current) {
       hasNavigatedToResultsRef.current = true;
-      console.log('[Game] Status changed to results, using startTransition');
+      console.log('[Game] Non-host: Status changed to results, using startTransition');
       startTransition(`/results/${lobbyId}`, {
         loadingText: 'Tallying votes',
+        reason: 'status-change-nonhost',
       });
     }
-  }, [game?.status, lobbyId, startTransition]);
+  }, [game?.status, lobbyId, startTransition, currentPlayer?.is_host]);
 
+  // Show inline loading instead of full-screen (transition overlay handles the animation)
   if (!game || !secretWord || !currentRound) {
-    return <LoadingScreen text="Loading game" />;
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center space-y-4">
+          <div className="animate-pulse">
+            <div className="h-8 w-48 bg-muted rounded mx-auto mb-4"></div>
+            <div className="h-4 w-32 bg-muted rounded mx-auto"></div>
+          </div>
+          <p className="text-muted-foreground">Loading game...</p>
+        </div>
+      </div>
+    );
   }
-
-  // Global skip transition overlay - rendered regardless of game status
-  const skipTransitionOverlay = (
-    <AnimatePresence>
-      {showTransition && (
-        <motion.div
-          key={`skip-transition-${transitionPhase}`}
-          className="fixed inset-0 z-[9999] pointer-events-none flex items-center justify-center bg-background"
-          initial={{ clipPath: transitionPhase === 'expanding' ? 'circle(0% at 50% 50%)' : 'circle(150% at 50% 50%)' }}
-          animate={{ 
-            clipPath: transitionPhase === 'shrinking' 
-              ? 'circle(0% at 50% 50%)' 
-              : 'circle(150% at 50% 50%)' 
-          }}
-          transition={{ duration: 0.6, ease: [0.4, 0, 0.2, 1] }}
-        >
-          <LoadingScreen text="Skipping to voting" />
-        </motion.div>
-      )}
-    </AnimatePresence>
-  );
 
   // Clue Round View
   if (displayedStatus === 'clue_round') {
     return (
       <>
-        {skipTransitionOverlay}
-        
-        
         <div className="min-h-screen bg-background pb-24">
         <header className="bg-card border-b border-border p-4 sticky top-0 z-10">
           <div className="max-w-md mx-auto flex items-center justify-between">
@@ -1211,8 +1164,6 @@ const Game = () => {
     
     return (
       <>
-        {skipTransitionOverlay}
-        
         <div className="min-h-screen bg-background pb-24">
         <header className="bg-card border-b border-border p-4 sticky top-0 z-10">
           <div className="max-w-md mx-auto flex items-center justify-between">
