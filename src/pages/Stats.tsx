@@ -36,13 +36,17 @@ const Stats = () => {
   
   // Check if we came from a game/lobby context
   const fromGame = location.state?.fromGame || false;
+  // Track the original route to return to (for passing through to Auth)
+  const originalFrom = location.state?.originalFrom;
 
   useEffect(() => {
     const fetchStats = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       
       if (!session) {
-        navigate('/auth', { state: { from: '/stats' } });
+        // Pass the original route or current referrer so Auth can navigate back properly
+        const returnTo = originalFrom || (fromGame ? document.referrer || '/menu' : '/menu');
+        navigate('/auth', { state: { from: returnTo }, replace: true });
         return;
       }
 
