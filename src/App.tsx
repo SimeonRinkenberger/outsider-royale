@@ -6,8 +6,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { ThemeProvider } from "next-themes";
 import { getStoredUserId } from './lib/gameUtils';
-// Audio disabled for now
-// import { AudioProvider } from './contexts/AudioContext';
+import { AudioProvider } from './contexts/AudioContext';
 import ThemeToggle from './components/ThemeToggle';
 import ForceUpdateButton from './components/ForceUpdateButton';
 import { PageTransitionOverlay } from './components/PageTransition';
@@ -51,16 +50,17 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
-      <TooltipProvider>
-        <Toaster />
-        <Sonner />
-        <BrowserRouter>
-          <ThemeToggle />
-          <ForceUpdateButton />
-          <PageTransitionOverlay />
-          <BackTransitionOverlay />
-          
-          <Routes>
+      <AudioProvider>
+        <TooltipProvider>
+          <Toaster />
+          <Sonner />
+          <BrowserRouter>
+            <ThemeToggle />
+            <ForceUpdateButton />
+            <PageTransitionOverlay />
+            <BackTransitionOverlay />
+            
+            <Routes>
             <Route path="/" element={<Menu />} />
             <Route path="/menu" element={<Menu />} />
             <Route path="/auth" element={<Auth />} />
@@ -101,10 +101,11 @@ const App = () => (
                 </ProtectedRoute>
               }
             />
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </BrowserRouter>
-      </TooltipProvider>
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </BrowserRouter>
+        </TooltipProvider>
+      </AudioProvider>
     </ThemeProvider>
   </QueryClientProvider>
 );
