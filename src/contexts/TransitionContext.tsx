@@ -257,14 +257,14 @@ export const TransitionProvider: React.FC<{ children: React.ReactNode }> = ({ ch
               console.log(`[TRANSITION] ⏳ Waiting for reveal ready id=${thisTransitionId}`);
               setPhase('waiting-reveal');
               
-              // Safety timeout - don't wait forever (500ms max)
+              // Safety timeout - give destination time to load data (2000ms max)
               setTimeout(() => {
                 if (transitionLockRef.current && shrinkCompleteRef.current) {
                   console.log(`[TRANSITION] ⚠️ Reveal ready timeout - forcing complete id=${thisTransitionId}`);
                   revealReadyRef.current = true;
                   completeTransition();
                 }
-              }, 500);
+              }, 2000);
             }
           },
         });
@@ -316,10 +316,11 @@ const TransitionOverlay: React.FC<TransitionOverlayProps> = ({
 }) => {
   const [isOverlayMounted] = useState(true);
 
-  // Overlay is visible during expanding, loading, and shrinking - NOT during waiting-reveal or idle
-  // During waiting-reveal, the shrink has completed (radius=0), so we don't show anything
-  const isVisible = phase === 'expanding' || phase === 'loading' || phase === 'shrinking';
+  // Overlay is visible during expanding, loading, shrinking, AND waiting-reveal
+  // Only idle = not visible
+  const isVisible = phase !== 'idle';
   const isShrinking = phase === 'shrinking';
+  const isWaitingReveal = phase === 'waiting-reveal';
   
   // Debug UI - ALWAYS render when DEBUG_MODE is true
   const debugUI = DEBUG_MODE ? createPortal(
@@ -365,6 +366,33 @@ const TransitionOverlay: React.FC<TransitionOverlayProps> = ({
   // Build clipPath string from radius
   const cx = phase === 'expanding' ? `${origin.x}%` : '50%';
   const cy = phase === 'expanding' ? `${origin.y}%` : '50%';
+
+  // During waiting-reveal, show full-screen overlay (no clip path since radius is 0)
+  if (isWaitingReveal) {
+    return (
+      <>
+        {debugUI}
+        {createPortal(
+          <div
+            style={{
+              position: 'fixed',
+              inset: 0,
+              zIndex: 999999,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              backgroundColor: 'hsl(var(--background))',
+              opacity: 1,
+              pointerEvents: 'all',
+            }}
+          >
+            <LoadingScreen text={loadingText} isTransitionOverlay={true} />
+          </div>,
+          document.body
+        )}
+      </>
+    );
+  }
 
   return (
     <>
