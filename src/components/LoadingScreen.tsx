@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import foxLoading from '@/assets/fox_loading.gif';
+import foxMascot from '@/assets/fox_mascot.png';
 
 interface LoadingScreenProps {
   text?: string;
@@ -23,9 +23,9 @@ const LoadingScreen = ({ text = 'Loading' }: LoadingScreenProps) => {
   return (
     <div className="min-h-screen bg-background flex flex-col items-center justify-center gap-4">
       <img 
-        src={foxLoading} 
+        src={foxMascot} 
         alt="Loading" 
-        className="w-16 h-16 object-contain"
+        className="w-32 h-32 object-contain"
       />
       <p className="text-muted-foreground">
         {text}<span className="inline-block w-6 text-left">{dots}</span>
