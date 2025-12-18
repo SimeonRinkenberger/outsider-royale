@@ -18,6 +18,7 @@ import { usePageTransition } from '@/components/PageTransition';
 import { useBackTransition } from '@/components/BackTransition';
 import { motion, AnimatePresence, LayoutGroup } from 'framer-motion';
 import { useAudio } from '@/contexts/AudioContext';
+import LoadingScreen from '@/components/LoadingScreen';
 
 const Lobby = () => {
   const { lobbyId } = useParams();
@@ -48,6 +49,8 @@ const Lobby = () => {
   const [previousPlayers, setPreviousPlayers] = useState<Map<string, string>>(new Map());
   const [isInitialLoad, setIsInitialLoad] = useState(true);
   const [copyAnimating, setCopyAnimating] = useState(false);
+  const [showLeaveTransition, setShowLeaveTransition] = useState(false);
+  const [leaveTransitionPhase, setLeaveTransitionPhase] = useState<'expanding' | 'holding' | 'shrinking'>('expanding');
   const [gameConfig, setGameConfig] = useState<GameConfig>({
     selectedCategories: ['animal', 'brand', 'food', 'movie', 'person', 'place', 'thing'],
     selectedCustomCategories: [],
@@ -228,6 +231,13 @@ const Lobby = () => {
   const leaveLobby = async () => {
     if (!userId || !lobbyId) return;
 
+    // Start leave transition
+    setLeaveTransitionPhase('expanding');
+    setShowLeaveTransition(true);
+    
+    setTimeout(() => setLeaveTransitionPhase('holding'), 600);
+    setTimeout(() => setLeaveTransitionPhase('shrinking'), 1000);
+
     try {
       await supabase
         .from('lobby_players')
@@ -236,10 +246,15 @@ const Lobby = () => {
         .eq('user_id', userId);
 
       toast.success('Left lobby');
-      navigateBack('/home');
+      
+      // Navigate after shrink animation starts
+      setTimeout(() => {
+        navigate('/home');
+      }, 1200);
     } catch (error) {
       console.error('Error leaving lobby:', error);
       toast.error('Failed to leave lobby');
+      setShowLeaveTransition(false);
     }
   };
 
@@ -466,7 +481,24 @@ const Lobby = () => {
   }, []);
 
   return (
-    <div className="min-h-screen bg-background pb-48" style={{ scrollbarGutter: 'stable' }}>
+    <>
+      {/* Circle Transition Overlay for Leave */}
+      {showLeaveTransition && (
+        <motion.div
+          className="fixed inset-0 z-[9999] pointer-events-none flex items-center justify-center bg-background"
+          animate={{ 
+            clipPath: leaveTransitionPhase === 'shrinking' 
+              ? 'circle(0% at 50% 50%)' 
+              : 'circle(150% at 50% 50%)' 
+          }}
+          initial={{ clipPath: 'circle(0% at 50% 50%)' }}
+          transition={{ duration: 0.6, ease: [0.4, 0, 0.2, 1] }}
+        >
+          <LoadingScreen text="Leaving lobby" />
+        </motion.div>
+      )}
+      
+      <div className="min-h-screen bg-background pb-48" style={{ scrollbarGutter: 'stable' }}>
       <GameHeader title="Lobby" showBack={true} onBack={leaveLobby} />
 
       <main className="p-4 max-w-md mx-auto space-y-6 py-6">
@@ -686,6 +718,7 @@ const Lobby = () => {
         )}
       </main>
     </div>
+    </>
   );
 };
 
