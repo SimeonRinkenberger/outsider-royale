@@ -116,7 +116,7 @@ export const GameConfigPanel = ({
         <Card className="p-4 bg-gradient-card border-border">
           <CollapsibleTrigger className="flex items-center justify-between w-full">
             <div className="flex items-center gap-2 text-sm font-semibold text-muted-foreground">
-              <Gamepad2 className={`h-4 w-4 transition-transform duration-500 ease-out ${gameModeOpen ? 'rotate-180' : ''}`} />
+              <Gamepad2 className={`h-4 w-4 transition-transform duration-500 ease-out ${gameModeOpen ? 'rotate-90' : ''}`} />
               Game Mode
             </div>
             <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform duration-200 ${gameModeOpen ? 'rotate-180' : ''}`} />
@@ -154,7 +154,7 @@ export const GameConfigPanel = ({
         <Card className="p-4 bg-gradient-card border-border">
           <CollapsibleTrigger className="flex items-center justify-between w-full">
             <div className="flex items-center gap-2 text-sm font-semibold text-muted-foreground">
-              <Settings className={`h-4 w-4 transition-transform duration-500 ease-out ${gameSettingsOpen ? 'rotate-180' : ''}`} />
+              <Settings className={`h-4 w-4 transition-transform duration-500 ease-out ${gameSettingsOpen ? 'rotate-90' : ''}`} />
               Game Settings
             </div>
             <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform duration-200 ${gameSettingsOpen ? 'rotate-180' : ''}`} />
@@ -346,7 +346,7 @@ export const GameConfigPanel = ({
         <Card className="p-4 bg-gradient-card border-border">
           <CollapsibleTrigger className="flex items-center justify-between w-full">
             <div className="flex items-center gap-2 text-sm font-semibold text-muted-foreground">
-              <Palette className={`h-4 w-4 transition-transform duration-500 ease-out ${customizeOpen ? 'rotate-180' : ''}`} />
+              <Palette className={`h-4 w-4 transition-transform duration-500 ease-out ${customizeOpen ? 'rotate-90' : ''}`} />
               Customize Game
             </div>
             <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform duration-200 ${customizeOpen ? 'rotate-180' : ''}`} />
