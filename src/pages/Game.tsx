@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo, useCallback, useRef } from 'react';
+import { useEffect, useState, useMemo, useCallback, useRef, useLayoutEffect } from 'react';
 import LoadingScreen from '@/components/LoadingScreen';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -62,7 +62,7 @@ const getShuffledPlayersForGame = <T,>(players: T[], gameId: string): T[] => {
 const Game = () => {
   const { lobbyId } = useParams();
   const navigate = useNavigate();
-  const { startTransition } = useTransition();
+  const { startTransition, markRevealReady, isTransitioning } = useTransition();
   const { lobby, players, game, currentRound, clues, allClues, votes, secretWord, imposterWord, outsiders } = useGameState(lobbyId || null);
   const [clueInput, setClueInput] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -743,7 +743,30 @@ const Game = () => {
     }
   }, [game?.status, lobbyId, startTransition, currentPlayer?.is_host]);
 
-  // Show inline loading instead of full-screen (transition overlay handles the animation)
+  // Determine if we have data ready to paint
+  const hasData = !!(game && secretWord && currentRound);
+  
+  // Mark reveal ready when we have data - use useLayoutEffect for immediate notification
+  const hasMarkedRevealRef = useRef(false);
+  useLayoutEffect(() => {
+    if (hasData && !hasMarkedRevealRef.current) {
+      hasMarkedRevealRef.current = true;
+      console.log('[GAME] useLayoutEffect: hasData=true, calling markRevealReady');
+      markRevealReady();
+    }
+  }, [hasData, markRevealReady]);
+
+  // Reset reveal marker when game changes
+  useEffect(() => {
+    if (game?.id) {
+      hasMarkedRevealRef.current = false;
+    }
+  }, [game?.id]);
+
+  // Log render state
+  console.log('[GAME] render hasData=', hasData, 'isTransitioning=', isTransitioning);
+
+  // NEVER return null - always render something (overlay covers during transition)
   if (!game || !secretWord || !currentRound) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
