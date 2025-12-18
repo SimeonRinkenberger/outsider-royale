@@ -229,3 +229,17 @@ All colors MUST be HSL.
     animation: placeholder-shimmer 2.2s cubic-bezier(0.2, 0.8, 0.2, 1) infinite;
   }
 }
+
+/* Loading reveal animation */
+@keyframes reveal-shrink {
+  0% {
+    clip-path: circle(var(--reveal-radius) at var(--reveal-x) var(--reveal-y));
+  }
+  100% {
+    clip-path: circle(0px at var(--reveal-x) var(--reveal-y));
+  }
+}
+
+.animate-reveal-shrink {
+  animation: reveal-shrink 500ms cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+}
