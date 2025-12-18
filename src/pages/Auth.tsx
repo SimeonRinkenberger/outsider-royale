@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -10,6 +10,7 @@ import { toast } from 'sonner';
 import { ArrowLeft, Mail, Lock, User, Loader2 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { z } from 'zod';
+import { usePageTransition } from '@/components/PageTransition';
 
 const emailSchema = z.string().email('Please enter a valid email address');
 const passwordSchema = z.string().min(6, 'Password must be at least 6 characters');
@@ -23,6 +24,8 @@ const Auth = () => {
   const [errors, setErrors] = useState<{ email?: string; password?: string; displayName?: string }>({});
   const navigate = useNavigate();
   const location = useLocation();
+  const { navigateWithTransitionFromCoords } = usePageTransition();
+  const backButtonRef = useRef<HTMLButtonElement>(null);
   
   // Get the previous route to return to after auth
   const from = (location.state as { from?: string })?.from || '/menu';
@@ -181,15 +184,20 @@ const Auth = () => {
     }
   };
 
-  const handleBack = () => {
-    // If we have a specific game/lobby route to return to, use it
+  const handleBack = (event: React.MouseEvent) => {
+    const target = event.currentTarget as HTMLElement;
+    const rect = target.getBoundingClientRect();
+    const x = rect.left + rect.width / 2;
+    const y = rect.top + rect.height / 2;
+    
+    // If we have a specific game/lobby route to return to, use regular navigation
     if (from && (from.startsWith('/game/') || from.startsWith('/lobby/'))) {
       navigate(from);
     } else if (from && from !== '/menu' && from !== '/stats') {
       navigate(from);
     } else {
-      // Fall back to menu if no valid return route
-      navigate('/menu');
+      // Use transition for menu
+      navigateWithTransitionFromCoords('/menu', x, y);
     }
   };
 
