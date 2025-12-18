@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useCallback, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { createPortal } from 'react-dom';
-import { motion, Variants } from 'framer-motion';
+import { motion, useMotionValue, useTransform, animate } from 'framer-motion';
 import LoadingScreen from '@/components/LoadingScreen';
 
 // Animation durations in seconds
@@ -37,13 +37,26 @@ export const TransitionProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   
   const [phase, setPhase] = useState<TransitionPhase>('idle');
   const [loadingText, setLoadingText] = useState('Loading');
-  const [origin, setOrigin] = useState({ x: 50, y: 50 }); // Percentage values
+  const [originPoint, setOriginPoint] = useState({ x: 50, y: 50 }); // Percentage
   
   // Guards and refs
   const transitionLockRef = useRef(false);
   const pendingNavigationRef = useRef<string | null>(null);
   const prepareCallbackRef = useRef<(() => Promise<string | void>) | null>(null);
   const mountedRef = useRef(true);
+  
+  // Motion value for radius (in pixels)
+  const radius = useMotionValue(0);
+  const [currentRadius, setCurrentRadius] = useState(0);
+  const [maxRadius, setMaxRadius] = useState(0);
+  
+  // Track radius changes for debug display
+  useEffect(() => {
+    const unsubscribe = radius.on('change', (v) => {
+      setCurrentRadius(Math.round(v));
+    });
+    return unsubscribe;
+  }, [radius]);
   
   // Debug: Log phase changes
   useEffect(() => {
@@ -57,62 +70,9 @@ export const TransitionProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     };
   }, []);
 
-  // Called when expand animation completes
-  const handleExpandComplete = useCallback(async () => {
-    if (!mountedRef.current) return;
-    console.log('[TRANSITION] Expand animation complete');
-    
-    // Move to loading phase
-    setPhase('loading');
-    
-    let finalRoute = pendingNavigationRef.current;
-    
-    try {
-      if (prepareCallbackRef.current) {
-        console.log('[TRANSITION] Running prepare()');
-        const dynamicRoute = await prepareCallbackRef.current();
-        if (dynamicRoute) {
-          finalRoute = dynamicRoute;
-        }
-      }
-    } catch (error) {
-      console.error('[TRANSITION] Prepare failed:', error);
-      setPhase('idle');
-      transitionLockRef.current = false;
-      pendingNavigationRef.current = null;
-      prepareCallbackRef.current = null;
-      return;
-    }
-    
-    if (!mountedRef.current) return;
-    
-    // Navigate while overlay covers everything
-    if (finalRoute) {
-      console.log('[TRANSITION] Navigating to:', finalRoute);
-      navigate(finalRoute);
-    }
-    
-    // Wait for React to render the new route
-    await new Promise(resolve => {
-      requestAnimationFrame(() => {
-        requestAnimationFrame(resolve);
-      });
-    });
-    
-    if (!mountedRef.current) return;
-    
-    // NOW trigger shrink - overlay is still at 150%
-    console.log('[TRANSITION] Starting shrink phase');
-    setPhase('shrinking');
-  }, [navigate]);
-
-  // Called when shrink animation completes
-  const handleShrinkComplete = useCallback(() => {
-    console.log('[TRANSITION] Shrink animation complete');
-    setPhase('idle');
-    transitionLockRef.current = false;
-    pendingNavigationRef.current = null;
-    prepareCallbackRef.current = null;
+  // Calculate max radius needed to cover screen
+  const getMaxRadius = useCallback(() => {
+    return Math.hypot(window.innerWidth, window.innerHeight);
   }, []);
 
   const startTransition = useCallback(async (toRoute: string, options: TransitionOptions = {}) => {
@@ -137,17 +97,95 @@ export const TransitionProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     setLoadingText(options.loadingText || 'Loading');
     
     if (options.origin) {
-      setOrigin({
+      setOriginPoint({
         x: (options.origin.x / window.innerWidth) * 100,
         y: (options.origin.y / window.innerHeight) * 100,
       });
     } else {
-      setOrigin({ x: 50, y: 50 });
+      setOriginPoint({ x: 50, y: 50 });
     }
     
-    // Start with expanding
+    // Calculate max radius
+    const max = getMaxRadius();
+    setMaxRadius(max);
+    
+    // Start at 0
+    radius.set(0);
+    
+    // Start expanding phase
     setPhase('expanding');
-  }, [navigate]);
+    
+    console.log('[TRANSITION] Animating expand: 0 ->', max);
+    
+    // Animate expansion
+    animate(radius, max, {
+      duration: EXPAND_DURATION,
+      ease: [0.4, 0, 0.2, 1],
+      onComplete: async () => {
+        if (!mountedRef.current) return;
+        console.log('[TRANSITION] Expand complete, starting loading phase');
+        
+        setPhase('loading');
+        
+        let finalRoute = pendingNavigationRef.current;
+        
+        try {
+          if (prepareCallbackRef.current) {
+            console.log('[TRANSITION] Running prepare()');
+            const dynamicRoute = await prepareCallbackRef.current();
+            if (dynamicRoute) {
+              finalRoute = dynamicRoute;
+            }
+          }
+        } catch (error) {
+          console.error('[TRANSITION] Prepare failed:', error);
+          setPhase('idle');
+          radius.set(0);
+          transitionLockRef.current = false;
+          pendingNavigationRef.current = null;
+          prepareCallbackRef.current = null;
+          return;
+        }
+        
+        if (!mountedRef.current) return;
+        
+        // Navigate while overlay covers everything
+        if (finalRoute) {
+          console.log('[TRANSITION] Navigating to:', finalRoute);
+          navigate(finalRoute);
+        }
+        
+        // Wait for React to render the new route
+        await new Promise(resolve => {
+          requestAnimationFrame(() => {
+            requestAnimationFrame(resolve);
+          });
+        });
+        
+        if (!mountedRef.current) return;
+        
+        // CRITICAL: Ensure radius is at max before shrinking
+        const currentMax = getMaxRadius();
+        radius.set(currentMax);
+        console.log('[TRANSITION] Starting shrink from', currentMax, '-> 0');
+        
+        setPhase('shrinking');
+        
+        // Animate shrink
+        animate(radius, 0, {
+          duration: SHRINK_DURATION,
+          ease: [0.4, 0, 0.2, 1],
+          onComplete: () => {
+            console.log('[TRANSITION] Shrink complete, going idle');
+            setPhase('idle');
+            transitionLockRef.current = false;
+            pendingNavigationRef.current = null;
+            prepareCallbackRef.current = null;
+          },
+        });
+      },
+    });
+  }, [navigate, radius, getMaxRadius]);
 
   const isTransitioning = phase !== 'idle';
 
@@ -157,9 +195,10 @@ export const TransitionProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       <TransitionOverlay 
         phase={phase} 
         loadingText={loadingText} 
-        origin={origin}
-        onExpandComplete={handleExpandComplete}
-        onShrinkComplete={handleShrinkComplete}
+        origin={originPoint}
+        radius={radius}
+        currentRadius={currentRadius}
+        maxRadius={maxRadius}
       />
     </TransitionContext.Provider>
   );
@@ -169,113 +208,75 @@ interface TransitionOverlayProps {
   phase: TransitionPhase;
   loadingText: string;
   origin: { x: number; y: number };
-  onExpandComplete: () => void;
-  onShrinkComplete: () => void;
+  radius: ReturnType<typeof useMotionValue<number>>;
+  currentRadius: number;
+  maxRadius: number;
 }
 
 const TransitionOverlay: React.FC<TransitionOverlayProps> = ({ 
   phase, 
   loadingText, 
   origin,
-  onExpandComplete,
-  onShrinkComplete,
+  radius,
+  currentRadius,
+  maxRadius,
 }) => {
-  // Track what phase we're animating FROM to properly detect completion
-  const lastPhaseRef = useRef<TransitionPhase>('idle');
-  
-  // Define variants for each phase
-  // Key insight: clipPath circle() where 150% covers entire screen, 0% reveals everything
-  const variants: Variants = {
-    idle: {
-      clipPath: `circle(0% at ${origin.x}% ${origin.y}%)`,
-    },
-    expanding: {
-      clipPath: `circle(150% at ${origin.x}% ${origin.y}%)`,
-      transition: { duration: EXPAND_DURATION, ease: [0.4, 0, 0.2, 1] },
-    },
-    loading: {
-      clipPath: `circle(150% at 50% 50%)`,
-      transition: { duration: 0.1, ease: 'linear' },
-    },
-    shrinking: {
-      clipPath: `circle(0% at 50% 50%)`,
-      transition: { duration: SHRINK_DURATION, ease: [0.4, 0, 0.2, 1] },
-    },
-  };
-
-  const handleAnimationComplete = (definition: string) => {
-    console.log('[TRANSITION] onAnimationComplete, definition:', definition, 'phase:', phase);
-    
-    if (definition === 'expanding' && phase === 'expanding') {
-      onExpandComplete();
-    } else if (definition === 'shrinking' && phase === 'shrinking') {
-      onShrinkComplete();
-    }
-  };
-
-  // Update last phase ref
-  useEffect(() => {
-    lastPhaseRef.current = phase;
-  }, [phase]);
+  // Create clipPath from radius motion value
+  const clipPath = useTransform(radius, (r) => {
+    // During expanding, use origin point; during shrinking, use center
+    const cx = phase === 'expanding' ? `${origin.x}%` : '50%';
+    const cy = phase === 'expanding' ? `${origin.y}%` : '50%';
+    return `circle(${r}px at ${cx} ${cy})`;
+  });
 
   const isVisible = phase !== 'idle';
-  
-  // Get clip path for debug display
-  const getClipPathForPhase = (p: TransitionPhase) => {
-    if (p === 'idle') return `circle(0% at ${origin.x}% ${origin.y}%)`;
-    if (p === 'expanding') return `circle(150% at ${origin.x}% ${origin.y}%)`;
-    if (p === 'loading') return `circle(150% at 50% 50%)`;
-    if (p === 'shrinking') return `circle(0% at 50% 50%)`;
-    return 'unknown';
-  };
-  
-  // Debug: log current state
-  useEffect(() => {
-    if (isVisible) {
-      console.log('[TRANSITION] Overlay visible, phase:', phase, 'clipPath target:', getClipPathForPhase(phase));
-    }
-  }, [phase, isVisible]);
 
   if (!isVisible) return null;
 
+  // Debug styling - bright red during shrinking to prove visibility
+  const isShrinking = phase === 'shrinking';
+  const debugBgColor = isShrinking ? 'rgba(255, 0, 0, 0.35)' : 'hsl(var(--background))';
+  const debugOutline = isShrinking ? '4px solid rgba(255, 0, 0, 0.9)' : 'none';
+
   return createPortal(
     <>
-      {/* Debug label - remove after fixing */}
+      {/* Debug readout - top-left */}
       <div 
         style={{
           position: 'fixed',
           top: 10,
           left: 10,
-          zIndex: 10000,
-          background: 'rgba(0,0,0,0.8)',
+          zIndex: 1000000,
+          background: 'rgba(0, 0, 0, 0.9)',
           color: '#0f0',
-          padding: '8px 12px',
-          borderRadius: 4,
+          padding: '10px 14px',
+          borderRadius: 6,
           fontFamily: 'monospace',
-          fontSize: 12,
+          fontSize: 14,
+          lineHeight: 1.6,
+          border: '2px solid #0f0',
         }}
       >
-        Phase: {phase}
-        <br />
-        Target: {getClipPathForPhase(phase).slice(0, 35)}...
+        <div>Phase: <strong style={{ color: isShrinking ? '#f00' : '#0f0' }}>{phase}</strong></div>
+        <div>Radius: <strong>{currentRadius}px</strong></div>
+        <div>MaxRadius: <strong>{maxRadius}px</strong></div>
       </div>
       
-      {/* The actual overlay */}
+      {/* The actual overlay with clipPath */}
       <motion.div
-        key="transition-overlay"
-        initial="idle"
-        animate={phase}
-        variants={variants}
-        onAnimationComplete={handleAnimationComplete}
         style={{
           position: 'fixed',
           inset: 0,
-          zIndex: 9999,
+          zIndex: 999999,
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          backgroundColor: 'hsl(var(--background))',
+          backgroundColor: debugBgColor,
+          outline: debugOutline,
+          opacity: 1,
           pointerEvents: 'all',
+          clipPath: clipPath,
+          WebkitClipPath: clipPath,
         }}
       >
         <LoadingScreen text={loadingText} />
