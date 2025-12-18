@@ -8,14 +8,16 @@ import { generateLobbyCode, getStoredUserId, getStoredDisplayName } from '@/lib/
 import { toast } from 'sonner';
 import { Plus, LogIn } from 'lucide-react';
 import GameHeader from '@/components/GameHeader';
-import { usePageTransition } from '@/components/PageTransition';
+import { useTransition } from '@/contexts/TransitionContext';
+
+console.log('Home mounted');
 
 const Home = () => {
   const [joinCode, setJoinCode] = useState('');
   const [isCreating, setIsCreating] = useState(false);
   const [isJoining, setIsJoining] = useState(false);
   const navigate = useNavigate();
-  const { navigateWithTransitionFromCoords } = usePageTransition();
+  const { startTransition } = useTransition();
 
   const createLobby = async (event?: React.MouseEvent<HTMLButtonElement>) => {
     const userId = getStoredUserId();
@@ -25,46 +27,52 @@ const Home = () => {
       return;
     }
 
-    // Capture button position before async
-    let buttonX = window.innerWidth / 2;
-    let buttonY = window.innerHeight / 2;
+    // Capture button position
+    let origin: { x: number; y: number } | undefined;
     if (event?.currentTarget) {
       const rect = event.currentTarget.getBoundingClientRect();
-      buttonX = rect.left + rect.width / 2;
-      buttonY = rect.top + rect.height / 2;
+      origin = { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
     }
+    
+    startTransition('', {
+      loadingText: 'Creating lobby',
+      origin,
+      prepare: async () => {
+        setIsCreating(true);
+        const code = generateLobbyCode();
+        
+        const { data: lobby, error: lobbyError } = await supabase
+          .from('lobbies')
+          .insert({ code, host_user_id: userId })
+          .select()
+          .single();
 
-    setIsCreating(true);
-    try {
-      const code = generateLobbyCode();
-      
-      const { data: lobby, error: lobbyError } = await supabase
-        .from('lobbies')
-        .insert({ code, host_user_id: userId })
-        .select()
-        .single();
+        if (lobbyError) {
+          setIsCreating(false);
+          toast.error('Failed to create lobby');
+          throw lobbyError;
+        }
 
-      if (lobbyError) throw lobbyError;
+        const { error: playerError } = await supabase
+          .from('lobby_players')
+          .insert({
+            lobby_id: lobby.id,
+            user_id: userId,
+            display_name: displayName,
+            is_host: true
+          });
 
-      const { error: playerError } = await supabase
-        .from('lobby_players')
-        .insert({
-          lobby_id: lobby.id,
-          user_id: userId,
-          display_name: displayName,
-          is_host: true
-        });
+        if (playerError) {
+          setIsCreating(false);
+          toast.error('Failed to join lobby');
+          throw playerError;
+        }
 
-      if (playerError) throw playerError;
-
-      toast.success('Lobby created!');
-      setIsCreating(false);
-      navigateWithTransitionFromCoords(`/lobby/${lobby.id}`, buttonX, buttonY);
-    } catch (error) {
-      console.error('Error creating lobby:', error);
-      toast.error('Failed to create lobby');
-      setIsCreating(false);
-    }
+        toast.success('Lobby created!');
+        setIsCreating(false);
+        return `/lobby/${lobby.id}`;
+      }
+    });
   };
 
   const joinLobby = async (event?: React.MouseEvent<HTMLButtonElement>) => {
@@ -80,67 +88,61 @@ const Home = () => {
       return;
     }
 
-    // Capture button position before async
-    let buttonX = window.innerWidth / 2;
-    let buttonY = window.innerHeight / 2;
+    // Capture button position
+    let origin: { x: number; y: number } | undefined;
     if (event?.currentTarget) {
       const rect = event.currentTarget.getBoundingClientRect();
-      buttonX = rect.left + rect.width / 2;
-      buttonY = rect.top + rect.height / 2;
+      origin = { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
     }
 
-    setIsJoining(true);
-    try {
-      // Allow joining lobbies that are waiting or showing results (between games)
-      const { data: lobby, error: lobbyError } = await supabase
-        .from('lobbies')
-        .select('*')
-        .eq('code', joinCode.toUpperCase())
-        .in('status', ['waiting', 'results'])
-        .single();
+    startTransition('', {
+      loadingText: 'Joining lobby',
+      origin,
+      prepare: async () => {
+        setIsJoining(true);
+        const { data: lobby, error: lobbyError } = await supabase
+          .from('lobbies')
+          .select('*')
+          .eq('code', joinCode.toUpperCase())
+          .in('status', ['waiting', 'results'])
+          .single();
 
-      if (lobbyError || !lobby) {
-        toast.error('Lobby not found or game in progress');
+        if (lobbyError || !lobby) {
+          toast.error('Lobby not found or game in progress');
+          setIsJoining(false);
+          throw new Error('Lobby not found');
+        }
+
+        const { data: existing } = await supabase
+          .from('lobby_players')
+          .select('*')
+          .eq('lobby_id', lobby.id)
+          .eq('user_id', userId)
+          .single();
+
+        if (!existing) {
+          const isOriginalHost = lobby.host_user_id === userId;
+          const { error: playerError } = await supabase
+            .from('lobby_players')
+            .insert({
+              lobby_id: lobby.id,
+              user_id: userId,
+              display_name: displayName,
+              is_host: isOriginalHost
+            });
+
+          if (playerError) {
+            setIsJoining(false);
+            toast.error('Failed to join lobby');
+            throw playerError;
+          }
+          toast.success('Joined lobby!');
+        }
+        
         setIsJoining(false);
-        return;
+        return `/lobby/${lobby.id}`;
       }
-
-      // Check if already in lobby
-      const { data: existing } = await supabase
-        .from('lobby_players')
-        .select('*')
-        .eq('lobby_id', lobby.id)
-        .eq('user_id', userId)
-        .single();
-
-      if (existing) {
-        setIsJoining(false);
-        navigateWithTransitionFromCoords(`/lobby/${lobby.id}`, buttonX, buttonY);
-        return;
-      }
-
-      // Check if this user is the original host
-      const isOriginalHost = lobby.host_user_id === userId;
-
-      const { error: playerError } = await supabase
-        .from('lobby_players')
-        .insert({
-          lobby_id: lobby.id,
-          user_id: userId,
-          display_name: displayName,
-          is_host: isOriginalHost
-        });
-
-      if (playerError) throw playerError;
-
-      toast.success('Joined lobby!');
-      setIsJoining(false);
-      navigateWithTransitionFromCoords(`/lobby/${lobby.id}`, buttonX, buttonY);
-    } catch (error) {
-      console.error('Error joining lobby:', error);
-      toast.error('Failed to join lobby');
-      setIsJoining(false);
-    }
+    });
   };
 
   return (
