@@ -1,4 +1,4 @@
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, User } from 'lucide-react';
@@ -18,6 +18,7 @@ interface GameHeaderProps {
 
 const GameHeader = ({ title, showBack = true, backPath, onBack, rightContent }: GameHeaderProps) => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { navigateBack } = useBackTransition();
   const userId = getStoredUserId();
   
@@ -67,7 +68,8 @@ const GameHeader = ({ title, showBack = true, backPath, onBack, rightContent }: 
   };
 
   const handleProfileClick = () => {
-    navigate('/stats', { state: { fromGame: true } });
+    // Pass the current route so we can return here after auth
+    navigate('/stats', { state: { fromGame: true, originalFrom: location.pathname } });
   };
 
   return (

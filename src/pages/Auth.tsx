@@ -26,6 +26,7 @@ const Auth = () => {
   
   // Get the previous route to return to after auth
   const from = (location.state as { from?: string })?.from || '/menu';
+  console.log('Auth page - from route:', from, 'location.state:', location.state);
 
   const validateForm = () => {
     const newErrors: typeof errors = {};
@@ -181,12 +182,14 @@ const Auth = () => {
   };
 
   const handleBack = () => {
-    // If we have a specific route to return to, use it
-    // Otherwise go back in browser history
-    if (from && from !== '/menu') {
+    // If we have a specific game/lobby route to return to, use it
+    if (from && (from.startsWith('/game/') || from.startsWith('/lobby/'))) {
+      navigate(from);
+    } else if (from && from !== '/menu' && from !== '/stats') {
       navigate(from);
     } else {
-      navigate(-1);
+      // Fall back to menu if no valid return route
+      navigate('/menu');
     }
   };
 
