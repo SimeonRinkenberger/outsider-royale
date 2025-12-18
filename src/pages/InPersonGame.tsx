@@ -8,6 +8,7 @@ import { Eye, EyeOff, ArrowRight, RotateCcw, Trophy, Users } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion';
 import Confetti from '@/components/Confetti';
 import GameHeader from '@/components/GameHeader';
+import { useAudio } from '@/contexts/AudioContext';
 
 interface InPersonGameConfig {
   players: string[];
@@ -26,6 +27,12 @@ const InPersonGame = () => {
   const [selectedVote, setSelectedVote] = useState<string | null>(null);
   const [currentVoter, setCurrentVoter] = useState(0);
   const [showConfetti, setShowConfetti] = useState(false);
+  const { setMusicState } = useAudio();
+
+  // Set game music on mount
+  useEffect(() => {
+    setMusicState('game_standard');
+  }, [setMusicState]);
 
   useEffect(() => {
     const loadGame = async () => {

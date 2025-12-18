@@ -17,6 +17,7 @@ import { getAvatarById } from '@/components/AvatarPicker';
 import { usePageTransition } from '@/components/PageTransition';
 import { useBackTransition } from '@/components/BackTransition';
 import { motion, AnimatePresence, LayoutGroup } from 'framer-motion';
+import { useAudio } from '@/contexts/AudioContext';
 
 const Lobby = () => {
   const { lobbyId } = useParams();
@@ -60,6 +61,12 @@ const Lobby = () => {
     timedRoundDuration: 30,
   });
   const userId = getStoredUserId();
+  
+  // Set lobby music on mount
+  const { setMusicState } = useAudio();
+  useEffect(() => {
+    setMusicState('lobby');
+  }, [setMusicState]);
 
   // Reduced motion preference
   const prefersReducedMotion = useMemo(() => 
