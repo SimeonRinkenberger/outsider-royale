@@ -824,138 +824,155 @@ const Game = () => {
 
         <main className="p-4 max-w-md mx-auto space-y-6 py-6">
           
-          {isSpectator ? (
-            <Card className="p-6 bg-muted/50 border-border">
-              <div className="text-center space-y-2">
-                <Eye className="h-12 w-12 text-muted-foreground mx-auto" />
-                <h2 className="text-xl font-bold text-muted-foreground">You're a Spectator</h2>
-                <p className="text-sm text-muted-foreground">
-                  You've been eliminated. Watch the game unfold!
-                </p>
-                <p className="text-lg font-bold text-primary mt-4">Secret Word: {secretWord.text}</p>
-                <p className="text-xs text-muted-foreground">
-                  Category: {gameMetadata?.customCategory || secretWord.category}
-                </p>
-                <p className="text-sm text-muted-foreground">
-                  Outsider{outsiders.length > 1 ? 's' : ''}: {players.filter(p => outsiders.some(o => o.player_id === p.id)).map(p => p.display_name).join(', ')}
-                </p>
-              </div>
-            </Card>
-          ) : isHiddenImposterMode ? (
-            <Card className="p-6 bg-gradient-primary text-white shadow-card border-0">
-              <div className="text-center space-y-2">
-                <Eye className="h-8 w-8 mx-auto" />
-                <p className="text-white/80 text-sm">Your Word</p>
-                <h2 className="text-4xl font-bold">{displayWord?.text}</h2>
-                <p className="text-white/70 text-xs uppercase tracking-wider mt-1">
-                  Category: {gameMetadata?.customCategory || secretWord.category}
-                </p>
-                <p className="text-white/90 text-sm">
-                  Give a clue that relates to this word
-                </p>
-              </div>
-            </Card>
-          ) : isOutsider ? (
-            <Card className="p-6 bg-destructive/10 border-destructive/20">
-              <div className="text-center space-y-2">
-                <EyeOff className="h-12 w-12 text-destructive mx-auto" />
-                <h2 className="text-xl font-bold text-destructive">You're the Outsider!</h2>
-                <p className="text-sm text-muted-foreground">
-                  You don't know the secret word. Try to blend in by guessing what it might be from others' clues!
-                </p>
-                <p className="text-xs text-muted-foreground mt-2">
-                  Category: <span className="font-semibold">{gameMetadata?.customCategory || secretWord.category}</span>
-                </p>
-                
-                {/* Outsider Guess Feature */}
-                {canOutsiderGuess && !hasGuessed && (
-                  <div className="mt-4 pt-4 border-t border-destructive/20">
-                    {!showGuessInput ? (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setShowGuessInput(true)}
-                        className="gap-2 border-destructive/30 text-destructive hover:bg-destructive/10"
-                      >
-                        <Lightbulb className="h-4 w-4" />
-                        Guess the Word (Win Instantly!)
-                      </Button>
-                    ) : (
-                      <div className="space-y-2">
-                        <Input
-                          placeholder="Enter your guess..."
-                          value={guessInput}
-                          onChange={(e) => setGuessInput(e.target.value)}
-                          className="text-center"
-                          onKeyDown={(e) => e.key === 'Enter' && submitGuess()}
-                          autoFocus
-                        />
-                        <div className="flex gap-2">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => { setShowGuessInput(false); setGuessInput(''); }}
-                            className="flex-1"
-                          >
-                            Cancel
-                          </Button>
-                          <Button
-                            variant="destructive"
-                            size="sm"
-                            onClick={submitGuess}
-                            disabled={isSubmitting || !guessInput.trim()}
-                            className="flex-1"
-                          >
-                            Submit Guess
-                          </Button>
-                        </div>
-                        <p className="text-xs text-muted-foreground">
-                          ⚠️ You only get one guess!
-                        </p>
-                      </div>
-                    )}
-                  </div>
-                )}
-                {canOutsiderGuess && hasGuessed && (
-                  <p className="text-xs text-muted-foreground mt-4 pt-4 border-t border-destructive/20">
-                    ❌ You've already used your guess
+          <motion.div
+            initial={{ opacity: 0, y: 40 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, ease: [0.4, 0, 0.2, 1], delay: 0 }}
+          >
+            {isSpectator ? (
+              <Card className="p-6 bg-muted/50 border-border">
+                <div className="text-center space-y-2">
+                  <Eye className="h-12 w-12 text-muted-foreground mx-auto" />
+                  <h2 className="text-xl font-bold text-muted-foreground">You're a Spectator</h2>
+                  <p className="text-sm text-muted-foreground">
+                    You've been eliminated. Watch the game unfold!
                   </p>
-                )}
-              </div>
-            </Card>
-          ) : (
-            <Card className="p-6 bg-gradient-primary text-white shadow-card border-0">
-              <div className="text-center space-y-2">
-                <Eye className="h-8 w-8 mx-auto" />
-                <p className="text-white/80 text-sm">Secret Word</p>
-                <h2 className="text-4xl font-bold">{secretWord.text}</h2>
-                <p className="text-white/70 text-xs uppercase tracking-wider mt-1">
-                  Category: {gameMetadata?.customCategory || secretWord.category}
-                </p>
-                <p className="text-white/90 text-sm">
-                  Give a clue that relates to this word
-                </p>
-              </div>
-            </Card>
-          )}
+                  <p className="text-lg font-bold text-primary mt-4">Secret Word: {secretWord.text}</p>
+                  <p className="text-xs text-muted-foreground">
+                    Category: {gameMetadata?.customCategory || secretWord.category}
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    Outsider{outsiders.length > 1 ? 's' : ''}: {players.filter(p => outsiders.some(o => o.player_id === p.id)).map(p => p.display_name).join(', ')}
+                  </p>
+                </div>
+              </Card>
+            ) : isHiddenImposterMode ? (
+              <Card className="p-6 bg-gradient-primary text-white shadow-card border-0">
+                <div className="text-center space-y-2">
+                  <Eye className="h-8 w-8 mx-auto" />
+                  <p className="text-white/80 text-sm">Your Word</p>
+                  <h2 className="text-4xl font-bold">{displayWord?.text}</h2>
+                  <p className="text-white/70 text-xs uppercase tracking-wider mt-1">
+                    Category: {gameMetadata?.customCategory || secretWord.category}
+                  </p>
+                  <p className="text-white/90 text-sm">
+                    Give a clue that relates to this word
+                  </p>
+                </div>
+              </Card>
+            ) : isOutsider ? (
+              <Card className="p-6 bg-destructive/10 border-destructive/20">
+                <div className="text-center space-y-2">
+                  <EyeOff className="h-12 w-12 text-destructive mx-auto" />
+                  <h2 className="text-xl font-bold text-destructive">You're the Outsider!</h2>
+                  <p className="text-sm text-muted-foreground">
+                    You don't know the secret word. Try to blend in by guessing what it might be from others' clues!
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-2">
+                    Category: <span className="font-semibold">{gameMetadata?.customCategory || secretWord.category}</span>
+                  </p>
+                  
+                  {/* Outsider Guess Feature */}
+                  {canOutsiderGuess && !hasGuessed && (
+                    <div className="mt-4 pt-4 border-t border-destructive/20">
+                      {!showGuessInput ? (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setShowGuessInput(true)}
+                          className="gap-2 border-destructive/30 text-destructive hover:bg-destructive/10"
+                        >
+                          <Lightbulb className="h-4 w-4" />
+                          Guess the Word (Win Instantly!)
+                        </Button>
+                      ) : (
+                        <div className="space-y-2">
+                          <Input
+                            placeholder="Enter your guess..."
+                            value={guessInput}
+                            onChange={(e) => setGuessInput(e.target.value)}
+                            className="text-center"
+                            onKeyDown={(e) => e.key === 'Enter' && submitGuess()}
+                            autoFocus
+                          />
+                          <div className="flex gap-2">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => { setShowGuessInput(false); setGuessInput(''); }}
+                              className="flex-1"
+                            >
+                              Cancel
+                            </Button>
+                            <Button
+                              variant="destructive"
+                              size="sm"
+                              onClick={submitGuess}
+                              disabled={isSubmitting || !guessInput.trim()}
+                              className="flex-1"
+                            >
+                              Submit Guess
+                            </Button>
+                          </div>
+                          <p className="text-xs text-muted-foreground">
+                            ⚠️ You only get one guess!
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                  {canOutsiderGuess && hasGuessed && (
+                    <p className="text-xs text-muted-foreground mt-4 pt-4 border-t border-destructive/20">
+                      ❌ You've already used your guess
+                    </p>
+                  )}
+                </div>
+              </Card>
+            ) : (
+              <Card className="p-6 bg-gradient-primary text-white shadow-card border-0">
+                <div className="text-center space-y-2">
+                  <Eye className="h-8 w-8 mx-auto" />
+                  <p className="text-white/80 text-sm">Secret Word</p>
+                  <h2 className="text-4xl font-bold">{secretWord.text}</h2>
+                  <p className="text-white/70 text-xs uppercase tracking-wider mt-1">
+                    Category: {gameMetadata?.customCategory || secretWord.category}
+                  </p>
+                  <p className="text-white/90 text-sm">
+                    Give a clue that relates to this word
+                  </p>
+                </div>
+              </Card>
+            )}
+          </motion.div>
 
           {/* Turn indicator */}
           {!hasSubmittedClue && currentTurnPlayer && (
-            <Card className={`p-4 transition-all duration-300 ${isMyTurn ? 'bg-primary/10 border-primary animate-pulse-glow' : 'bg-muted/50 border-border'}`}>
-              <div className="text-center">
-                {isMyTurn ? (
-                  <p className="font-semibold text-primary animate-bounce-in">It's your turn to give a clue!</p>
-                ) : (
-                  <p className="text-muted-foreground">
-                    Waiting for <span className="font-semibold text-foreground">{currentTurnPlayer.display_name}</span> to submit their clue...
-                  </p>
-                )}
-              </div>
-            </Card>
+            <motion.div
+              initial={{ opacity: 0, y: 30 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.4, ease: [0.4, 0, 0.2, 1], delay: 0.1 }}
+            >
+              <Card className={`p-4 transition-all duration-300 ${isMyTurn ? 'bg-primary/10 border-primary animate-pulse-glow' : 'bg-muted/50 border-border'}`}>
+                <div className="text-center">
+                  {isMyTurn ? (
+                    <p className="font-semibold text-primary animate-bounce-in">It's your turn to give a clue!</p>
+                  ) : (
+                    <p className="text-muted-foreground">
+                      Waiting for <span className="font-semibold text-foreground">{currentTurnPlayer.display_name}</span> to submit their clue...
+                    </p>
+                  )}
+                </div>
+              </Card>
+            </motion.div>
           )}
 
           {!isSpectator && !hasSubmittedClue && isMyTurn ? (
-            <div className="space-y-4">
+            <motion.div
+              initial={{ opacity: 0, y: 30 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.4, ease: [0.4, 0, 0.2, 1], delay: 0.2 }}
+              className="space-y-4"
+            >
               {/* Timed Round Timer */}
               {isTimedRound && (
                 <SpeedRoundTimer
@@ -989,28 +1006,39 @@ const Game = () => {
                 <Send className="h-4 w-4 mr-2" />
                 {isSubmitting ? 'Submitting...' : 'Submit Clue'}
               </Button>
-            </div>
+            </motion.div>
           ) : !isSpectator && hasSubmittedClue ? (
-            <Card className="p-6 bg-gradient-card border-border text-center space-y-4">
-              <div>
-                <CheckCircle2 className="h-12 w-12 text-primary mx-auto mb-2" />
-                <h3 className="font-bold text-lg mb-1">Clue Submitted!</h3>
-                <p className="text-sm text-muted-foreground">
-                  {allCluesSubmitted 
-                    ? "All clues submitted! Waiting for host..."
-                    : `Waiting for ${shuffledPlayers.length - clues.length} other player(s)...`}
-                </p>
-              </div>
-              {currentPlayer?.is_host && allCluesSubmitted && (
-                <Button onClick={startNextRound} className="w-full h-12">
-                  <ArrowRight className="h-4 w-4 mr-2" />
-                  {isEliminationMode ? 'Go to Voting' : isLastRound ? 'Go to Voting' : 'Next Round'}
-                </Button>
-              )}
-            </Card>
+            <motion.div
+              initial={{ opacity: 0, y: 30 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.4, ease: [0.4, 0, 0.2, 1], delay: 0.2 }}
+            >
+              <Card className="p-6 bg-gradient-card border-border text-center space-y-4">
+                <div>
+                  <CheckCircle2 className="h-12 w-12 text-primary mx-auto mb-2" />
+                  <h3 className="font-bold text-lg mb-1">Clue Submitted!</h3>
+                  <p className="text-sm text-muted-foreground">
+                    {allCluesSubmitted 
+                      ? "All clues submitted! Waiting for host..."
+                      : `Waiting for ${shuffledPlayers.length - clues.length} other player(s)...`}
+                  </p>
+                </div>
+                {currentPlayer?.is_host && allCluesSubmitted && (
+                  <Button onClick={startNextRound} className="w-full h-12">
+                    <ArrowRight className="h-4 w-4 mr-2" />
+                    {isEliminationMode ? 'Go to Voting' : isLastRound ? 'Go to Voting' : 'Next Round'}
+                  </Button>
+                )}
+              </Card>
+            </motion.div>
           ) : null}
 
-          <div className="space-y-3">
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4, ease: [0.4, 0, 0.2, 1], delay: 0.3 }}
+            className="space-y-3"
+          >
             <h3 className="text-sm font-semibold text-muted-foreground px-1 flex items-center gap-2">
               <Users className="h-4 w-4" />
               Turn Order ({clues.length}/{shuffledPlayers.length} this round)
@@ -1022,51 +1050,63 @@ const Game = () => {
                 const avatar = player.avatar_url ? getAvatarById(player.avatar_url) : null;
                 
                 return (
-                  <Card 
-                    key={player.id} 
-                    className={`p-4 border transition-colors ${
-                      isCurrentTurn 
-                        ? 'bg-primary/10 border-primary' 
-                        : 'bg-gradient-card border-border'
-                    }`}
+                  <motion.div
+                    key={player.id}
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1], delay: 0.35 + index * 0.05 }}
                   >
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs text-muted-foreground w-6">{index + 1}.</span>
-                        <div className={`w-7 h-7 rounded-full flex items-center justify-center text-base ${avatar ? avatar.color : 'bg-muted'}`}>
-                          {avatar ? avatar.emoji : <User className="h-4 w-4 text-muted-foreground" />}
+                    <Card 
+                      className={`p-4 border transition-colors ${
+                        isCurrentTurn 
+                          ? 'bg-primary/10 border-primary' 
+                          : 'bg-gradient-card border-border'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs text-muted-foreground w-6">{index + 1}.</span>
+                          <div className={`w-7 h-7 rounded-full flex items-center justify-center text-base ${avatar ? avatar.color : 'bg-muted'}`}>
+                            {avatar ? avatar.emoji : <User className="h-4 w-4 text-muted-foreground" />}
+                          </div>
+                          <span className="font-medium">
+                            {player.display_name}
+                            {player.id === currentPlayer?.id && ' (You)'}
+                          </span>
+                          {isCurrentTurn && (
+                            <span className="text-xs bg-primary text-primary-foreground px-2 py-0.5 rounded-full">
+                              Turn
+                            </span>
+                          )}
                         </div>
-                        <span className="font-medium">
-                          {player.display_name}
-                          {player.id === currentPlayer?.id && ' (You)'}
-                        </span>
-                        {isCurrentTurn && (
-                          <span className="text-xs bg-primary text-primary-foreground px-2 py-0.5 rounded-full">
-                            Turn
+                        {playerClue ? (
+                          <span className="text-primary font-medium">"{playerClue.clue_text}"</span>
+                        ) : (
+                          <span className="text-muted-foreground text-sm">
+                            {isCurrentTurn ? 'Thinking...' : 'Waiting...'}
                           </span>
                         )}
                       </div>
-                      {playerClue ? (
-                        <span className="text-primary font-medium">"{playerClue.clue_text}"</span>
-                      ) : (
-                        <span className="text-muted-foreground text-sm">
-                          {isCurrentTurn ? 'Thinking...' : 'Waiting...'}
-                        </span>
-                      )}
-                    </div>
-                  </Card>
+                    </Card>
+                  </motion.div>
                 );
               })}
             </div>
-          </div>
+          </motion.div>
 
           {/* Active rules dropdown below player names */}
-          <ActiveModifiersDisplay 
-            modifiers={gameMetadata?.modifiers || []} 
-            customModifiers={gameMetadata?.customModifiersData || customModifiers}
-            gameMode={game.game_mode}
-            compact
-          />
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4, ease: [0.4, 0, 0.2, 1], delay: 0.5 }}
+          >
+            <ActiveModifiersDisplay 
+              modifiers={gameMetadata?.modifiers || []} 
+              customModifiers={gameMetadata?.customModifiersData || customModifiers}
+              gameMode={game.game_mode}
+              compact
+            />
+          </motion.div>
         </main>
         </div>
       </>
