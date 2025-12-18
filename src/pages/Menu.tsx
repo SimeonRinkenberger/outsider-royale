@@ -32,16 +32,18 @@ const Menu = () => {
   });
   const [hasInteracted, setHasInteracted] = useState(false);
 
-  // Handle music playback
+  // Handle music playback - restart from beginning each time menu mounts
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio) return;
 
     audio.loop = true;
     audio.volume = volume;
+    audio.currentTime = 0; // Always restart from beginning
 
     const tryPlay = () => {
-      if (!isMuted && audio.paused) {
+      if (!isMuted) {
+        audio.currentTime = 0;
         audio.play().catch(() => {
           // Autoplay blocked, will play on interaction
         });
@@ -53,41 +55,29 @@ const Menu = () => {
 
     // Play on first user interaction if autoplay was blocked
     const handleInteraction = () => {
-      if (!hasInteracted) {
-        setHasInteracted(true);
-        tryPlay();
-      }
+      setHasInteracted(true);
+      tryPlay();
     };
 
-    document.addEventListener('click', handleInteraction, { once: true });
-    document.addEventListener('touchstart', handleInteraction, { once: true });
+    if (!hasInteracted) {
+      document.addEventListener('click', handleInteraction, { once: true });
+      document.addEventListener('touchstart', handleInteraction, { once: true });
+    }
 
     return () => {
       document.removeEventListener('click', handleInteraction);
       document.removeEventListener('touchstart', handleInteraction);
       audio.pause();
+      audio.currentTime = 0;
     };
-  }, []);
+  }, [isMuted, volume, hasInteracted]);
 
-  // Handle mute/unmute
+  // Persist preferences
   useEffect(() => {
-    const audio = audioRef.current;
-    if (!audio) return;
-
-    if (isMuted) {
-      audio.pause();
-    } else {
-      audio.play().catch(() => {});
-    }
     localStorage.setItem('menuMusicMuted', String(isMuted));
   }, [isMuted]);
 
-  // Handle volume changes
   useEffect(() => {
-    const audio = audioRef.current;
-    if (audio) {
-      audio.volume = volume;
-    }
     localStorage.setItem('menuMusicVolume', String(volume));
   }, [volume]);
 
