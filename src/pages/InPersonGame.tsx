@@ -14,6 +14,7 @@ interface InPersonGameConfig {
   players: string[];
   numOutsiders: number;
   currentPlayerIndex: number;
+  currentVoterIndex: number;
   phase: 'word-reveal' | 'discussion' | 'voting' | 'results';
   secretWord?: string;
   outsiderIndices?: number[];
@@ -25,7 +26,6 @@ const InPersonGame = () => {
   const [config, setConfig] = useState<InPersonGameConfig | null>(null);
   const [isWordVisible, setIsWordVisible] = useState(false);
   const [selectedVote, setSelectedVote] = useState<string | null>(null);
-  const [currentVoter, setCurrentVoter] = useState(0);
   const [showConfetti, setShowConfetti] = useState(false);
   const { setMusicState } = useAudio();
   
@@ -97,22 +97,21 @@ const InPersonGame = () => {
   };
 
   const startVoting = () => {
-    updateConfig({ phase: 'voting' });
-    setCurrentVoter(0);
+    updateConfig({ phase: 'voting', currentVoterIndex: 0 });
     setSelectedVote(null);
   };
 
   const submitVote = () => {
     if (!config || !selectedVote) return;
     
-    const newVotes = { ...config.votes, [config.players[currentVoter]]: selectedVote };
-    updateConfig({ votes: newVotes });
+    const currentVoterIndex = config.currentVoterIndex ?? 0;
+    const newVotes = { ...config.votes, [config.players[currentVoterIndex]]: selectedVote };
     
-    if (currentVoter + 1 >= config.players.length) {
+    if (currentVoterIndex + 1 >= config.players.length) {
       updateConfig({ phase: 'results', votes: newVotes });
       setShowConfetti(true);
     } else {
-      setCurrentVoter(currentVoter + 1);
+      updateConfig({ votes: newVotes, currentVoterIndex: currentVoterIndex + 1 });
       setSelectedVote(null);
     }
   };
@@ -285,25 +284,28 @@ const InPersonGame = () => {
             >
               <Card className="p-4 text-center">
                 <p className="text-muted-foreground">Pass to</p>
-                <h2 className="text-2xl font-bold">{config.players[currentVoter]}</h2>
+                <h2 className="text-2xl font-bold">{config.players[config.currentVoterIndex ?? 0]}</h2>
                 <p className="text-sm text-muted-foreground mt-2">Who do you think is the outsider?</p>
               </Card>
               
               <div className="space-y-2">
-                {config.players.map((player, index) => (
-                  <Button
-                    key={index}
-                    variant={selectedVote === player ? 'default' : 'outline'}
-                    className="w-full h-12 justify-start"
-                    onClick={() => setSelectedVote(player)}
-                    disabled={player === config.players[currentVoter]}
-                  >
-                    {player}
-                    {player === config.players[currentVoter] && (
-                      <span className="ml-auto text-xs text-muted-foreground">(You)</span>
-                    )}
-                  </Button>
-                ))}
+                {config.players.map((player, index) => {
+                  const isCurrentVoter = index === (config.currentVoterIndex ?? 0);
+                  return (
+                    <Button
+                      key={index}
+                      variant={selectedVote === player ? 'default' : 'outline'}
+                      className="w-full h-12 justify-start"
+                      onClick={() => setSelectedVote(player)}
+                      disabled={isCurrentVoter}
+                    >
+                      {player}
+                      {isCurrentVoter && (
+                        <span className="ml-auto text-xs text-muted-foreground">(You)</span>
+                      )}
+                    </Button>
+                  );
+                })}
               </div>
               
               <Button
