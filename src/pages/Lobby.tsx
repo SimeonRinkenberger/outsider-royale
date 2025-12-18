@@ -204,10 +204,11 @@ const Lobby = () => {
         navigateWithTransitionFromCoords(`/game/${lobbyId}`, pendingTransitionRef.current.x, pendingTransitionRef.current.y);
         pendingTransitionRef.current = null;
       } else {
-        navigate(`/game/${lobbyId}`);
+        // Non-host players get a center-screen transition
+        navigateWithTransitionFromCoords(`/game/${lobbyId}`, window.innerWidth / 2, window.innerHeight / 2);
       }
     }
-  }, [lobby?.current_game_id, lobbyId, navigate, navigateWithTransitionFromCoords]);
+  }, [lobby?.current_game_id, lobbyId, navigateWithTransitionFromCoords]);
 
   const copyCode = async () => {
     if (lobby?.code) {
