@@ -9,8 +9,10 @@ import { Users, Wifi, User, LogIn, BarChart3 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
 import { usePageTransition } from '@/components/PageTransition';
-import { useAudio } from '@/contexts/AudioContext';
-import { MusicControls } from '@/components/MusicControls';
+// Audio disabled for now
+// import { useAudio } from '@/contexts/AudioContext';
+// Audio disabled for now
+// import { MusicControls } from '@/components/MusicControls';
 
 const Menu = () => {
   const navigate = useNavigate();
@@ -23,12 +25,11 @@ const Menu = () => {
   const [hasAnimated, setHasAnimated] = useState(false);
   const [isCreatingGuest, setIsCreatingGuest] = useState(false);
   
-  // Set menu music on mount
-  const { setMusicState } = useAudio();
-  
-  useEffect(() => {
-    setMusicState('menu');
-  }, [setMusicState]);
+  // Audio disabled for now
+  // const { setMusicState } = useAudio();
+  // useEffect(() => {
+  //   setMusicState('menu');
+  // }, [setMusicState]);
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -141,8 +142,7 @@ const Menu = () => {
             Outsider Royale
           </h1>
           <div className="flex items-center gap-2">
-            {/* Music Control */}
-            <MusicControls />
+            {/* Music Control - disabled for now */}
             
             {isAuthenticated ? <Button variant="ghost" size="icon" onClick={handleStats}>
                 <BarChart3 className="h-5 w-5" />

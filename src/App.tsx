@@ -6,7 +6,8 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { ThemeProvider } from "next-themes";
 import { getStoredUserId } from './lib/gameUtils';
-import { AudioProvider } from './contexts/AudioContext';
+// Audio disabled for now
+// import { AudioProvider } from './contexts/AudioContext';
 import ThemeToggle from './components/ThemeToggle';
 import ForceUpdateButton from './components/ForceUpdateButton';
 import { PageTransitionOverlay } from './components/PageTransition';
@@ -50,62 +51,60 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
-      <AudioProvider>
-        <TooltipProvider>
-          <Toaster />
-          <Sonner />
-          <BrowserRouter>
-            <ThemeToggle />
-            <ForceUpdateButton />
-            <PageTransitionOverlay />
-            <BackTransitionOverlay />
-            
-            <Routes>
-              <Route path="/" element={<Menu />} />
-              <Route path="/menu" element={<Menu />} />
-              <Route path="/auth" element={<Auth />} />
-              <Route path="/auth/callback" element={<AuthCallback />} />
-              <Route path="/onboarding" element={<Onboarding />} />
-              <Route path="/in-person" element={<InPersonSetup />} />
-              <Route path="/in-person/game" element={<InPersonGame />} />
-              <Route path="/stats" element={<Stats />} />
-              <Route
-                path="/home"
-                element={
-                  <ProtectedRoute>
-                    <Home />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/lobby/:lobbyId"
-                element={
-                  <ProtectedRoute>
-                    <Lobby />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/game/:lobbyId"
-                element={
-                  <ProtectedRoute>
-                    <Game />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/results/:lobbyId"
-                element={
-                  <ProtectedRoute>
-                    <Results />
-                  </ProtectedRoute>
-                }
-              />
-              <Route path="*" element={<NotFound />} />
-            </Routes>
-          </BrowserRouter>
-        </TooltipProvider>
-      </AudioProvider>
+      <TooltipProvider>
+        <Toaster />
+        <Sonner />
+        <BrowserRouter>
+          <ThemeToggle />
+          <ForceUpdateButton />
+          <PageTransitionOverlay />
+          <BackTransitionOverlay />
+          
+          <Routes>
+            <Route path="/" element={<Menu />} />
+            <Route path="/menu" element={<Menu />} />
+            <Route path="/auth" element={<Auth />} />
+            <Route path="/auth/callback" element={<AuthCallback />} />
+            <Route path="/onboarding" element={<Onboarding />} />
+            <Route path="/in-person" element={<InPersonSetup />} />
+            <Route path="/in-person/game" element={<InPersonGame />} />
+            <Route path="/stats" element={<Stats />} />
+            <Route
+              path="/home"
+              element={
+                <ProtectedRoute>
+                  <Home />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/lobby/:lobbyId"
+              element={
+                <ProtectedRoute>
+                  <Lobby />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/game/:lobbyId"
+              element={
+                <ProtectedRoute>
+                  <Game />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/results/:lobbyId"
+              element={
+                <ProtectedRoute>
+                  <Results />
+                </ProtectedRoute>
+              }
+            />
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </BrowserRouter>
+      </TooltipProvider>
     </ThemeProvider>
   </QueryClientProvider>
 );
