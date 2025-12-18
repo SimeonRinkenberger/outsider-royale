@@ -9,6 +9,7 @@ import { useCustomContent } from '@/hooks/useCustomContent';
 import { getStoredUserId } from '@/lib/gameUtils';
 import { toast } from 'sonner';
 import { Trophy, XCircle, RotateCcw, DoorOpen, Settings, ChevronDown, User } from 'lucide-react';
+import cryingFoxImg from '@/assets/crying_fox.png';
 import Confetti from '@/components/Confetti';
 import { GameConfigPanel, GameConfig, getActiveModifierLabels } from '@/components/GameConfigPanel';
 import { GameMode } from '@/types/game';
@@ -625,7 +626,11 @@ const Results = () => {
             >
               {groupWins ? (
                 <>
-                  <Trophy className={`h-16 w-16 mx-auto mb-3 text-white ${shouldAnimate ? 'animate-float' : ''}`} />
+                  <img 
+                    src={cryingFoxImg} 
+                    alt="Fox mascot" 
+                    className={`h-24 w-24 mx-auto mb-3 object-contain ${shouldAnimate ? 'animate-float' : ''}`} 
+                  />
                   <h2 className="text-2xl font-bold mb-2">Group Wins!</h2>
                   <p className="text-white/90">
                     You found the outsider! Great job detectives!
