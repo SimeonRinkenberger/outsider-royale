@@ -1101,16 +1101,17 @@ const Game = () => {
           </AnimatePresence>
 
           <motion.div
+            layout
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.4, ease: [0.4, 0, 0.2, 1], delay: 0.3 }}
+            transition={{ duration: 0.4, ease: [0.4, 0, 0.2, 1], layout: { duration: 0.3 } }}
             className="space-y-3"
           >
             <h3 className="text-sm font-semibold text-muted-foreground px-1 flex items-center gap-2">
               <Users className="h-4 w-4" />
               Turn Order ({clues.length}/{shuffledPlayers.length} this round)
             </h3>
-            <div className="space-y-2">
+            <motion.div layout className="space-y-2">
               {shuffledPlayers.map((player, index) => {
                 const playerClue = clues.find(c => c.player_id === player.id);
                 const isCurrentTurn = index === currentTurnIndex && !playerClue;
@@ -1119,9 +1120,10 @@ const Game = () => {
                 return (
                   <motion.div
                     key={player.id}
+                    layout
                     initial={{ opacity: 0, x: -20 }}
                     animate={{ opacity: 1, x: 0 }}
-                    transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1], delay: 0.4 + index * 0.05 }}
+                    transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1], layout: { duration: 0.3 } }}
                     className="relative"
                   >
                     {/* Spotlight glow effect */}
@@ -1182,14 +1184,15 @@ const Game = () => {
                   </motion.div>
                 );
               })}
-            </div>
+            </motion.div>
           </motion.div>
 
           {/* Active rules dropdown below player names */}
           <motion.div
+            layout
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.4, ease: [0.4, 0, 0.2, 1], delay: 0.5 }}
+            transition={{ duration: 0.4, ease: [0.4, 0, 0.2, 1], layout: { duration: 0.3 } }}
           >
             <ActiveModifiersDisplay 
               modifiers={gameMetadata?.modifiers || []} 
