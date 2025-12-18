@@ -1,11 +1,13 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import { Slider } from '@/components/ui/slider';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { supabase } from '@/integrations/supabase/client';
 import { getStoredUserId, getStoredDisplayName, clearStorage, setStoredUserId, setStoredDisplayName } from '@/lib/gameUtils';
-import { Users, Wifi, User, LogIn, BarChart3 } from 'lucide-react';
+import { Users, Wifi, User, LogIn, BarChart3, Volume2, VolumeX } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
 import { usePageTransition } from '@/components/PageTransition';
@@ -20,6 +22,76 @@ const Menu = () => {
   const [guestName, setGuestName] = useState('');
   const [hasAnimated, setHasAnimated] = useState(false);
   const [isCreatingGuest, setIsCreatingGuest] = useState(false);
+  
+  // Music state
+  const audioRef = useRef<HTMLAudioElement>(null);
+  const [isMuted, setIsMuted] = useState(() => localStorage.getItem('menuMusicMuted') === 'true');
+  const [volume, setVolume] = useState(() => {
+    const stored = localStorage.getItem('menuMusicVolume');
+    return stored ? parseFloat(stored) : 0.3;
+  });
+  const [hasInteracted, setHasInteracted] = useState(false);
+
+  // Handle music playback
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (!audio) return;
+
+    audio.loop = true;
+    audio.volume = volume;
+
+    const tryPlay = () => {
+      if (!isMuted && audio.paused) {
+        audio.play().catch(() => {
+          // Autoplay blocked, will play on interaction
+        });
+      }
+    };
+
+    // Try to play immediately
+    tryPlay();
+
+    // Play on first user interaction if autoplay was blocked
+    const handleInteraction = () => {
+      if (!hasInteracted) {
+        setHasInteracted(true);
+        tryPlay();
+      }
+    };
+
+    document.addEventListener('click', handleInteraction, { once: true });
+    document.addEventListener('touchstart', handleInteraction, { once: true });
+
+    return () => {
+      document.removeEventListener('click', handleInteraction);
+      document.removeEventListener('touchstart', handleInteraction);
+      audio.pause();
+    };
+  }, []);
+
+  // Handle mute/unmute
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (!audio) return;
+
+    if (isMuted) {
+      audio.pause();
+    } else {
+      audio.play().catch(() => {});
+    }
+    localStorage.setItem('menuMusicMuted', String(isMuted));
+  }, [isMuted]);
+
+  // Handle volume changes
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (audio) {
+      audio.volume = volume;
+    }
+    localStorage.setItem('menuMusicVolume', String(volume));
+  }, [volume]);
+
+  const toggleMute = () => setIsMuted(!isMuted);
   useEffect(() => {
     const checkAuth = async () => {
       const {
@@ -117,18 +189,57 @@ const Menu = () => {
       </div>;
   }
   return <div className="min-h-screen bg-background flex flex-col">
+      {/* Hidden Audio Element */}
+      <audio ref={audioRef} src="/audio/main_menu.mp3" preload="auto" />
+      
       {/* Header */}
       <header className="bg-card border-b border-border p-4">
         <div className="max-w-md mx-auto flex items-center justify-between">
           <h1 className="text-xl sm:text-2xl font-bold bg-gradient-primary bg-clip-text text-transparent">
             Outsider Royale
           </h1>
-          {isAuthenticated ? <Button variant="ghost" size="icon" onClick={handleStats}>
-              <BarChart3 className="h-5 w-5" />
-            </Button> : <Button variant="ghost" size="sm" onClick={handleAuth}>
-              <LogIn className="h-4 w-4 mr-2" />
-              Sign In
-            </Button>}
+          <div className="flex items-center gap-2">
+            {/* Music Control */}
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="ghost" size="icon" className="relative">
+                  {isMuted ? <VolumeX className="h-5 w-5" /> : <Volume2 className="h-5 w-5" />}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-48 p-3" align="end">
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium">Music</span>
+                    <Button variant="ghost" size="sm" onClick={toggleMute} className="h-8 px-2">
+                      {isMuted ? 'Unmute' : 'Mute'}
+                    </Button>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <VolumeX className="h-4 w-4 text-muted-foreground" />
+                    <Slider
+                      value={[volume]}
+                      onValueChange={([v]) => {
+                        setVolume(v);
+                        if (v > 0 && isMuted) setIsMuted(false);
+                        if (v === 0) setIsMuted(true);
+                      }}
+                      max={1}
+                      step={0.01}
+                      className="flex-1"
+                    />
+                    <Volume2 className="h-4 w-4 text-muted-foreground" />
+                  </div>
+                </div>
+              </PopoverContent>
+            </Popover>
+            
+            {isAuthenticated ? <Button variant="ghost" size="icon" onClick={handleStats}>
+                <BarChart3 className="h-5 w-5" />
+              </Button> : <Button variant="ghost" size="sm" onClick={handleAuth}>
+                <LogIn className="h-4 w-4 mr-2" />
+                Sign In
+              </Button>}
+          </div>
         </div>
       </header>
 
