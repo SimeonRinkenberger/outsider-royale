@@ -15,6 +15,7 @@ import { ActiveModifiersDisplay } from '@/components/ActiveModifiersDisplay';
 import { SpeedRoundTimer } from '@/components/SpeedRoundTimer';
 import { getAvatarById } from '@/components/AvatarPicker';
 import { useAudio } from '@/contexts/AudioContext';
+import { usePageTransition } from '@/components/PageTransition';
 
 interface CustomModifierData {
   id: string;
@@ -60,6 +61,7 @@ const getShuffledPlayersForGame = <T,>(players: T[], gameId: string): T[] => {
 const Game = () => {
   const { lobbyId } = useParams();
   const navigate = useNavigate();
+  const { navigateWithTransitionFromCoords } = usePageTransition();
   const { lobby, players, game, currentRound, clues, allClues, votes, secretWord, imposterWord, outsiders } = useGameState(lobbyId || null);
   const [clueInput, setClueInput] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -675,7 +677,10 @@ const Game = () => {
                   <span className="hidden sm:inline">Skip</span>
                 </Button>
               )}
-              <Button variant="ghost" size="icon" onClick={() => navigate('/stats', { state: { fromGame: true } })}>
+              <Button variant="ghost" size="icon" onClick={(e) => {
+                const rect = e.currentTarget.getBoundingClientRect();
+                navigateWithTransitionFromCoords('/stats', rect.left + rect.width / 2, rect.top + rect.height / 2);
+              }}>
                 <User className="h-5 w-5" />
               </Button>
               <Button variant="ghost" size="sm" onClick={leaveLobby} className="gap-1 text-muted-foreground">
@@ -955,7 +960,10 @@ const Game = () => {
               </p>
             </div>
             <div className="flex items-center gap-2">
-              <Button variant="ghost" size="icon" onClick={() => navigate('/stats', { state: { fromGame: true } })}>
+              <Button variant="ghost" size="icon" onClick={(e) => {
+                const rect = e.currentTarget.getBoundingClientRect();
+                navigateWithTransitionFromCoords('/stats', rect.left + rect.width / 2, rect.top + rect.height / 2);
+              }}>
                 <User className="h-5 w-5" />
               </Button>
               <Button variant="ghost" size="sm" onClick={leaveLobby} className="gap-1 text-muted-foreground">
