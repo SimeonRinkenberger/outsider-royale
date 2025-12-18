@@ -28,20 +28,9 @@ import NotFound from './pages/NotFound';
 const queryClient = new QueryClient();
 
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
-  const [isChecking, setIsChecking] = useState(true);
-  const [hasUser, setHasUser] = useState(false);
-
-  useEffect(() => {
-    const userId = getStoredUserId();
-    setHasUser(!!userId);
-    setIsChecking(false);
-  }, []);
-
-  if (isChecking) {
-    return <LoadingScreen />;
-  }
-
-  return hasUser ? <>{children}</> : <Navigate to="/onboarding" replace />;
+  // getStoredUserId is synchronous (localStorage), no need for loading state
+  const userId = getStoredUserId();
+  return userId ? <>{children}</> : <Navigate to="/onboarding" replace />;
 };
 
 const App = () => (
