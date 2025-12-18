@@ -1,5 +1,4 @@
 import { useEffect, useState, useRef } from 'react';
-import LoadingReveal from '@/components/LoadingReveal';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -589,13 +588,25 @@ const Results = () => {
 
   const isLoading = !game || !secretWord || outsiderPlayers.length === 0 || !resultsReady;
 
-  // Early return if critical data is missing to prevent null access errors
-  if (!game || !secretWord) {
-    return <LoadingReveal isLoading={true} loadingText="Loading results"><div className="min-h-screen bg-background" /></LoadingReveal>;
+  // Show a lightweight skeleton while loading - no full-screen transition
+  if (isLoading) {
+    console.log('[RESULTS] mounted, hasResults=', false);
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center space-y-4">
+          <div className="animate-pulse">
+            <div className="h-8 w-48 bg-muted rounded mx-auto mb-4"></div>
+            <div className="h-4 w-32 bg-muted rounded mx-auto"></div>
+          </div>
+          <p className="text-muted-foreground">Loading results...</p>
+        </div>
+      </div>
+    );
   }
 
+  console.log('[RESULTS] mounted, hasResults=', true);
+
   return (
-    <LoadingReveal isLoading={isLoading} loadingText="Loading results">
     <>
       <div className="min-h-screen bg-background pb-24">
       <Confetti isActive={showConfetti} />
@@ -778,7 +789,6 @@ const Results = () => {
       </main>
     </div>
     </>
-    </LoadingReveal>
   );
 };
 
