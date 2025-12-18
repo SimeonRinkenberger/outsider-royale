@@ -485,7 +485,7 @@ const Results = () => {
   const isLoading = !game || !secretWord || outsiderPlayers.length === 0 || !resultsReady;
 
   return (
-    <LoadingReveal isLoading={isLoading}>
+    <LoadingReveal isLoading={isLoading} loadingText="Loading results">
     <div className="min-h-screen bg-background pb-24">
       <Confetti isActive={showConfetti} />
       

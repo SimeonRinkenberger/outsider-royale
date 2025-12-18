@@ -1,13 +1,35 @@
-import foxWelcome from '@/assets/fox_welcome.png';
+import { useEffect, useState } from 'react';
+import foxMascot from '@/assets/fox_mascot.png';
 
-const LoadingScreen = () => {
+interface LoadingScreenProps {
+  text?: string;
+}
+
+const LoadingScreen = ({ text = 'Loading' }: LoadingScreenProps) => {
+  const [dots, setDots] = useState('.');
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setDots(prev => {
+        if (prev === '.') return '..';
+        if (prev === '..') return '...';
+        return '.';
+      });
+    }, 400);
+
+    return () => clearInterval(interval);
+  }, []);
+
   return (
-    <div className="min-h-screen bg-background flex flex-col items-center justify-center">
+    <div className="min-h-screen bg-background flex flex-col items-center justify-center gap-4">
       <img 
-        src={foxWelcome} 
-        alt="Welcome" 
-        className="w-64 h-auto object-contain"
+        src={foxMascot} 
+        alt="Loading" 
+        className="w-32 h-32 object-contain"
       />
+      <p className="text-muted-foreground">
+        {text}<span className="inline-block w-6 text-left">{dots}</span>
+      </p>
     </div>
   );
 };

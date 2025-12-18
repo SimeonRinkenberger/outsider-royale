@@ -179,7 +179,7 @@ export const PageTransitionOverlay = () => {
             transform: 'translate(-50%, -50%)',
           }}
         >
-          <LoadingScreen />
+          <LoadingScreen text="Loading" />
         </div>
       </div>
     </div>,
