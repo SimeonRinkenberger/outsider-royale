@@ -82,6 +82,12 @@ class AudioManager {
 
   // Preload all audio tracks
   async preload(): Promise<void> {
+    // Skip preloading when audio is disabled
+    if (!this.isEnabled) {
+      this.isInitialized = true;
+      return;
+    }
+    
     if (this.isInitialized) return;
 
     const loadPromises = Object.entries(TRACKS).map(([key, config]) => {

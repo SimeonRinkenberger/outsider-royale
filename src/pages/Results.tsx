@@ -12,7 +12,8 @@ import Confetti from '@/components/Confetti';
 import { GameConfigPanel, GameConfig, getActiveModifierLabels } from '@/components/GameConfigPanel';
 import { GameMode } from '@/types/game';
 import GameHeader from '@/components/GameHeader';
-import { useAudio } from '@/contexts/AudioContext';
+// Audio disabled for now
+// import { useAudio } from '@/contexts/AudioContext';
 
 const Results = () => {
   const { lobbyId } = useParams();
@@ -52,7 +53,8 @@ const Results = () => {
   });
   const [settingsLoaded, setSettingsLoaded] = useState(false);
   const userId = getStoredUserId();
-  const { setMusicState } = useAudio();
+  // Audio disabled for now
+  // const { setMusicState } = useAudio();
 
   const isHost = lobby?.host_user_id === userId;
   const outsiderPlayers = players.filter(p => outsiders.some(o => o.player_id === p.id));
@@ -163,12 +165,12 @@ const Results = () => {
     }
   }, [outsiderGuessedCorrectly, votes.length]);
 
-  // Play win music when results are ready
-  useEffect(() => {
-    if (resultsReady) {
-      setMusicState(groupWins ? 'win_safe' : 'win_outsider');
-    }
-  }, [resultsReady, groupWins, setMusicState]);
+  // Audio disabled for now
+  // useEffect(() => {
+  //   if (resultsReady) {
+  //     setMusicState(groupWins ? 'win_safe' : 'win_outsider');
+  //   }
+  // }, [resultsReady, groupWins, setMusicState]);
 
   // Update user stats when results are ready
   useEffect(() => {
