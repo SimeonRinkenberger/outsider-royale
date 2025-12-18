@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
 import foxMascot from '@/assets/fox_mascot.png';
-import { useTransition } from '@/contexts/TransitionContext';
 
 interface LoadingScreenProps {
   text?: string;
@@ -11,12 +10,11 @@ interface LoadingScreenExtendedProps extends LoadingScreenProps {
 }
 
 /**
- * LoadingScreen - ONLY renders for TransitionOverlay or when no transition is active.
- * This is the "Loader Police" guard to prevent double loaders.
+ * LoadingScreen - Used ONLY by TransitionOverlay.
+ * All page-level loading should use inline skeletons instead.
  */
 const LoadingScreen = ({ text = 'Loading', isTransitionOverlay = false }: LoadingScreenExtendedProps) => {
   const [dots, setDots] = useState('.');
-  const { isTransitioning } = useTransition();
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -30,15 +28,11 @@ const LoadingScreen = ({ text = 'Loading', isTransitionOverlay = false }: Loadin
     return () => clearInterval(interval);
   }, []);
 
-  // LOADER POLICE: If a transition is active and this is NOT the overlay, render nothing
-  if (isTransitioning && !isTransitionOverlay) {
-    console.log(`[LOADER POLICE] ⛔ Blocked secondary loader: "${text}" (transition active)`);
-    return null;
-  }
-
   // Log when this component renders
   useEffect(() => {
-    console.log(`[LOADINGSCREEN] rendered isTransitionOverlay=${isTransitionOverlay} text="${text}"`);
+    if (!isTransitionOverlay) {
+      console.log(`[LOADER POLICE] ⚠️ LoadingScreen rendered outside TransitionOverlay: "${text}"`);
+    }
   }, [isTransitionOverlay, text]);
 
   return (
