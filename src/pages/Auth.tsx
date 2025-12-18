@@ -1,11 +1,11 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { supabase } from '@/integrations/supabase/client';
-import { setStoredUserId, setStoredDisplayName } from '@/lib/gameUtils';
+import { setStoredUserId, setStoredDisplayName, getStoredUserId } from '@/lib/gameUtils';
 import { toast } from 'sonner';
 import { ArrowLeft, Mail, Lock, User, Loader2 } from 'lucide-react';
 import { motion } from 'framer-motion';
@@ -22,27 +22,10 @@ const Auth = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [errors, setErrors] = useState<{ email?: string; password?: string; displayName?: string }>({});
   const navigate = useNavigate();
-
-  useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (event === 'SIGNED_IN' && session) {
-        // Check if user already has a profile linked to their auth account
-        const { data: existingProfile } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('auth_user_id', session.user.id)
-          .single();
-
-        if (existingProfile) {
-          setStoredUserId(existingProfile.id);
-          setStoredDisplayName(existingProfile.display_name);
-          navigate('/menu');
-        }
-      }
-    });
-
-    return () => subscription.unsubscribe();
-  }, [navigate]);
+  const location = useLocation();
+  
+  // Get the previous route to return to after auth
+  const from = (location.state as { from?: string })?.from || '/menu';
 
   const validateForm = () => {
     const newErrors: typeof errors = {};
@@ -80,6 +63,9 @@ const Auth = () => {
         // Use production URL for OAuth redirects (works for both web and native)
         const redirectUrl = 'https://4b9de44f-1c68-4ee8-8e08-f7594c181759.lovableproject.com/';
         
+        // Get current guest profile ID before signup
+        const guestProfileId = getStoredUserId();
+        
         const { data, error } = await supabase.auth.signUp({
           email,
           password,
@@ -98,7 +84,35 @@ const Auth = () => {
         }
 
         if (data.user) {
-          // Create profile linked to auth user
+          // If guest has an existing profile, update it to link to auth account
+          if (guestProfileId) {
+            const { data: updatedProfile, error: updateError } = await supabase
+              .from('profiles')
+              .update({ 
+                auth_user_id: data.user.id,
+                is_guest: false,
+                display_name: displayName.trim()
+              })
+              .eq('id', guestProfileId)
+              .select()
+              .single();
+
+            if (!updateError && updatedProfile) {
+              // Create user stats linked to auth user
+              await supabase
+                .from('user_stats')
+                .insert({ user_id: data.user.id });
+
+              setStoredUserId(updatedProfile.id);
+              setStoredDisplayName(updatedProfile.display_name);
+              
+              toast.success('Account created! Your progress has been saved.');
+              navigate(from);
+              return;
+            }
+          }
+          
+          // Create new profile linked to auth user (no guest profile to migrate)
           const { data: profile, error: profileError } = await supabase
             .from('profiles')
             .insert({ 
@@ -120,7 +134,7 @@ const Auth = () => {
           setStoredDisplayName(profile.display_name);
           
           toast.success('Account created successfully!');
-          navigate('/menu');
+          navigate(from);
         }
       } else {
         const { data, error } = await supabase.auth.signInWithPassword({
@@ -155,7 +169,7 @@ const Auth = () => {
           setStoredDisplayName(profile.display_name);
           
           toast.success(`Welcome back, ${profile.display_name}!`);
-          navigate('/menu');
+          navigate(from);
         }
       }
     } catch (error: any) {
@@ -170,7 +184,7 @@ const Auth = () => {
     <div className="min-h-screen bg-background flex flex-col">
       <header className="bg-card border-b border-border p-4">
         <div className="max-w-md mx-auto flex items-center gap-4">
-          <Button variant="ghost" size="icon" onClick={() => navigate('/menu')}>
+          <Button variant="ghost" size="icon" onClick={() => navigate(from)}>
             <ArrowLeft className="h-5 w-5" />
           </Button>
           <h1 className="text-xl font-bold">

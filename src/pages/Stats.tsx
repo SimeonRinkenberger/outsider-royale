@@ -42,7 +42,7 @@ const Stats = () => {
       const { data: { session } } = await supabase.auth.getSession();
       
       if (!session) {
-        navigate('/auth');
+        navigate('/auth', { state: { from: '/stats' } });
         return;
       }
 
