@@ -539,7 +539,7 @@ const Lobby = () => {
               variants={containerVariants}
               animate="animate"
             >
-              <AnimatePresence initial={false} mode="popLayout">
+              <AnimatePresence initial={false}>
                 {players.map((player) => {
                   const avatar = player.avatar_url ? getAvatarById(player.avatar_url) : null;
                   
@@ -550,9 +550,6 @@ const Lobby = () => {
                       initial={playerCardVariants.initial}
                       animate={playerCardVariants.animate}
                       exit={playerCardVariants.exit}
-                      transition={{
-                        layout: { duration: animationDuration, ease: [0.2, 0.8, 0.2, 1] as const }
-                      }}
                     >
                       <Card className="p-4 bg-gradient-card border-border">
                         <div className="flex items-center justify-between">
