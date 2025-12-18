@@ -180,11 +180,21 @@ const Auth = () => {
     }
   };
 
+  const handleBack = () => {
+    // If we have a specific route to return to, use it
+    // Otherwise go back in browser history
+    if (from && from !== '/menu') {
+      navigate(from);
+    } else {
+      navigate(-1);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-background flex flex-col">
       <header className="bg-card border-b border-border p-4">
         <div className="max-w-md mx-auto flex items-center gap-4">
-          <Button variant="ghost" size="icon" onClick={() => navigate(from)}>
+          <Button variant="ghost" size="icon" onClick={handleBack}>
             <ArrowLeft className="h-5 w-5" />
           </Button>
           <h1 className="text-xl font-bold">
