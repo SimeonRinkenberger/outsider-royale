@@ -46,6 +46,7 @@ const Lobby = () => {
   const [isStarting, setIsStarting] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [playerAvatars, setPlayerAvatars] = useState<Record<string, string | null>>({});
+  const [avatarsLoaded, setAvatarsLoaded] = useState<Set<string>>(new Set());
   const [previousPlayers, setPreviousPlayers] = useState<Map<string, string>>(new Map());
   const [isInitialLoad, setIsInitialLoad] = useState(true);
   const [gameConfig, setGameConfig] = useState<GameConfig>({
@@ -171,10 +172,13 @@ const Lobby = () => {
       
       if (profiles) {
         const avatarMap: Record<string, string | null> = {};
+        const loadedSet = new Set<string>();
         profiles.forEach(p => {
           avatarMap[p.id] = p.avatar_url;
+          loadedSet.add(p.id);
         });
-        setPlayerAvatars(avatarMap);
+        setPlayerAvatars(prev => ({ ...prev, ...avatarMap }));
+        setAvatarsLoaded(prev => new Set([...prev, ...loadedSet]));
       }
     };
     
@@ -557,6 +561,7 @@ const Lobby = () => {
             >
               <AnimatePresence initial={false} mode="popLayout">
                 {players.map((player) => {
+                  const isAvatarLoaded = avatarsLoaded.has(player.user_id);
                   const avatarId = playerAvatars[player.user_id];
                   const avatar = avatarId ? getAvatarById(avatarId) : null;
                   
@@ -576,8 +581,10 @@ const Lobby = () => {
                       <Card className="p-4 bg-gradient-card border-border">
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-3">
-                            <div className={`w-10 h-10 rounded-full flex items-center justify-center text-xl ${avatar ? avatar.color : 'bg-primary/10'}`}>
-                              {avatar ? avatar.emoji : <Users className="h-5 w-5 text-primary" />}
+                            <div className={`w-10 h-10 rounded-full flex items-center justify-center text-xl ${
+                              !isAvatarLoaded ? 'bg-muted animate-pulse' : avatar ? avatar.color : 'bg-primary/10'
+                            }`}>
+                              {isAvatarLoaded && (avatar ? avatar.emoji : <Users className="h-5 w-5 text-primary" />)}
                             </div>
                             <div>
                               <p className="font-medium">{player.display_name}</p>
