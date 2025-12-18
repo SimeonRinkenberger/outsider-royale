@@ -107,7 +107,7 @@ const FluidSlider = React.forwardRef<
             "block h-5 w-5 rounded-full border-2 border-primary bg-background ring-offset-background",
             "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
             "disabled:pointer-events-none disabled:opacity-50",
-            isDragging ? "transition-transform duration-100 scale-110" : "transition-all duration-200 ease-out"
+            isDragging ? "transition-transform duration-100 scale-110" : "transition-all duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)]"
           )}
         />
       </SliderPrimitive.Root>
