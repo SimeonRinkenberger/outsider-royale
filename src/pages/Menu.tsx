@@ -119,12 +119,20 @@ const Menu = () => {
     }
   };
 
-  const handleAuth = () => {
-    navigate('/auth', { state: { from: '/menu' } });
+  const handleAuth = (event: React.MouseEvent) => {
+    const target = event.currentTarget as HTMLElement;
+    const rect = target.getBoundingClientRect();
+    const x = rect.left + rect.width / 2;
+    const y = rect.top + rect.height / 2;
+    navigateWithTransitionFromCoords('/auth', x, y);
   };
 
-  const handleStats = () => {
-    navigate('/stats');
+  const handleStats = (event: React.MouseEvent) => {
+    const target = event.currentTarget as HTMLElement;
+    const rect = target.getBoundingClientRect();
+    const x = rect.left + rect.width / 2;
+    const y = rect.top + rect.height / 2;
+    navigateWithTransitionFromCoords('/stats', x, y);
   };
 
   if (isLoading) {

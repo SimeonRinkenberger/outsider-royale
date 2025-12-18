@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import LoadingScreen from '@/components/LoadingScreen';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -10,6 +10,7 @@ import { ArrowLeft, Trophy, Target, Flame, MessageSquare, Vote, LogOut, Trending
 import { motion } from 'framer-motion';
 import { AvatarPicker, getAvatarById } from '@/components/AvatarPicker';
 import { AccountSettings } from '@/components/AccountSettings';
+import { usePageTransition } from '@/components/PageTransition';
 
 interface UserStats {
   games_played: number;
@@ -28,12 +29,15 @@ interface UserStats {
 const Stats = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const { navigateWithTransitionFromCoords } = usePageTransition();
   const [stats, setStats] = useState<UserStats | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [profileId, setProfileId] = useState<string | null>(null);
   const [displayName, setDisplayName] = useState(getStoredDisplayName());
   const [userEmail, setUserEmail] = useState<string | null>(null);
+  const logoutButtonRef = useRef<HTMLButtonElement>(null);
+  const backButtonRef = useRef<HTMLButtonElement>(null);
   
   // Check if we came from a game/lobby context
   const fromGame = location.state?.fromGame || false;
@@ -114,11 +118,16 @@ const Stats = () => {
     }
   };
 
-  const handleLogout = async () => {
+  const handleLogout = async (event: React.MouseEvent) => {
+    const target = event.currentTarget as HTMLElement;
+    const rect = target.getBoundingClientRect();
+    const x = rect.left + rect.width / 2;
+    const y = rect.top + rect.height / 2;
+    
     await supabase.auth.signOut();
     clearStorage();
     toast.success('Logged out');
-    navigate('/menu');
+    navigateWithTransitionFromCoords('/menu', x, y);
   };
 
   const calculatePercentage = (wins: number, total: number) => {
@@ -134,11 +143,16 @@ const Stats = () => {
   const safeWinRate = stats ? calculatePercentage(stats.games_won_as_safe, stats.games_played_as_safe) : 0;
   const voteAccuracy = stats ? calculatePercentage(stats.total_correct_votes, stats.total_votes_cast) : 0;
 
-  const handleBack = () => {
+  const handleBack = (event: React.MouseEvent) => {
+    const target = event.currentTarget as HTMLElement;
+    const rect = target.getBoundingClientRect();
+    const x = rect.left + rect.width / 2;
+    const y = rect.top + rect.height / 2;
+    
     if (fromGame) {
-      navigate(-1); // Go back to the game/lobby
+      navigate(-1); // Go back to the game/lobby without transition
     } else {
-      navigate('/menu');
+      navigateWithTransitionFromCoords('/menu', x, y);
     }
   };
 
