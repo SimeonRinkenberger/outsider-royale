@@ -4,10 +4,9 @@ import LoadingScreen from './LoadingScreen';
 interface LoadingRevealProps {
   isLoading: boolean;
   children: ReactNode;
-  loadingText?: string;
 }
 
-const LoadingReveal = ({ isLoading, children, loadingText = 'Loading' }: LoadingRevealProps) => {
+const LoadingReveal = ({ isLoading, children }: LoadingRevealProps) => {
   const [phase, setPhase] = useState<'loading' | 'revealing' | 'done'>(isLoading ? 'loading' : 'done');
   const hasRevealedRef = useRef(!isLoading);
 
@@ -44,7 +43,7 @@ const LoadingReveal = ({ isLoading, children, loadingText = 'Loading' }: Loading
 
   // Still loading - show loading screen
   if (phase === 'loading') {
-    return <LoadingScreen text={loadingText} />;
+    return <LoadingScreen />;
   }
 
   // Revealing phase - show content with shrinking overlay
@@ -57,7 +56,7 @@ const LoadingReveal = ({ isLoading, children, loadingText = 'Loading' }: Loading
       
       {/* Loading overlay that shrinks away */}
       <div className="absolute inset-0 z-50 animate-reveal-shrink">
-        <LoadingScreen text={loadingText} />
+        <LoadingScreen />
       </div>
     </div>
   );
