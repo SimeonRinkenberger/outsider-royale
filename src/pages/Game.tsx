@@ -1263,26 +1263,32 @@ const Game = () => {
           </div>
         </header>
 
-        <main className="p-4 max-w-md mx-auto space-y-6 py-6">
+        <main className="p-4 max-w-md mx-auto space-y-6 py-6 overflow-hidden">
           
           {isSpectator ? (
-            <Card className="p-6 bg-muted/50 border-border text-center">
-              <Eye className="h-12 w-12 text-muted-foreground mx-auto mb-2" />
-              <h3 className="font-bold text-lg mb-1">Spectating Voting</h3>
-              <p className="text-sm text-muted-foreground">
-                Watch as the remaining players vote.
-              </p>
-              <p className="text-lg font-bold text-primary mt-4">Secret Word: {secretWord.text}</p>
-              <p className="text-sm text-muted-foreground">
-                Outsider{outsiders.length > 1 ? 's' : ''}: {players.filter(p => outsiders.some(o => o.player_id === p.id)).map(p => p.display_name).join(', ')}
-              </p>
-            </Card>
+            <motion.div
+              initial={{ opacity: 0, x: 100 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.5, ease: [0.4, 0, 0.2, 1] }}
+            >
+              <Card className="p-6 bg-muted/50 border-border text-center">
+                <Eye className="h-12 w-12 text-muted-foreground mx-auto mb-2" />
+                <h3 className="font-bold text-lg mb-1">Spectating Voting</h3>
+                <p className="text-sm text-muted-foreground">
+                  Watch as the remaining players vote.
+                </p>
+                <p className="text-lg font-bold text-primary mt-4">Secret Word: {secretWord.text}</p>
+                <p className="text-sm text-muted-foreground">
+                  Outsider{outsiders.length > 1 ? 's' : ''}: {players.filter(p => outsiders.some(o => o.player_id === p.id)).map(p => p.display_name).join(', ')}
+                </p>
+              </Card>
+            </motion.div>
           ) : (
             <>
               <motion.div
-                initial={votingAnimatedRef.current ? false : { opacity: 0, y: 30 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5, delay: 0.1 }}
+                initial={{ opacity: 0, x: 100 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.5, ease: [0.4, 0, 0.2, 1] }}
               >
                 <Card className="p-6 bg-gradient-primary text-white shadow-card border-0 text-center">
                   <p className="text-white/80 text-sm mb-1">The secret word was</p>
@@ -1302,18 +1308,18 @@ const Game = () => {
                 {!votesSubmitted ? (
                   <motion.div 
                     key="voting-ui"
-                    initial={votingAnimatedRef.current ? false : { opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0, height: 0, marginTop: 0 }}
-                    transition={{ duration: 0.3 }}
+                    initial={{ opacity: 0, x: 100 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: -100 }}
+                    transition={{ duration: 0.4, ease: [0.4, 0, 0.2, 1], delay: 0.1 }}
                     className="space-y-3"
                   >
                     {/* Show outsider count if enabled */}
                     {gameMetadata?.showOutsiderCount && (
                       <motion.div
-                        initial={votingAnimatedRef.current ? false : { opacity: 0, x: -30 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        transition={{ duration: 0.4, delay: 0.2 }}
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.3, delay: 0.2 }}
                       >
                         <Card className="p-3 bg-muted/50 border-border text-center">
                           <p className="text-sm text-muted-foreground">
@@ -1325,9 +1331,9 @@ const Game = () => {
                     
                     <motion.h3 
                       className="text-sm font-semibold text-muted-foreground px-1"
-                      initial={votingAnimatedRef.current ? false : { opacity: 0, x: -20 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      transition={{ duration: 0.4, delay: 0.25 }}
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.3, delay: 0.25 }}
                     >
                       {maxVotes > 1 
                         ? `Select up to ${maxVotes} players (${selectedVotes.length}/${maxVotes})` 
@@ -1342,9 +1348,9 @@ const Game = () => {
                         return (
                           <motion.div
                             key={player.id}
-                            initial={votingAnimatedRef.current ? false : { opacity: 0, x: 50 }}
+                            initial={{ opacity: 0, x: 30 }}
                             animate={{ opacity: 1, x: 0 }}
-                            transition={{ duration: 0.4, delay: 0.3 + index * 0.08 }}
+                            transition={{ duration: 0.3, delay: 0.3 + index * 0.06 }}
                           >
                             <Button
                               onClick={() => toggleVoteSelection(player.id)}
@@ -1380,9 +1386,9 @@ const Game = () => {
                       })}
                       {isEliminationMode && (
                         <motion.div
-                          initial={votingAnimatedRef.current ? false : { opacity: 0, x: 50 }}
+                          initial={{ opacity: 0, x: 30 }}
                           animate={{ opacity: 1, x: 0 }}
-                          transition={{ duration: 0.4, delay: 0.3 + votablePlayers.length * 0.08 }}
+                          transition={{ duration: 0.3, delay: 0.3 + votablePlayers.length * 0.06 }}
                         >
                           <Button
                             onClick={() => toggleVoteSelection('skip')}
@@ -1430,15 +1436,15 @@ const Game = () => {
                 ) : (
                   <motion.div
                     key="votes-submitted"
-                    initial={{ opacity: 0, scale: 0.9, y: 20 }}
-                    animate={{ opacity: 1, scale: 1, y: 0 }}
-                    transition={{ type: 'spring', stiffness: 400, damping: 30 }}
+                    initial={{ opacity: 0, x: 100, scale: 0.95 }}
+                    animate={{ opacity: 1, x: 0, scale: 1 }}
+                    transition={{ duration: 0.4, ease: [0.4, 0, 0.2, 1] }}
                   >
                     <Card className="p-6 bg-gradient-card border-border text-center">
                       <motion.div
                         initial={{ scale: 0 }}
                         animate={{ scale: 1 }}
-                        transition={{ type: 'spring', stiffness: 400, damping: 20, delay: 0.1 }}
+                        transition={{ type: 'spring', stiffness: 400, damping: 20, delay: 0.2 }}
                       >
                         <CheckCircle2 className="h-12 w-12 text-primary mx-auto mb-2" />
                       </motion.div>
@@ -1454,12 +1460,18 @@ const Game = () => {
           )}
 
           {/* Active rules dropdown below content */}
-          <ActiveModifiersDisplay 
-            modifiers={gameMetadata?.modifiers || []} 
-            customModifiers={gameMetadata?.customModifiersData || customModifiers}
-            gameMode={game.game_mode}
-            compact
-          />
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4, delay: 0.5 }}
+          >
+            <ActiveModifiersDisplay 
+              modifiers={gameMetadata?.modifiers || []} 
+              customModifiers={gameMetadata?.customModifiersData || customModifiers}
+              gameMode={game.game_mode}
+              compact
+            />
+          </motion.div>
         </main>
       </div>
       </>
