@@ -9,7 +9,7 @@ const EXPAND_DURATION = 0.45;
 const SHRINK_DURATION = 0.45;
 
 // Debug mode - set to true to see transition debug info
-const DEBUG_MODE = true;
+const DEBUG_MODE = false;
 
 type TransitionPhase = 'idle' | 'expanding' | 'loading' | 'shrinking';
 
@@ -301,9 +301,8 @@ const TransitionOverlay: React.FC<TransitionOverlayProps> = ({
     return debugUI;
   }
 
-  // Force visual proof during shrinking
-  const bgColor = isShrinking ? 'rgba(255, 0, 0, 0.35)' : 'hsl(var(--background))';
-  const outline = isShrinking ? '4px solid rgba(255, 0, 0, 0.9)' : 'none';
+  const bgColor = 'hsl(var(--background))';
+  const outline = 'none';
 
   // Build clipPath string from radius
   const cx = phase === 'expanding' ? `${origin.x}%` : '50%';
