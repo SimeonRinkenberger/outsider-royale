@@ -47,6 +47,7 @@ const Lobby = () => {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [previousPlayers, setPreviousPlayers] = useState<Map<string, string>>(new Map());
   const [isInitialLoad, setIsInitialLoad] = useState(true);
+  const [copyAnimating, setCopyAnimating] = useState(false);
   const [gameConfig, setGameConfig] = useState<GameConfig>({
     selectedCategories: ['animal', 'brand', 'food', 'movie', 'person', 'place', 'thing'],
     selectedCustomCategories: [],
@@ -212,12 +213,15 @@ const Lobby = () => {
 
   const copyCode = async () => {
     if (lobby?.code) {
+      setCopyAnimating(true);
       const success = await copyToClipboard(lobby.code);
       if (success) {
         toast.success('Code copied!');
       } else {
         toast.error('Failed to copy code');
       }
+      // Reset animation after a short delay
+      setTimeout(() => setCopyAnimating(false), 300);
     }
   };
 
@@ -480,14 +484,19 @@ const Lobby = () => {
                   <h2 className="text-4xl font-bold font-mono tracking-wider">
                     {lobby?.code}
                   </h2>
-                  <Button
-                    variant="secondary"
-                    size="icon"
-                    onClick={copyCode}
-                    className="bg-white/20 hover:bg-white/30 text-white border-white/30"
+                  <motion.div
+                    animate={copyAnimating ? { scale: [1, 0.85, 1.1, 1] } : {}}
+                    transition={{ duration: 0.3, ease: 'easeInOut' }}
                   >
-                    <Copy className="h-4 w-4" />
-                  </Button>
+                    <Button
+                      variant="secondary"
+                      size="icon"
+                      onClick={copyCode}
+                      className="bg-white/20 hover:bg-white/30 text-white border-white/30"
+                    >
+                      <Copy className="h-4 w-4" />
+                    </Button>
+                  </motion.div>
                 </div>
               </div>
               <p className="text-white/90 text-sm">
