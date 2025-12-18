@@ -153,6 +153,14 @@ export default {
           "0%": { backgroundPosition: "-200% 0" },
           "100%": { backgroundPosition: "200% 0" },
         },
+        "spin-cw": {
+          "0%": { transform: "rotate(0deg)" },
+          "100%": { transform: "rotate(360deg)" },
+        },
+        "spin-ccw": {
+          "0%": { transform: "rotate(0deg)" },
+          "100%": { transform: "rotate(-360deg)" },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
@@ -173,6 +181,8 @@ export default {
         "spotlight": "spotlight 0.6s ease-out",
         "confetti-fall": "confetti-fall 3s linear forwards",
         "shimmer": "shimmer 1.2s ease-in-out forwards",
+        "spin-cw": "spin-cw 0.5s ease-out forwards",
+        "spin-ccw": "spin-ccw 0.5s ease-out forwards",
       },
     },
   },
