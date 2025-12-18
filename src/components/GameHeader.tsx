@@ -19,16 +19,12 @@ const GameHeader = ({ title, showBack = true, backPath, onBack, rightContent }: 
   const navigate = useNavigate();
   const { navigateBack } = useBackTransition();
   const [avatarEmoji, setAvatarEmoji] = useState<string | null>(null);
-  const [avatarLoaded, setAvatarLoaded] = useState(false);
   const [isNavigating, setIsNavigating] = useState(false);
   const userId = getStoredUserId();
 
   useEffect(() => {
     const fetchAvatar = async () => {
-      if (!userId) {
-        setAvatarLoaded(true);
-        return;
-      }
+      if (!userId) return;
       
       const { data: profile } = await supabase
         .from('profiles')
@@ -40,7 +36,6 @@ const GameHeader = ({ title, showBack = true, backPath, onBack, rightContent }: 
         const avatar = getAvatarById(profile.avatar_url);
         if (avatar) setAvatarEmoji(avatar.emoji);
       }
-      setAvatarLoaded(true);
     };
     
     fetchAvatar();
@@ -81,9 +76,7 @@ const GameHeader = ({ title, showBack = true, backPath, onBack, rightContent }: 
         <div className="flex items-center gap-2">
           {rightContent}
           <Button variant="ghost" size="icon" onClick={handleProfileClick} className="relative">
-            {!avatarLoaded ? (
-              <div className="h-5 w-5 rounded-full bg-muted animate-pulse" />
-            ) : avatarEmoji ? (
+            {avatarEmoji ? (
               <span className="text-lg">{avatarEmoji}</span>
             ) : (
               <User className="h-5 w-5" />
