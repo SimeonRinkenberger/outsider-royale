@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo, useCallback } from 'react';
+import { useEffect, useState, useMemo, useCallback, useRef } from 'react';
 import LoadingScreen from '@/components/LoadingScreen';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -80,6 +80,20 @@ const Game = () => {
   const { customModifiers } = useCustomContent();
   const userId = getStoredUserId();
   const { setMusicState } = useAudio();
+  const votingAnimatedRef = useRef(false);
+  
+  // Track when we first enter voting to only animate once
+  useEffect(() => {
+    if (game?.status === 'voting') {
+      // Allow initial animation, then mark as animated after they complete
+      const timer = setTimeout(() => {
+        votingAnimatedRef.current = true;
+      }, 800);
+      return () => clearTimeout(timer);
+    } else {
+      votingAnimatedRef.current = false;
+    }
+  }, [game?.status]);
 
   // Listen for skip transition broadcast
   useEffect(() => {
@@ -1131,7 +1145,7 @@ const Game = () => {
           ) : (
             <>
               <motion.div
-                initial={{ opacity: 0, y: 30 }}
+                initial={votingAnimatedRef.current ? false : { opacity: 0, y: 30 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.5, delay: 0.1 }}
               >
@@ -1153,7 +1167,7 @@ const Game = () => {
                 {!votesSubmitted ? (
                   <motion.div 
                     key="voting-ui"
-                    initial={{ opacity: 0 }}
+                    initial={votingAnimatedRef.current ? false : { opacity: 0 }}
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0, height: 0, marginTop: 0 }}
                     transition={{ duration: 0.3 }}
@@ -1162,7 +1176,7 @@ const Game = () => {
                     {/* Show outsider count if enabled */}
                     {gameMetadata?.showOutsiderCount && (
                       <motion.div
-                        initial={{ opacity: 0, x: -30 }}
+                        initial={votingAnimatedRef.current ? false : { opacity: 0, x: -30 }}
                         animate={{ opacity: 1, x: 0 }}
                         transition={{ duration: 0.4, delay: 0.2 }}
                       >
@@ -1176,7 +1190,7 @@ const Game = () => {
                     
                     <motion.h3 
                       className="text-sm font-semibold text-muted-foreground px-1"
-                      initial={{ opacity: 0, x: -20 }}
+                      initial={votingAnimatedRef.current ? false : { opacity: 0, x: -20 }}
                       animate={{ opacity: 1, x: 0 }}
                       transition={{ duration: 0.4, delay: 0.25 }}
                     >
@@ -1193,7 +1207,7 @@ const Game = () => {
                         return (
                           <motion.div
                             key={player.id}
-                            initial={{ opacity: 0, x: 50 }}
+                            initial={votingAnimatedRef.current ? false : { opacity: 0, x: 50 }}
                             animate={{ opacity: 1, x: 0 }}
                             transition={{ duration: 0.4, delay: 0.3 + index * 0.08 }}
                           >
@@ -1231,7 +1245,7 @@ const Game = () => {
                       })}
                       {isEliminationMode && (
                         <motion.div
-                          initial={{ opacity: 0, x: 50 }}
+                          initial={votingAnimatedRef.current ? false : { opacity: 0, x: 50 }}
                           animate={{ opacity: 1, x: 0 }}
                           transition={{ duration: 0.4, delay: 0.3 + votablePlayers.length * 0.08 }}
                         >
