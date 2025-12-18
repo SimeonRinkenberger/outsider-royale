@@ -8,35 +8,8 @@ interface LoadingRevealProps {
 }
 
 const LoadingReveal = ({ isLoading, children, loadingText = 'Loading' }: LoadingRevealProps) => {
-  const [showContent, setShowContent] = useState(!isLoading);
-  const [isAnimating, setIsAnimating] = useState(false);
-  const [isDone, setIsDone] = useState(!isLoading);
+  const [phase, setPhase] = useState<'loading' | 'revealing' | 'done'>(isLoading ? 'loading' : 'done');
   const hasRevealedRef = useRef(!isLoading);
-  const animationRef = useRef<number | null>(null);
-
-  const [dimensions, setDimensions] = useState(() => {
-    if (typeof window === 'undefined') return { centerX: 500, centerY: 500, radius: 1000 };
-    const centerX = window.innerWidth / 2;
-    const centerY = window.innerHeight / 2;
-    const maxX = Math.max(centerX, window.innerWidth - centerX);
-    const maxY = Math.max(centerY, window.innerHeight - centerY);
-    const radius = Math.sqrt(maxX * maxX + maxY * maxY) + 50;
-    return { centerX, centerY, radius };
-  });
-
-  useEffect(() => {
-    const updateDimensions = () => {
-      const centerX = window.innerWidth / 2;
-      const centerY = window.innerHeight / 2;
-      const maxX = Math.max(centerX, window.innerWidth - centerX);
-      const maxY = Math.max(centerY, window.innerHeight - centerY);
-      const radius = Math.sqrt(maxX * maxX + maxY * maxY) + 50;
-      setDimensions({ centerX, centerY, radius });
-    };
-    
-    window.addEventListener('resize', updateDimensions);
-    return () => window.removeEventListener('resize', updateDimensions);
-  }, []);
 
   useEffect(() => {
     if (hasRevealedRef.current) return;
@@ -46,63 +19,44 @@ const LoadingReveal = ({ isLoading, children, loadingText = 'Loading' }: Loading
       
       const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
       if (prefersReducedMotion) {
-        setShowContent(true);
-        setIsDone(true);
+        setPhase('done');
         return;
       }
 
-      // Show content first, then start animation on next frame
-      setShowContent(true);
-      
-      animationRef.current = requestAnimationFrame(() => {
-        animationRef.current = requestAnimationFrame(() => {
-          setIsAnimating(true);
-          
-          // Clean up after animation
-          setTimeout(() => {
-            setIsDone(true);
-          }, 550);
-        });
-      });
+      // Start reveal animation
+      setPhase('revealing');
     }
-    
-    return () => {
-      if (animationRef.current) cancelAnimationFrame(animationRef.current);
-    };
   }, [isLoading]);
 
-  // Once done, just render children
-  if (isDone) {
+  useEffect(() => {
+    if (phase === 'revealing') {
+      const timer = setTimeout(() => {
+        setPhase('done');
+      }, 600);
+      return () => clearTimeout(timer);
+    }
+  }, [phase]);
+
+  // Done - just render children
+  if (phase === 'done') {
     return <>{children}</>;
   }
 
-  const { centerX, centerY, radius } = dimensions;
+  // Still loading - show loading screen
+  if (phase === 'loading') {
+    return <LoadingScreen text={loadingText} />;
+  }
 
+  // Revealing phase - show content with shrinking overlay
   return (
     <div className="relative min-h-screen overflow-hidden">
-      {/* Content layer - hidden until reveal starts */}
-      <div 
-        className="absolute inset-0"
-        style={{ 
-          visibility: showContent ? 'visible' : 'hidden',
-          opacity: showContent ? 1 : 0,
-        }}
-      >
+      {/* Content layer - always visible during reveal */}
+      <div className="absolute inset-0">
         {children}
       </div>
       
-      {/* Loading overlay with clip-path animation */}
-      <div 
-        className="absolute inset-0 z-50"
-        style={{
-          clipPath: isAnimating 
-            ? `circle(0px at ${centerX}px ${centerY}px)`
-            : `circle(${radius}px at ${centerX}px ${centerY}px)`,
-          transition: isAnimating 
-            ? 'clip-path 500ms cubic-bezier(0.2, 0.8, 0.2, 1)' 
-            : 'none',
-        }}
-      >
+      {/* Loading overlay that shrinks away */}
+      <div className="absolute inset-0 z-50 animate-reveal-shrink">
         <LoadingScreen text={loadingText} />
       </div>
     </div>
