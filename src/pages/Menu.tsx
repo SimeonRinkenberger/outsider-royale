@@ -118,7 +118,7 @@ const Menu = () => {
   };
 
   const handleAuth = () => {
-    navigate('/auth');
+    navigate('/auth', { state: { from: '/menu' } });
   };
 
   const handleStats = () => {
