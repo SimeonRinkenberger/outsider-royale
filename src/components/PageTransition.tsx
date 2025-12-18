@@ -145,17 +145,34 @@ export const PageTransitionOverlay = () => {
 
   if (!state.isActive) return null;
 
-  // Calculate radius to cover entire viewport from click point
+  // Calculate center of viewport for shrinking
+  const centerX = window.innerWidth / 2;
+  const centerY = window.innerHeight / 2;
+
+  // Calculate radius to cover entire viewport from click point (for expanding)
   const maxX = Math.max(state.x, window.innerWidth - state.x);
   const maxY = Math.max(state.y, window.innerHeight - state.y);
-  const finalRadius = Math.sqrt(maxX * maxX + maxY * maxY) + 50;
+  const expandRadius = Math.sqrt(maxX * maxX + maxY * maxY) + 50;
 
-  // Determine the current radius based on phase
-  const getRadius = () => {
-    if (phase === 'mounting') return 0; // Start at 0
-    if (phase === 'shrinking') return 0;
-    if (phase === 'expanding' || phase === 'holding' || phase === 'navigated') return finalRadius;
-    return 0;
+  // Calculate radius to cover entire viewport from center (for shrinking)
+  const centerRadius = Math.sqrt(centerX * centerX + centerY * centerY) + 50;
+
+  // Determine the current clip-path based on phase
+  const getClipPath = () => {
+    if (phase === 'mounting') {
+      return `circle(0px at ${state.x}px ${state.y}px)`;
+    }
+    if (phase === 'expanding') {
+      return `circle(${expandRadius}px at ${state.x}px ${state.y}px)`;
+    }
+    if (phase === 'holding' || phase === 'navigated') {
+      // Transition to center position while fully expanded
+      return `circle(${centerRadius}px at ${centerX}px ${centerY}px)`;
+    }
+    if (phase === 'shrinking') {
+      return `circle(0px at ${centerX}px ${centerY}px)`;
+    }
+    return `circle(0px at ${centerX}px ${centerY}px)`;
   };
 
   return createPortal(
@@ -167,7 +184,7 @@ export const PageTransitionOverlay = () => {
       <div 
         className="fixed inset-0 flex items-center justify-center bg-background"
         style={{
-          clipPath: `circle(${getRadius()}px at ${state.x}px ${state.y}px)`,
+          clipPath: getClipPath(),
           transition: 'clip-path 600ms cubic-bezier(0.4, 0, 0.2, 1)',
         }}
       >
