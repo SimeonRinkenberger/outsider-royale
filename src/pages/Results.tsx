@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useLayoutEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -60,7 +60,7 @@ const Results = () => {
   const [settingsLoaded, setSettingsLoaded] = useState(false);
   const userId = getStoredUserId();
   const { setMusicState } = useAudio();
-  const { startTransition, isTransitioning } = useTransition();
+  const { startTransition, isTransitioning, markRevealReady } = useTransition();
   
   // Guard refs for idempotency
   const playAgainInFlightRef = useRef(false);
@@ -587,11 +587,31 @@ const Results = () => {
 
 
   const isLoading = !game || !secretWord || outsiderPlayers.length === 0 || !resultsReady;
+  const hasData = !isLoading;
 
-  // If transition is in progress, don't show any loading state - overlay handles it
-  // Otherwise show a lightweight skeleton (not full-screen loader)
-  if (isLoading && !isTransitioning) {
-    console.log('[RESULTS] mounted, hasResults=', false, 'isTransitioning=', isTransitioning);
+  // Mark reveal ready when we have data and can paint - use useLayoutEffect for immediate notification
+  const hasMarkedRevealRef = useRef(false);
+  useLayoutEffect(() => {
+    if (hasData && !hasMarkedRevealRef.current) {
+      hasMarkedRevealRef.current = true;
+      console.log('[RESULTS] useLayoutEffect: hasData=true, calling markRevealReady');
+      markRevealReady();
+    }
+  }, [hasData, markRevealReady]);
+
+  // Reset reveal marker when game changes
+  useEffect(() => {
+    if (game?.id) {
+      hasMarkedRevealRef.current = false;
+    }
+  }, [game?.id]);
+
+  // Log render state
+  console.log('[RESULTS] render hasData=', hasData, 'isTransitioning=', isTransitioning);
+
+  // NEVER return null - always render something
+  // If loading, show lightweight placeholder (overlay will cover during transition)
+  if (isLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center space-y-4">
@@ -599,19 +619,13 @@ const Results = () => {
             <div className="h-8 w-48 bg-muted rounded mx-auto mb-4"></div>
             <div className="h-4 w-32 bg-muted rounded mx-auto"></div>
           </div>
-          <p className="text-muted-foreground">Loading results...</p>
+          <p className="text-muted-foreground">Preparing results...</p>
         </div>
       </div>
     );
   }
 
-  // During transition, render nothing (overlay covers everything)
-  if (isLoading && isTransitioning) {
-    console.log('[RESULTS] mounted during transition, returning null');
-    return null;
-  }
-
-  console.log('[RESULTS] mounted, hasResults=', true);
+  console.log('[RESULTS] rendering full content');
 
   return (
     <>
