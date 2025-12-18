@@ -8,12 +8,17 @@ import { useGameState } from '@/hooks/useGameState';
 import { useCustomContent } from '@/hooks/useCustomContent';
 import { getStoredUserId } from '@/lib/gameUtils';
 import { toast } from 'sonner';
-import { Trophy, XCircle, RotateCcw, DoorOpen, Settings, ChevronDown, ChevronUp } from 'lucide-react';
+import { Trophy, XCircle, RotateCcw, DoorOpen, Settings, ChevronDown, User } from 'lucide-react';
 import Confetti from '@/components/Confetti';
 import { GameConfigPanel, GameConfig, getActiveModifierLabels } from '@/components/GameConfigPanel';
 import { GameMode } from '@/types/game';
 import GameHeader from '@/components/GameHeader';
 import { useAudio } from '@/contexts/AudioContext';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { motion, AnimatePresence } from 'framer-motion';
+import LoadingScreen from '@/components/LoadingScreen';
+import { getAvatarById } from '@/components/AvatarPicker';
+import { User as UserIcon } from 'lucide-react';
 
 const Results = () => {
   const { lobbyId } = useParams();
@@ -39,6 +44,8 @@ const Results = () => {
   const [isResetting, setIsResetting] = useState(false);
   const [showConfetti, setShowConfetti] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+  const [showTransition, setShowTransition] = useState(false);
+  const [transitionPhase, setTransitionPhase] = useState<'expanding' | 'holding' | 'shrinking'>('expanding');
   const [gameConfig, setGameConfig] = useState<GameConfig>({
     selectedCategories: ['animal', 'brand', 'food', 'movie', 'person', 'place', 'thing'],
     selectedCustomCategories: [],
@@ -88,12 +95,52 @@ const Results = () => {
     }
   }, [game?.id, lobbyId, settingsLoaded, maxImposters, game, outsiders.length]);
 
+  // Listen for new game transition broadcast
+  useEffect(() => {
+    if (!lobbyId) return;
+
+    const channel = supabase.channel(`new-game-transition-${lobbyId}`)
+      .on('broadcast', { event: 'new-game-starting' }, () => {
+        // Start with expanding phase
+        setTransitionPhase('expanding');
+        setShowTransition(true);
+        
+        // After expand, hold briefly
+        setTimeout(() => setTransitionPhase('holding'), 600);
+        
+        // Then shrink
+        setTimeout(() => setTransitionPhase('shrinking'), 1000);
+        
+        // Hide transition after shrink animation completes
+        setTimeout(() => setShowTransition(false), 1600);
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [lobbyId]);
+
   // When a new game is started (play again), navigate everyone to the new game
   useEffect(() => {
     if (lobby?.status === 'in_progress' && lobby.current_game_id) {
-      navigate(`/game/${lobbyId}`);
+      // If we're already showing transition, wait for it to finish before navigating
+      if (showTransition) {
+        setTimeout(() => {
+          navigate(`/game/${lobbyId}`);
+        }, 1000);
+      } else {
+        // Show transition then navigate
+        setTransitionPhase('expanding');
+        setShowTransition(true);
+        setTimeout(() => setTransitionPhase('holding'), 600);
+        setTimeout(() => setTransitionPhase('shrinking'), 1000);
+        setTimeout(() => {
+          navigate(`/game/${lobbyId}`);
+        }, 1400);
+      }
     }
-  }, [lobby?.status, lobby?.current_game_id, lobbyId, navigate]);
+  }, [lobby?.status, lobby?.current_game_id, lobbyId, navigate, showTransition]);
 
   // Load game metadata to check if outsider guessed correctly
   const [gameMetadata, setGameMetadata] = useState<{
@@ -268,6 +315,25 @@ const Results = () => {
     }
 
     setIsResetting(true);
+    
+    // Show transition for host and broadcast to other players
+    setTransitionPhase('expanding');
+    setShowTransition(true);
+    
+    const channel = supabase.channel(`new-game-transition-${lobbyId}`);
+    channel.subscribe((status) => {
+      if (status === 'SUBSCRIBED') {
+        channel.send({
+          type: 'broadcast',
+          event: 'new-game-starting',
+        });
+      }
+    });
+    
+    // Continue with expanding animation
+    setTimeout(() => setTransitionPhase('holding'), 600);
+    setTimeout(() => setTransitionPhase('shrinking'), 1000);
+    
     try {
       // Reset all spectators back to active players for the new game
       const { error: resetError } = await supabase
@@ -491,7 +557,24 @@ const Results = () => {
 
   return (
     <LoadingReveal isLoading={isLoading} loadingText="Loading results">
-    <div className="min-h-screen bg-background pb-24">
+    <>
+      {/* Circle Transition Overlay */}
+      {showTransition && (
+        <motion.div
+          className="fixed inset-0 z-[9999] pointer-events-none flex items-center justify-center bg-background"
+          animate={{ 
+            clipPath: transitionPhase === 'shrinking' 
+              ? 'circle(0% at 50% 50%)' 
+              : 'circle(150% at 50% 50%)' 
+          }}
+          initial={{ clipPath: 'circle(0% at 50% 50%)' }}
+          transition={{ duration: 0.6, ease: [0.4, 0, 0.2, 1] }}
+        >
+          <LoadingScreen text="Starting new game" />
+        </motion.div>
+      )}
+      
+      <div className="min-h-screen bg-background pb-24">
       <Confetti isActive={showConfetti} />
       
       <GameHeader 
@@ -552,50 +635,56 @@ const Results = () => {
           <div className="space-y-2">
             {votesByPlayer
               .sort((a, b) => b.votesReceived - a.votesReceived)
-              .map(({ player, votesReceived }) => (
-                <Card key={player.id} className="p-4 bg-gradient-card border-border">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <span className="font-medium">{player.display_name}</span>
-                      {outsiders.some(o => o.player_id === player.id) && (
-                        <span className="text-xs bg-destructive/20 text-destructive px-2 py-1 rounded-full">
-                          Outsider
-                        </span>
-                      )}
-                      {player.is_host && (
-                        <span className="text-xs bg-primary/20 text-primary px-2 py-1 rounded-full">
-                          Host
-                        </span>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <div className="text-sm">
-                        <span className="font-bold text-primary">{votesReceived}</span>
-                        <span className="text-muted-foreground"> votes</span>
+              .map(({ player, votesReceived }) => {
+                const avatar = player.avatar_url ? getAvatarById(player.avatar_url) : null;
+                
+                return (
+                  <Card key={player.id} className="p-4 bg-gradient-card border-border">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className={`w-8 h-8 rounded-full flex items-center justify-center text-lg ${avatar ? avatar.color : 'bg-muted'}`}>
+                          {avatar ? avatar.emoji : <User className="h-4 w-4 text-muted-foreground" />}
+                        </div>
+                        <span className="font-medium">{player.display_name}</span>
+                        {outsiders.some(o => o.player_id === player.id) && (
+                          <span className="text-xs bg-destructive/20 text-destructive px-2 py-1 rounded-full">
+                            Outsider
+                          </span>
+                        )}
+                        {player.is_host && (
+                          <span className="text-xs bg-primary/20 text-primary px-2 py-1 rounded-full">
+                            Host
+                          </span>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <div className="text-sm">
+                          <span className="font-bold text-primary">{votesReceived}</span>
+                          <span className="text-muted-foreground"> votes</span>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                </Card>
-              ))}
+                  </Card>
+                );
+              })}
           </div>
         </div>
 
         {/* Game Settings for Next Game (Host Only) */}
         {isHost && (
-          <div className="space-y-3">
-            <Button
-              variant="outline"
-              className="w-full justify-between"
-              onClick={() => setShowSettings(!showSettings)}
-            >
-              <span className="flex items-center gap-2">
-                <Settings className="h-4 w-4" />
-                Next Game Settings
-              </span>
-              {showSettings ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-            </Button>
-            
-            {showSettings && (
+          <Collapsible open={showSettings} onOpenChange={setShowSettings}>
+            <CollapsibleTrigger asChild>
+              <Card className="p-4 bg-gradient-card border-border cursor-pointer hover:bg-muted/50 transition-colors">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Settings className={`h-5 w-5 text-primary transition-transform duration-300 ${showSettings ? 'rotate-180' : ''}`} />
+                    <span className="font-medium">Next Game Settings</span>
+                  </div>
+                  <ChevronDown className={`h-5 w-5 text-muted-foreground transition-transform duration-300 ${showSettings ? 'rotate-180' : ''}`} />
+                </div>
+              </Card>
+            </CollapsibleTrigger>
+            <CollapsibleContent className="mt-4">
               <GameConfigPanel
                 playerCount={players.length}
                 customCategories={customCategories}
@@ -609,8 +698,8 @@ const Results = () => {
                 onUpdateModifier={updateModifier}
                 onDeleteModifier={deleteModifier}
               />
-            )}
-          </div>
+            </CollapsibleContent>
+          </Collapsible>
         )}
 
         <div className="space-y-3 pt-4">
@@ -645,6 +734,7 @@ const Results = () => {
         </div>
       </main>
     </div>
+    </>
     </LoadingReveal>
   );
 };

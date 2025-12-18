@@ -477,13 +477,25 @@ const Game = () => {
     if (!game || !currentPlayer?.is_host || !currentRound) return;
 
     try {
-      // Broadcast transition to all players
+      // Show transition for the host immediately
+      setTransitionPhase('expanding');
+      setShowTransition(true);
+      
+      // Broadcast transition to all other players
       const channel = supabase.channel(`game-transition-${lobbyId}`);
-      await channel.subscribe();
-      await channel.send({
-        type: 'broadcast',
-        event: 'skip-to-voting',
+      channel.subscribe((status) => {
+        if (status === 'SUBSCRIBED') {
+          channel.send({
+            type: 'broadcast',
+            event: 'skip-to-voting',
+          });
+        }
       });
+      
+      // After expand, hold briefly then shrink
+      setTimeout(() => setTransitionPhase('holding'), 600);
+      setTimeout(() => setTransitionPhase('shrinking'), 1000);
+      setTimeout(() => setShowTransition(false), 1600);
       
       // Mark current round as complete
       await supabase
