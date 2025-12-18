@@ -74,6 +74,9 @@ const Game = () => {
   const [showGuessInput, setShowGuessInput] = useState(false);
   const [hasGuessed, setHasGuessed] = useState(false);
   const [showTransition, setShowTransition] = useState(false);
+  const [transitionPhase, setTransitionPhase] = useState<'expanding' | 'holding' | 'shrinking'>('expanding');
+  const [showResultsTransition, setShowResultsTransition] = useState(false);
+  const [resultsTransitionPhase, setResultsTransitionPhase] = useState<'expanding' | 'holding' | 'shrinking'>('expanding');
   const { customModifiers } = useCustomContent();
   const userId = getStoredUserId();
   const { setMusicState } = useAudio();
@@ -84,9 +87,18 @@ const Game = () => {
 
     const channel = supabase.channel(`game-transition-${lobbyId}`)
       .on('broadcast', { event: 'skip-to-voting' }, () => {
+        // Start with expanding phase
+        setTransitionPhase('expanding');
         setShowTransition(true);
-        // Hide transition after animation
-        setTimeout(() => setShowTransition(false), 1500);
+        
+        // After expand, hold briefly
+        setTimeout(() => setTransitionPhase('holding'), 600);
+        
+        // Then shrink
+        setTimeout(() => setTransitionPhase('shrinking'), 1000);
+        
+        // Hide transition after shrink animation completes
+        setTimeout(() => setShowTransition(false), 1600);
       })
       .subscribe();
 
@@ -675,7 +687,22 @@ const Game = () => {
 
   useEffect(() => {
     if (game?.status === 'results') {
-      navigate(`/results/${lobbyId}`);
+      // Start results transition
+      setResultsTransitionPhase('expanding');
+      setShowResultsTransition(true);
+      
+      // After expand, hold briefly
+      setTimeout(() => setResultsTransitionPhase('holding'), 600);
+      
+      // Then shrink and navigate
+      setTimeout(() => {
+        setResultsTransitionPhase('shrinking');
+      }, 1000);
+      
+      // Navigate after shrink starts
+      setTimeout(() => {
+        navigate(`/results/${lobbyId}`);
+      }, 1400);
     }
   }, [game?.status, lobbyId, navigate]);
 
@@ -687,20 +714,37 @@ const Game = () => {
   if (game.status === 'clue_round') {
     return (
       <>
-        {/* Circle Transition Overlay */}
-        <AnimatePresence>
-          {showTransition && (
-            <motion.div
-              className="fixed inset-0 z-[9999] pointer-events-none flex items-center justify-center bg-background"
-              initial={{ clipPath: 'circle(0% at 50% 50%)' }}
-              animate={{ clipPath: 'circle(150% at 50% 50%)' }}
-              exit={{ clipPath: 'circle(0% at 50% 50%)' }}
-              transition={{ duration: 0.6, ease: [0.4, 0, 0.2, 1] }}
-            >
-              <LoadingScreen text="Skipping to voting" />
-            </motion.div>
-          )}
-        </AnimatePresence>
+        {/* Circle Transition Overlay for Skip */}
+        {showTransition && (
+          <motion.div
+            className="fixed inset-0 z-[9999] pointer-events-none flex items-center justify-center bg-background"
+            animate={{ 
+              clipPath: transitionPhase === 'shrinking' 
+                ? 'circle(0% at 50% 50%)' 
+                : 'circle(150% at 50% 50%)' 
+            }}
+            initial={{ clipPath: 'circle(0% at 50% 50%)' }}
+            transition={{ duration: 0.6, ease: [0.4, 0, 0.2, 1] }}
+          >
+            <LoadingScreen text="Skipping to voting" />
+          </motion.div>
+        )}
+        
+        {/* Circle Transition Overlay for Results */}
+        {showResultsTransition && (
+          <motion.div
+            className="fixed inset-0 z-[9999] pointer-events-none flex items-center justify-center bg-background"
+            animate={{ 
+              clipPath: resultsTransitionPhase === 'shrinking' 
+                ? 'circle(0% at 50% 50%)' 
+                : 'circle(150% at 50% 50%)' 
+            }}
+            initial={{ clipPath: 'circle(0% at 50% 50%)' }}
+            transition={{ duration: 0.6, ease: [0.4, 0, 0.2, 1] }}
+          >
+            <LoadingScreen text="Tallying votes" />
+          </motion.div>
+        )}
         
         <div className="min-h-screen bg-background pb-24">
         <header className="bg-card border-b border-border p-4 sticky top-0 z-10">
@@ -990,7 +1034,24 @@ const Game = () => {
     const votablePlayers = isEliminationMode ? activePlayers : players;
     
     return (
-      <div className="min-h-screen bg-background pb-24">
+      <>
+        {/* Circle Transition Overlay for Results */}
+        {showResultsTransition && (
+          <motion.div
+            className="fixed inset-0 z-[9999] pointer-events-none flex items-center justify-center bg-background"
+            animate={{ 
+              clipPath: resultsTransitionPhase === 'shrinking' 
+                ? 'circle(0% at 50% 50%)' 
+                : 'circle(150% at 50% 50%)' 
+            }}
+            initial={{ clipPath: 'circle(0% at 50% 50%)' }}
+            transition={{ duration: 0.6, ease: [0.4, 0, 0.2, 1] }}
+          >
+            <LoadingScreen text="Tallying votes" />
+          </motion.div>
+        )}
+        
+        <div className="min-h-screen bg-background pb-24">
         <header className="bg-card border-b border-border p-4 sticky top-0 z-10">
           <div className="max-w-md mx-auto flex items-center justify-between">
             <div className="text-center flex-1">
@@ -1187,6 +1248,7 @@ const Game = () => {
           />
         </main>
       </div>
+      </>
     );
   }
 
