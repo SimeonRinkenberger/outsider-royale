@@ -9,14 +9,14 @@ import { getStoredUserId, getStoredDisplayName, clearStorage, setStoredUserId, s
 import { Users, Wifi, User, LogIn, BarChart3 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
-import { usePageTransition } from '@/components/PageTransition';
+import { useTransition } from '@/contexts/TransitionContext';
 import { useAudio } from '@/contexts/AudioContext';
 import { MusicControls } from '@/components/MusicControls';
 import welcomeFox from '@/assets/welcome_fox.png';
 
 const Menu = () => {
   const navigate = useNavigate();
-  const { navigateWithTransition, navigateWithTransitionFromCoords } = usePageTransition();
+  const { startTransition } = useTransition();
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [displayName, setDisplayName] = useState<string | null>(null);
@@ -67,14 +67,22 @@ const Menu = () => {
   }, []);
 
   const handleInPerson = (event: React.MouseEvent) => {
-    navigateWithTransition('/in-person', event);
+    const target = event.currentTarget as HTMLElement;
+    const rect = target.getBoundingClientRect();
+    startTransition('/in-person', {
+      origin: { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 }
+    });
   };
 
   const handleOnline = (event: React.MouseEvent) => {
     // Check if user has a profile (guest or authenticated)
     const userId = getStoredUserId();
     if (userId) {
-      navigateWithTransition('/home', event);
+      const target = event.currentTarget as HTMLElement;
+      const rect = target.getBoundingClientRect();
+      startTransition('/home', {
+        origin: { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 }
+      });
     } else {
       // Show the guest input instead of navigating
       setShowGuestInput(true);
@@ -97,42 +105,39 @@ const Menu = () => {
     }
     
     setIsCreatingGuest(true);
-    try {
-      const {
-        data,
-        error
-      } = await supabase.from('profiles').insert({
-        display_name: guestName.trim()
-      }).select().single();
-      if (error) throw error;
-      setStoredUserId(data.id);
-      setStoredDisplayName(data.display_name);
-      toast.success(`Welcome, ${data.display_name}!`);
-      setIsCreatingGuest(false);
-      
-      // Navigate with pre-captured coordinates
-      navigateWithTransitionFromCoords('/home', buttonX, buttonY);
-    } catch (error) {
-      console.error('Error creating profile:', error);
-      toast.error('Failed to create profile');
-      setIsCreatingGuest(false);
-    }
+    
+    startTransition('/home', {
+      origin: { x: buttonX, y: buttonY },
+      loadingText: 'Creating profile',
+      prepare: async () => {
+        const { data, error } = await supabase.from('profiles').insert({
+          display_name: guestName.trim()
+        }).select().single();
+        
+        if (error) throw error;
+        
+        setStoredUserId(data.id);
+        setStoredDisplayName(data.display_name);
+        toast.success(`Welcome, ${data.display_name}!`);
+        setIsCreatingGuest(false);
+      }
+    });
   };
 
   const handleAuth = (event: React.MouseEvent) => {
     const target = event.currentTarget as HTMLElement;
     const rect = target.getBoundingClientRect();
-    const x = rect.left + rect.width / 2;
-    const y = rect.top + rect.height / 2;
-    navigateWithTransitionFromCoords('/auth', x, y);
+    startTransition('/auth', {
+      origin: { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 }
+    });
   };
 
   const handleStats = (event: React.MouseEvent) => {
     const target = event.currentTarget as HTMLElement;
     const rect = target.getBoundingClientRect();
-    const x = rect.left + rect.width / 2;
-    const y = rect.top + rect.height / 2;
-    navigateWithTransitionFromCoords('/stats', x, y);
+    startTransition('/stats', {
+      origin: { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 }
+    });
   };
 
   if (isLoading) {

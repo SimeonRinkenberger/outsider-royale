@@ -14,8 +14,7 @@ import GameHeader from '@/components/GameHeader';
 import { copyToClipboard } from '@/lib/platform';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { getAvatarById } from '@/components/AvatarPicker';
-import { usePageTransition } from '@/components/PageTransition';
-import { useBackTransition } from '@/components/BackTransition';
+import { useTransition } from '@/contexts/TransitionContext';
 import { motion, AnimatePresence, LayoutGroup } from 'framer-motion';
 import { useAudio } from '@/contexts/AudioContext';
 import LoadingScreen from '@/components/LoadingScreen';
@@ -23,8 +22,7 @@ import LoadingScreen from '@/components/LoadingScreen';
 const Lobby = () => {
   const { lobbyId } = useParams();
   const navigate = useNavigate();
-  const { navigateWithTransitionFromCoords } = usePageTransition();
-  const { navigateBack } = useBackTransition();
+  const { startTransition } = useTransition();
   const { lobby, players } = useGameState(lobbyId || null);
   const pendingTransitionRef = useRef<{ x: number; y: number } | null>(null);
   const {
@@ -49,8 +47,6 @@ const Lobby = () => {
   const [previousPlayers, setPreviousPlayers] = useState<Map<string, string>>(new Map());
   const [isInitialLoad, setIsInitialLoad] = useState(true);
   const [copyAnimating, setCopyAnimating] = useState(false);
-  const [showLeaveTransition, setShowLeaveTransition] = useState(false);
-  const [leaveTransitionPhase, setLeaveTransitionPhase] = useState<'expanding' | 'holding' | 'shrinking'>('expanding');
   const [gameConfig, setGameConfig] = useState<GameConfig>({
     selectedCategories: ['animal', 'brand', 'food', 'movie', 'person', 'place', 'thing'],
     selectedCustomCategories: [],
@@ -204,15 +200,16 @@ const Lobby = () => {
 
   useEffect(() => {
     if (lobby?.current_game_id) {
-      if (pendingTransitionRef.current) {
-        navigateWithTransitionFromCoords(`/game/${lobbyId}`, pendingTransitionRef.current.x, pendingTransitionRef.current.y);
-        pendingTransitionRef.current = null;
-      } else {
-        // Non-host players get a center-screen transition
-        navigateWithTransitionFromCoords(`/game/${lobbyId}`, window.innerWidth / 2, window.innerHeight / 2);
-      }
+      const originX = pendingTransitionRef.current?.x ?? window.innerWidth / 2;
+      const originY = pendingTransitionRef.current?.y ?? window.innerHeight / 2;
+      pendingTransitionRef.current = null;
+      
+      startTransition(`/game/${lobbyId}`, {
+        origin: { x: originX, y: originY },
+        loadingText: 'Starting game'
+      });
     }
-  }, [lobby?.current_game_id, lobbyId, navigateWithTransitionFromCoords]);
+  }, [lobby?.current_game_id, lobbyId, startTransition]);
 
   const copyCode = async () => {
     if (lobby?.code) {
@@ -231,31 +228,18 @@ const Lobby = () => {
   const leaveLobby = async () => {
     if (!userId || !lobbyId) return;
 
-    // Start leave transition
-    setLeaveTransitionPhase('expanding');
-    setShowLeaveTransition(true);
-    
-    setTimeout(() => setLeaveTransitionPhase('holding'), 600);
-    setTimeout(() => setLeaveTransitionPhase('shrinking'), 1000);
+    startTransition('/home', {
+      loadingText: 'Leaving lobby',
+      prepare: async () => {
+        await supabase
+          .from('lobby_players')
+          .delete()
+          .eq('lobby_id', lobbyId)
+          .eq('user_id', userId);
 
-    try {
-      await supabase
-        .from('lobby_players')
-        .delete()
-        .eq('lobby_id', lobbyId)
-        .eq('user_id', userId);
-
-      toast.success('Left lobby');
-      
-      // Navigate after shrink animation starts
-      setTimeout(() => {
-        navigate('/home');
-      }, 1200);
-    } catch (error) {
-      console.error('Error leaving lobby:', error);
-      toast.error('Failed to leave lobby');
-      setShowLeaveTransition(false);
-    }
+        toast.success('Left lobby');
+      }
+    });
   };
 
   const startGame = async (event?: React.MouseEvent<HTMLButtonElement>) => {
@@ -482,22 +466,6 @@ const Lobby = () => {
 
   return (
     <>
-      {/* Circle Transition Overlay for Leave */}
-      {showLeaveTransition && (
-        <motion.div
-          className="fixed inset-0 z-[9999] pointer-events-none flex items-center justify-center bg-background"
-          animate={{ 
-            clipPath: leaveTransitionPhase === 'shrinking' 
-              ? 'circle(0% at 50% 50%)' 
-              : 'circle(150% at 50% 50%)' 
-          }}
-          initial={{ clipPath: 'circle(0% at 50% 50%)' }}
-          transition={{ duration: 0.6, ease: [0.4, 0, 0.2, 1] }}
-        >
-          <LoadingScreen text="Leaving lobby" />
-        </motion.div>
-      )}
-      
       <div className="min-h-screen bg-background pb-48" style={{ scrollbarGutter: 'stable' }}>
       <GameHeader title="Lobby" showBack={true} onBack={leaveLobby} />
 

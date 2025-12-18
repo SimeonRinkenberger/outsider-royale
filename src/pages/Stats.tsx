@@ -10,7 +10,7 @@ import { ArrowLeft, Trophy, Target, Flame, MessageSquare, Vote, LogOut, Trending
 import { motion } from 'framer-motion';
 import { AvatarPicker, getAvatarById } from '@/components/AvatarPicker';
 import { AccountSettings } from '@/components/AccountSettings';
-import { usePageTransition } from '@/components/PageTransition';
+import { useTransition } from '@/contexts/TransitionContext';
 
 interface UserStats {
   games_played: number;
@@ -29,7 +29,7 @@ interface UserStats {
 const Stats = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { navigateWithTransitionFromCoords } = usePageTransition();
+  const { startTransition } = useTransition();
   const [stats, setStats] = useState<UserStats | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
@@ -121,13 +121,14 @@ const Stats = () => {
   const handleLogout = async (event: React.MouseEvent) => {
     const target = event.currentTarget as HTMLElement;
     const rect = target.getBoundingClientRect();
-    const x = rect.left + rect.width / 2;
-    const y = rect.top + rect.height / 2;
     
     await supabase.auth.signOut();
     clearStorage();
     toast.success('Logged out');
-    navigateWithTransitionFromCoords('/menu', x, y);
+    
+    startTransition('/menu', {
+      origin: { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 }
+    });
   };
 
   const calculatePercentage = (wins: number, total: number) => {
