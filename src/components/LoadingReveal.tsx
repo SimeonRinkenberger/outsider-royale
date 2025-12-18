@@ -8,13 +8,11 @@ interface LoadingRevealProps {
 }
 
 const LoadingReveal = ({ isLoading, children, loadingText = 'Loading' }: LoadingRevealProps) => {
-  const [phase, setPhase] = useState<'loading' | 'ready' | 'revealing' | 'done'>(isLoading ? 'loading' : 'done');
+  const [phase, setPhase] = useState<'loading' | 'revealing' | 'done'>(isLoading ? 'loading' : 'done');
   const [dimensions, setDimensions] = useState({ centerX: 500, centerY: 500, radius: 1000 });
-  const rafRef = useRef<number | null>(null);
   const hasRevealedRef = useRef(false);
 
   useEffect(() => {
-    // Calculate dimensions on mount and resize
     const updateDimensions = () => {
       const centerX = window.innerWidth / 2;
       const centerY = window.innerHeight / 2;
@@ -30,11 +28,10 @@ const LoadingReveal = ({ isLoading, children, loadingText = 'Loading' }: Loading
   }, []);
 
   useEffect(() => {
-    // Once we've revealed, don't go back to loading
+    // Once revealed, don't go back to loading
     if (hasRevealedRef.current) return;
     
     if (!isLoading && phase === 'loading') {
-      // Check for reduced motion preference
       const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
       
       if (prefersReducedMotion) {
@@ -43,27 +40,13 @@ const LoadingReveal = ({ isLoading, children, loadingText = 'Loading' }: Loading
         return;
       }
 
-      // First render with full coverage, then trigger animation
-      setPhase('ready');
+      hasRevealedRef.current = true;
+      setPhase('revealing');
     }
   }, [isLoading, phase]);
 
   useEffect(() => {
-    if (phase === 'ready') {
-      // Use RAF to ensure the 'ready' state renders before starting animation
-      rafRef.current = requestAnimationFrame(() => {
-        rafRef.current = requestAnimationFrame(() => {
-          setPhase('revealing');
-        });
-      });
-      
-      return () => {
-        if (rafRef.current) cancelAnimationFrame(rafRef.current);
-      };
-    }
-
     if (phase === 'revealing') {
-      hasRevealedRef.current = true;
       const timer = setTimeout(() => {
         setPhase('done');
       }, 550);
@@ -71,38 +54,28 @@ const LoadingReveal = ({ isLoading, children, loadingText = 'Loading' }: Loading
     }
   }, [phase]);
 
-  // During done phase, just render children normally
   if (phase === 'done') {
     return <>{children}</>;
   }
 
-  // During loading phase, just show loading screen
   if (phase === 'loading') {
     return <LoadingScreen text={loadingText} />;
   }
 
   const { centerX, centerY, radius } = dimensions;
-  const isAnimating = phase === 'revealing';
 
-  // During ready/revealing phase, show both with animation
+  // Revealing phase - animate from full coverage to nothing
   return (
     <div className="relative min-h-screen overflow-hidden">
-      {/* Content layer (revealed by shrinking overlay) */}
-      <div className="absolute inset-0">
-        {children}
-      </div>
+      <div className="absolute inset-0">{children}</div>
       
-      {/* Loading screen overlay that shrinks to reveal content */}
       <div 
-        className="absolute inset-0 z-50 pointer-events-none"
+        className="absolute inset-0 z-50 pointer-events-none animate-reveal-shrink"
         style={{
-          clipPath: isAnimating 
-            ? `circle(0px at ${centerX}px ${centerY}px)`
-            : `circle(${radius}px at ${centerX}px ${centerY}px)`,
-          transition: isAnimating 
-            ? 'clip-path 500ms cubic-bezier(0.2, 0.8, 0.2, 1)' 
-            : 'none',
-        }}
+          '--reveal-x': `${centerX}px`,
+          '--reveal-y': `${centerY}px`,
+          '--reveal-radius': `${radius}px`,
+        } as React.CSSProperties}
       >
         <LoadingScreen text={loadingText} />
       </div>
