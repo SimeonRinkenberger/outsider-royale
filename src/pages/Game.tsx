@@ -82,6 +82,11 @@ const Game = () => {
   const { setMusicState } = useAudio();
   const votingAnimatedRef = useRef(false);
   
+  // Track round changes for fly-off/fly-on animations
+  const prevRoundRef = useRef<number | null>(null);
+  const [isRoundTransitioning, setIsRoundTransitioning] = useState(false);
+  const roundAnimationKey = game?.current_round_number ?? 1;
+  
   // Track when we first enter voting to only animate once
   useEffect(() => {
     if (game?.status === 'voting') {
@@ -120,6 +125,19 @@ const Game = () => {
       supabase.removeChannel(channel);
     };
   }, [lobbyId]);
+
+  // Detect round changes for fly-off/fly-on animations
+  useEffect(() => {
+    if (game?.current_round_number && prevRoundRef.current !== null) {
+      if (prevRoundRef.current !== game.current_round_number) {
+        setIsRoundTransitioning(true);
+        // Reset transition state after animations complete
+        const timer = setTimeout(() => setIsRoundTransitioning(false), 100);
+        return () => clearTimeout(timer);
+      }
+    }
+    prevRoundRef.current = game?.current_round_number ?? null;
+  }, [game?.current_round_number]);
 
   useEffect(() => {
     const isTimedRound = gameMetadata?.modifiers?.includes('timed-round') ?? false;
@@ -822,12 +840,20 @@ const Game = () => {
           </div>
         </header>
 
-        <main className="p-4 max-w-md mx-auto space-y-6 py-6">
-          
+        <main className="p-4 max-w-md mx-auto space-y-6 py-6 overflow-hidden">
+          <AnimatePresence mode="wait">
+          <motion.div
+            key={`round-content-${roundAnimationKey}`}
+            initial={{ opacity: 0, x: 100 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -100 }}
+            transition={{ duration: 0.4, ease: [0.4, 0, 0.2, 1] }}
+            className="space-y-6"
+          >
           <motion.div
             initial={{ opacity: 0, y: 40 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, ease: [0.4, 0, 0.2, 1], delay: 0 }}
+            transition={{ duration: 0.5, ease: [0.4, 0, 0.2, 1], delay: 0.1 }}
           >
             {isSpectator ? (
               <Card className="p-6 bg-muted/50 border-border">
@@ -1054,14 +1080,24 @@ const Game = () => {
                     key={player.id}
                     initial={{ opacity: 0, x: -20 }}
                     animate={{ opacity: 1, x: 0 }}
-                    transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1], delay: 0.35 + index * 0.05 }}
+                    transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1], delay: 0.4 + index * 0.05 }}
+                    className="relative"
                   >
-                    <Card 
-                      className={`p-4 border transition-colors ${
-                        isCurrentTurn 
-                          ? 'bg-primary/10 border-primary' 
-                          : 'bg-gradient-card border-border'
-                      }`}
+                    {/* Spotlight glow effect */}
+                    <motion.div
+                      className="absolute inset-0 rounded-lg bg-primary/20 blur-sm"
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: isCurrentTurn ? 1 : 0 }}
+                      transition={{ duration: 0.5, ease: "easeInOut" }}
+                    />
+                    <motion.div
+                      className="relative p-4 rounded-lg border"
+                      animate={{
+                        backgroundColor: isCurrentTurn ? 'hsl(var(--primary) / 0.1)' : 'hsl(var(--card))',
+                        borderColor: isCurrentTurn ? 'hsl(var(--primary))' : 'hsl(var(--border))',
+                        scale: isCurrentTurn ? 1.02 : 1,
+                      }}
+                      transition={{ duration: 0.4, ease: [0.4, 0, 0.2, 1] }}
                     >
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
@@ -1073,21 +1109,35 @@ const Game = () => {
                             {player.display_name}
                             {player.id === currentPlayer?.id && ' (You)'}
                           </span>
-                          {isCurrentTurn && (
-                            <span className="text-xs bg-primary text-primary-foreground px-2 py-0.5 rounded-full">
-                              Turn
-                            </span>
-                          )}
+                          <AnimatePresence mode="wait">
+                            {isCurrentTurn && (
+                              <motion.span
+                                initial={{ opacity: 0, scale: 0.8 }}
+                                animate={{ opacity: 1, scale: 1 }}
+                                exit={{ opacity: 0, scale: 0.8 }}
+                                transition={{ duration: 0.3 }}
+                                className="text-xs bg-primary text-primary-foreground px-2 py-0.5 rounded-full"
+                              >
+                                Turn
+                              </motion.span>
+                            )}
+                          </AnimatePresence>
                         </div>
                         {playerClue ? (
-                          <span className="text-primary font-medium">"{playerClue.clue_text}"</span>
+                          <motion.span 
+                            initial={{ opacity: 0, x: 10 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            className="text-primary font-medium"
+                          >
+                            "{playerClue.clue_text}"
+                          </motion.span>
                         ) : (
                           <span className="text-muted-foreground text-sm">
                             {isCurrentTurn ? 'Thinking...' : 'Waiting...'}
                           </span>
                         )}
                       </div>
-                    </Card>
+                    </motion.div>
                   </motion.div>
                 );
               })}
@@ -1107,6 +1157,8 @@ const Game = () => {
               compact
             />
           </motion.div>
+          </motion.div>
+          </AnimatePresence>
         </main>
         </div>
       </>
