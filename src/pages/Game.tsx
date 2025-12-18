@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { supabase } from '@/integrations/supabase/client';
 import { useGameState } from '@/hooks/useGameState';
 import { useCustomContent } from '@/hooks/useCustomContent';
-import { useTurnChime } from '@/hooks/useTurnChime';
+
 import { getStoredUserId } from '@/lib/gameUtils';
 import { toast } from 'sonner';
 import { Send, Eye, EyeOff, Users, CheckCircle2, DoorOpen, FastForward, ArrowRight, Lightbulb, User } from 'lucide-react';
@@ -186,9 +186,6 @@ const Game = () => {
   const currentTurnIndex = clues.length;
   const currentTurnPlayer = shuffledPlayers[currentTurnIndex];
   const isMyTurn = currentTurnPlayer?.id === currentPlayer?.id && !isSpectator;
-
-  // Play chime when it's the player's turn
-  useTurnChime(isMyTurn, hasSubmittedClue);
 
   // Determine what word to show based on game mode
   const displayWord = useMemo(() => {
