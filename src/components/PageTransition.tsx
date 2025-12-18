@@ -97,6 +97,8 @@ export const PageTransitionOverlay = () => {
 
   // Phase state machine
   useEffect(() => {
+    console.log('PageTransition phase:', phase);
+    
     if (phase === 'mounting') {
       // Use requestAnimationFrame to ensure the initial 0 radius is painted first
       const raf = requestAnimationFrame(() => {
@@ -111,20 +113,24 @@ export const PageTransitionOverlay = () => {
     }
 
     if (phase === 'holding') {
-      // Hold to show loading screen
+      // Hold longer to allow page data to load before shrinking
       addTimer(() => {
         if (!hasNavigatedRef.current) {
           hasNavigatedRef.current = true;
-          console.log('Navigate to Lobby');
+          console.log('PageTransition: Navigating to', state.targetPath);
           navigate(state.targetPath);
           setPhase('navigated');
         }
-      }, 500);
+      }, 800);
     }
 
     if (phase === 'navigated') {
-      // Give React a frame to mount the new page, then start shrinking
-      addTimer(() => setPhase('shrinking'), 100);
+      // Give React time to mount the new page and load data, then start shrinking
+      console.log('PageTransition: navigated, will shrink in 500ms');
+      addTimer(() => {
+        console.log('PageTransition: starting shrink');
+        setPhase('shrinking');
+      }, 500);
     }
 
     if (phase === 'shrinking') {
