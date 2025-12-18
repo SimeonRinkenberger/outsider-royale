@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import LoadingReveal from '@/components/LoadingReveal';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -15,10 +15,10 @@ import { GameMode } from '@/types/game';
 import GameHeader from '@/components/GameHeader';
 import { useAudio } from '@/contexts/AudioContext';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { motion, AnimatePresence } from 'framer-motion';
-import LoadingScreen from '@/components/LoadingScreen';
+import { motion } from 'framer-motion';
 import { getAvatarById } from '@/components/AvatarPicker';
 import { User as UserIcon } from 'lucide-react';
+import { useTransition } from '@/contexts/TransitionContext';
 
 const Results = () => {
   const { lobbyId } = useParams();
@@ -44,8 +44,6 @@ const Results = () => {
   const [isResetting, setIsResetting] = useState(false);
   const [showConfetti, setShowConfetti] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
-  const [showTransition, setShowTransition] = useState(false);
-  const [transitionPhase, setTransitionPhase] = useState<'expanding' | 'holding' | 'shrinking'>('expanding');
   const [gameConfig, setGameConfig] = useState<GameConfig>({
     selectedCategories: ['animal', 'brand', 'food', 'movie', 'person', 'place', 'thing'],
     selectedCustomCategories: [],
@@ -61,6 +59,11 @@ const Results = () => {
   const [settingsLoaded, setSettingsLoaded] = useState(false);
   const userId = getStoredUserId();
   const { setMusicState } = useAudio();
+  const { startTransition, isTransitioning } = useTransition();
+  
+  // Guard refs for idempotency
+  const playAgainInFlightRef = useRef(false);
+  const hasNavigatedToNewGameRef = useRef<string | null>(null);
 
   const isHost = lobby?.host_user_id === userId;
   const outsiderPlayers = players.filter(p => outsiders.some(o => o.player_id === p.id));
@@ -95,52 +98,66 @@ const Results = () => {
     }
   }, [game?.id, lobbyId, settingsLoaded, maxImposters, game, outsiders.length]);
 
-  // Listen for new game transition broadcast
+  // Listen for new game transition broadcast (non-host players)
   useEffect(() => {
-    if (!lobbyId) return;
+    if (!lobbyId || isHost) return;
 
     const channel = supabase.channel(`new-game-transition-${lobbyId}`)
-      .on('broadcast', { event: 'new-game-starting' }, () => {
-        // Start with expanding phase
-        setTransitionPhase('expanding');
-        setShowTransition(true);
+      .on('broadcast', { event: 'new-game-starting' }, (payload) => {
+        console.log('[Results] Received new-game-starting broadcast');
+        const newGameId = payload.payload?.newGameId;
         
-        // After expand, hold briefly
-        setTimeout(() => setTransitionPhase('holding'), 600);
+        // Guard: don't navigate twice to the same game
+        if (hasNavigatedToNewGameRef.current === newGameId) {
+          console.log('[Results] Already navigating to this game, skipping');
+          return;
+        }
         
-        // Then shrink
-        setTimeout(() => setTransitionPhase('shrinking'), 1000);
+        if (newGameId) {
+          hasNavigatedToNewGameRef.current = newGameId;
+        }
         
-        // Hide transition after shrink animation completes
-        setTimeout(() => setShowTransition(false), 1600);
+        // Use centralized transition for non-host
+        startTransition(`/game/${lobbyId}`, {
+          loadingText: 'Starting new game',
+        });
       })
       .subscribe();
 
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [lobbyId]);
+  }, [lobbyId, isHost, startTransition]);
 
-  // When a new game is started (play again), navigate everyone to the new game
+  // Fallback: if lobby status changes to in_progress and we haven't navigated yet (for late joiners)
   useEffect(() => {
-    if (lobby?.status === 'in_progress' && lobby.current_game_id) {
-      // If we're already showing transition, wait for it to finish before navigating
-      if (showTransition) {
-        setTimeout(() => {
-          navigate(`/game/${lobbyId}`);
-        }, 1000);
-      } else {
-        // Show transition then navigate
-        setTransitionPhase('expanding');
-        setShowTransition(true);
-        setTimeout(() => setTransitionPhase('holding'), 600);
-        setTimeout(() => setTransitionPhase('shrinking'), 1000);
-        setTimeout(() => {
-          navigate(`/game/${lobbyId}`);
-        }, 1400);
+    if (!lobby?.current_game_id || !lobbyId) return;
+    
+    // Only trigger if lobby is in_progress and we have a current game
+    if (lobby.status === 'in_progress') {
+      // Guard: don't trigger if host (host handles via playAgain) or already navigating
+      if (isHost || playAgainInFlightRef.current || isTransitioning) {
+        return;
       }
+      
+      // Guard: don't navigate to the same game we just finished
+      if (lobby.current_game_id === game?.id) {
+        return;
+      }
+      
+      // Guard: don't navigate twice
+      if (hasNavigatedToNewGameRef.current === lobby.current_game_id) {
+        return;
+      }
+      
+      console.log('[Results] Lobby status changed to in_progress, navigating to game');
+      hasNavigatedToNewGameRef.current = lobby.current_game_id;
+      
+      startTransition(`/game/${lobbyId}`, {
+        loadingText: 'Starting new game',
+      });
     }
-  }, [lobby?.status, lobby?.current_game_id, lobbyId, navigate, showTransition]);
+  }, [lobby?.status, lobby?.current_game_id, lobbyId, isHost, game?.id, isTransitioning, startTransition]);
 
   // Load game metadata to check if outsider guessed correctly
   const [gameMetadata, setGameMetadata] = useState<{
@@ -306,6 +323,12 @@ const Results = () => {
   }, [resultsReady, groupWins, game, secretWord]);
 
   const playAgain = async () => {
+    // Idempotency guard - prevent double execution
+    if (playAgainInFlightRef.current) {
+      console.log('[PlayAgain] Blocked: already in flight');
+      return;
+    }
+    
     if (!isHost || !lobbyId) return;
 
     const hasAnyCategory = gameConfig.selectedCategories.length > 0 || gameConfig.selectedCustomCategories.length > 0;
@@ -314,220 +337,233 @@ const Results = () => {
       return;
     }
 
+    console.log('[PlayAgain] Starting');
+    playAgainInFlightRef.current = true;
     setIsResetting(true);
     
-    // Show transition for host and broadcast to other players
-    setTransitionPhase('expanding');
-    setShowTransition(true);
-    
-    const channel = supabase.channel(`new-game-transition-${lobbyId}`);
-    channel.subscribe((status) => {
-      if (status === 'SUBSCRIBED') {
-        channel.send({
-          type: 'broadcast',
-          event: 'new-game-starting',
-        });
+    // Use centralized transition - all game reset logic in prepare()
+    startTransition(`/game/${lobbyId}`, {
+      loadingText: 'Starting new game',
+      prepare: async () => {
+        console.log('[PlayAgain] Prepare: starting game creation');
+        
+        // Broadcast to other players that new game is starting
+        const channel = supabase.channel(`new-game-transition-${lobbyId}`);
+        
+        try {
+          // Reset all spectators back to active players for the new game
+          const { error: resetError } = await supabase
+            .from('lobby_players')
+            .update({ is_spectator: false })
+            .eq('lobby_id', lobbyId);
+
+          if (resetError) {
+            console.error('Error resetting spectators:', resetError);
+          }
+
+          // Save game config to localStorage for persistence
+          localStorage.setItem(`game-config-${lobbyId}`, JSON.stringify(gameConfig));
+
+          // Get words from built-in categories
+          let allWords: { id: string; text: string; category: string; isCustom?: boolean }[] = [];
+          
+          if (gameConfig.selectedCategories.length > 0) {
+            const { data: words } = await supabase
+              .from('words')
+              .select('*')
+              .in('category', gameConfig.selectedCategories as ('animal' | 'brand' | 'degenerate' | 'food' | 'movie' | 'person' | 'place' | 'thing')[]);
+            
+            if (words) {
+              allWords = words.map(w => ({ ...w, isCustom: false }));
+            }
+          }
+          
+          // Add words from custom categories
+          const selectedCustomCats = customCategories.filter(c => gameConfig.selectedCustomCategories.includes(c.id));
+          for (const customCat of selectedCustomCats) {
+            for (const word of customCat.words) {
+              allWords.push({
+                id: `custom-${customCat.id}-${word}`,
+                text: word,
+                category: customCat.name,
+                isCustom: true,
+              });
+            }
+          }
+          
+          if (allWords.length === 0) {
+            throw new Error('No words available for selected categories');
+          }
+
+          const randomWord = allWords[Math.floor(Math.random() * allWords.length)];
+
+          // Get fresh player list after resetting spectators
+          const { data: freshPlayers } = await supabase
+            .from('lobby_players')
+            .select('*')
+            .eq('lobby_id', lobbyId);
+
+          if (!freshPlayers || freshPlayers.length === 0) {
+            throw new Error('No players in lobby');
+          }
+
+          // For custom words, we need to use a placeholder
+          let secretWordId = randomWord.id;
+          let imposterWordId = null;
+          
+          if (randomWord.isCustom) {
+            const { data: placeholderWord } = await supabase
+              .from('words')
+              .select('id')
+              .limit(1)
+              .single();
+            
+            if (placeholderWord) {
+              secretWordId = placeholderWord.id;
+            }
+          }
+          
+          // For hidden_imposter mode, get a different word from the same category
+          if (gameConfig.gameMode === 'hidden_imposter') {
+            const sameCategory = allWords.filter(w => w.category === randomWord.category && w.id !== randomWord.id);
+            if (sameCategory.length > 0) {
+              const imposterWord = sameCategory[Math.floor(Math.random() * sameCategory.length)];
+              if (!imposterWord.isCustom) {
+                imposterWordId = imposterWord.id;
+              }
+            } else {
+              const differentWords = allWords.filter(w => w.id !== randomWord.id && !w.isCustom);
+              if (differentWords.length > 0) {
+                imposterWordId = differentWords[Math.floor(Math.random() * differentWords.length)].id;
+              }
+            }
+          }
+
+          // Determine actual imposter count (random or selected)
+          const actualImposterCount = gameConfig.randomImposters 
+            ? Math.floor(Math.random() * maxImposters) + 1
+            : gameConfig.imposterCount;
+
+          // Pick random outsiders from fresh player list
+          const shuffledPlayers = [...freshPlayers].sort(() => Math.random() - 0.5);
+          const selectedOutsiders = shuffledPlayers.slice(0, actualImposterCount);
+
+          // Create new game
+          const { data: newGame, error: gameError } = await supabase
+            .from('games')
+            .insert({
+              lobby_id: lobbyId,
+              secret_word_id: secretWordId,
+              outsider_player_id: selectedOutsiders[0]?.id || freshPlayers[0].id,
+              imposter_word_id: imposterWordId,
+              total_rounds: gameConfig.gameMode === 'elimination' ? 99 : gameConfig.roundCount,
+              current_round_number: 1,
+              status: 'clue_round',
+              game_mode: gameConfig.gameMode
+            })
+            .select()
+            .single();
+
+          if (gameError) throw gameError;
+          
+          console.log('[PlayAgain] New game created:', newGame.id);
+
+          // Store custom word and modifiers in localStorage for this game
+          const selectedCustomModifiers = customModifiers.filter(m => 
+            gameConfig.selectedModifiers.includes(m.id)
+          ).map(m => ({ id: m.id, label: m.label, description: m.description }));
+          
+          let imposterCustomWord: string | null = null;
+          if (gameConfig.gameMode === 'hidden_imposter' && randomWord.isCustom) {
+            const sameCategory = allWords.filter(w => w.category === randomWord.category && w.id !== randomWord.id);
+            if (sameCategory.length > 0) {
+              const imposterWord = sameCategory[Math.floor(Math.random() * sameCategory.length)];
+              if (imposterWord.isCustom) {
+                imposterCustomWord = imposterWord.text;
+              }
+            }
+          }
+          
+          const gameMetadata = {
+            customWord: randomWord.isCustom ? randomWord.text : null,
+            customCategory: randomWord.isCustom ? randomWord.category : null,
+            modifiers: gameConfig.selectedModifiers,
+            customModifiersData: selectedCustomModifiers,
+            imposterCustomWord,
+            showOutsiderCount: gameConfig.showOutsiderCount,
+            votesPerPlayer: gameConfig.randomImposters ? players.length - 1 : gameConfig.votesPerPlayer,
+            outsiderCount: selectedOutsiders.length,
+            timedRoundDuration: gameConfig.timedRoundDuration,
+          };
+          
+          localStorage.setItem(`game-metadata-${newGame.id}`, JSON.stringify(gameMetadata));
+
+          // Insert all outsiders into game_outsiders table
+          if (selectedOutsiders.length > 0) {
+            const outsiderInserts = selectedOutsiders.map(outsider => ({
+              game_id: newGame.id,
+              player_id: outsider.id
+            }));
+
+            const { error: outsidersError } = await supabase
+              .from('game_outsiders')
+              .insert(outsiderInserts);
+
+            if (outsidersError) throw outsidersError;
+          }
+
+          // Create first round
+          const { error: roundError } = await supabase
+            .from('rounds')
+            .insert({
+              game_id: newGame.id,
+              round_number: 1,
+              is_complete: false
+            });
+
+          if (roundError) throw roundError;
+
+          // Update lobby
+          const { error: lobbyError } = await supabase
+            .from('lobbies')
+            .update({
+              status: 'in_progress',
+              current_game_id: newGame.id
+            })
+            .eq('id', lobbyId);
+
+          if (lobbyError) throw lobbyError;
+          
+          // Broadcast to other players with the new game ID
+          await new Promise<void>((resolve) => {
+            channel.subscribe((status) => {
+              if (status === 'SUBSCRIBED') {
+                channel.send({
+                  type: 'broadcast',
+                  event: 'new-game-starting',
+                  payload: { newGameId: newGame.id }
+                });
+                resolve();
+              }
+            });
+            // Timeout fallback
+            setTimeout(resolve, 500);
+          });
+
+          console.log('[PlayAgain] All setup complete, navigating');
+          toast.success('New game started!');
+          
+        } catch (error) {
+          console.error('[PlayAgain] Error:', error);
+          toast.error('Failed to start new game');
+          playAgainInFlightRef.current = false;
+          setIsResetting(false);
+          throw error; // Re-throw to let transition handle it
+        } finally {
+          supabase.removeChannel(channel);
+        }
       }
     });
-    
-    // Continue with expanding animation
-    setTimeout(() => setTransitionPhase('holding'), 600);
-    setTimeout(() => setTransitionPhase('shrinking'), 1000);
-    
-    try {
-      // Reset all spectators back to active players for the new game
-      const { error: resetError } = await supabase
-        .from('lobby_players')
-        .update({ is_spectator: false })
-        .eq('lobby_id', lobbyId);
-
-      if (resetError) {
-        console.error('Error resetting spectators:', resetError);
-      }
-
-      // Save game config to localStorage for persistence
-      localStorage.setItem(`game-config-${lobbyId}`, JSON.stringify(gameConfig));
-
-      // Get words from built-in categories
-      let allWords: { id: string; text: string; category: string; isCustom?: boolean }[] = [];
-      
-      if (gameConfig.selectedCategories.length > 0) {
-        const { data: words } = await supabase
-          .from('words')
-          .select('*')
-          .in('category', gameConfig.selectedCategories as ('animal' | 'brand' | 'degenerate' | 'food' | 'movie' | 'person' | 'place' | 'thing')[]);
-        
-        if (words) {
-          allWords = words.map(w => ({ ...w, isCustom: false }));
-        }
-      }
-      
-      // Add words from custom categories
-      const selectedCustomCats = customCategories.filter(c => gameConfig.selectedCustomCategories.includes(c.id));
-      for (const customCat of selectedCustomCats) {
-        for (const word of customCat.words) {
-          allWords.push({
-            id: `custom-${customCat.id}-${word}`,
-            text: word,
-            category: customCat.name,
-            isCustom: true,
-          });
-        }
-      }
-      
-      if (allWords.length === 0) {
-        toast.error('No words available for selected categories');
-        setIsResetting(false);
-        return;
-      }
-
-      const randomWord = allWords[Math.floor(Math.random() * allWords.length)];
-
-      // Get fresh player list after resetting spectators
-      const { data: freshPlayers } = await supabase
-        .from('lobby_players')
-        .select('*')
-        .eq('lobby_id', lobbyId);
-
-      if (!freshPlayers || freshPlayers.length === 0) {
-        toast.error('No players in lobby');
-        setIsResetting(false);
-        return;
-      }
-
-      // For custom words, we need to use a placeholder
-      let secretWordId = randomWord.id;
-      let imposterWordId = null;
-      
-      if (randomWord.isCustom) {
-        const { data: placeholderWord } = await supabase
-          .from('words')
-          .select('id')
-          .limit(1)
-          .single();
-        
-        if (placeholderWord) {
-          secretWordId = placeholderWord.id;
-        }
-      }
-      
-      // For hidden_imposter mode, get a different word from the same category
-      if (gameConfig.gameMode === 'hidden_imposter') {
-        const sameCategory = allWords.filter(w => w.category === randomWord.category && w.id !== randomWord.id);
-        if (sameCategory.length > 0) {
-          const imposterWord = sameCategory[Math.floor(Math.random() * sameCategory.length)];
-          if (!imposterWord.isCustom) {
-            imposterWordId = imposterWord.id;
-          }
-        } else {
-          const differentWords = allWords.filter(w => w.id !== randomWord.id && !w.isCustom);
-          if (differentWords.length > 0) {
-            imposterWordId = differentWords[Math.floor(Math.random() * differentWords.length)].id;
-          }
-        }
-      }
-
-      // Determine actual imposter count (random or selected)
-      const actualImposterCount = gameConfig.randomImposters 
-        ? Math.floor(Math.random() * maxImposters) + 1
-        : gameConfig.imposterCount;
-
-      // Pick random outsiders from fresh player list
-      const shuffledPlayers = [...freshPlayers].sort(() => Math.random() - 0.5);
-      const selectedOutsiders = shuffledPlayers.slice(0, actualImposterCount);
-
-      // Create new game
-      const { data: newGame, error: gameError } = await supabase
-        .from('games')
-        .insert({
-          lobby_id: lobbyId,
-          secret_word_id: secretWordId,
-          outsider_player_id: selectedOutsiders[0]?.id || freshPlayers[0].id,
-          imposter_word_id: imposterWordId,
-          total_rounds: gameConfig.gameMode === 'elimination' ? 99 : gameConfig.roundCount,
-          current_round_number: 1,
-          status: 'clue_round',
-          game_mode: gameConfig.gameMode
-        })
-        .select()
-        .single();
-
-      if (gameError) throw gameError;
-
-      // Store custom word and modifiers in localStorage for this game
-      // Include full custom modifier data so non-hosts can see them
-      const selectedCustomModifiers = customModifiers.filter(m => 
-        gameConfig.selectedModifiers.includes(m.id)
-      ).map(m => ({ id: m.id, label: m.label, description: m.description }));
-      
-      let imposterCustomWord: string | null = null;
-      if (gameConfig.gameMode === 'hidden_imposter' && randomWord.isCustom) {
-        const sameCategory = allWords.filter(w => w.category === randomWord.category && w.id !== randomWord.id);
-        if (sameCategory.length > 0) {
-          const imposterWord = sameCategory[Math.floor(Math.random() * sameCategory.length)];
-          if (imposterWord.isCustom) {
-            imposterCustomWord = imposterWord.text;
-          }
-        }
-      }
-      
-      const gameMetadata = {
-        customWord: randomWord.isCustom ? randomWord.text : null,
-        customCategory: randomWord.isCustom ? randomWord.category : null,
-        modifiers: gameConfig.selectedModifiers,
-        customModifiersData: selectedCustomModifiers,
-        imposterCustomWord,
-        showOutsiderCount: gameConfig.showOutsiderCount,
-        votesPerPlayer: gameConfig.randomImposters ? players.length - 1 : gameConfig.votesPerPlayer,
-        outsiderCount: selectedOutsiders.length,
-        timedRoundDuration: gameConfig.timedRoundDuration,
-      };
-      
-      localStorage.setItem(`game-metadata-${newGame.id}`, JSON.stringify(gameMetadata));
-
-      // Insert all outsiders into game_outsiders table
-      if (selectedOutsiders.length > 0) {
-        const outsiderInserts = selectedOutsiders.map(outsider => ({
-          game_id: newGame.id,
-          player_id: outsider.id
-        }));
-
-        const { error: outsidersError } = await supabase
-          .from('game_outsiders')
-          .insert(outsiderInserts);
-
-        if (outsidersError) throw outsidersError;
-      }
-
-      // Create first round
-      const { error: roundError } = await supabase
-        .from('rounds')
-        .insert({
-          game_id: newGame.id,
-          round_number: 1,
-          is_complete: false
-        });
-
-      if (roundError) throw roundError;
-
-      // Update lobby
-      const { error: lobbyError } = await supabase
-        .from('lobbies')
-        .update({
-          status: 'in_progress',
-          current_game_id: newGame.id
-        })
-        .eq('id', lobbyId);
-
-      if (lobbyError) throw lobbyError;
-
-      toast.success('New game started!');
-      navigate(`/game/${lobbyId}`);
-    } catch (error) {
-      console.error('Error starting new game:', error);
-      toast.error('Failed to start new game');
-      setIsResetting(false);
-    }
   };
 
   const goHome = async () => {
@@ -558,22 +594,6 @@ const Results = () => {
   return (
     <LoadingReveal isLoading={isLoading} loadingText="Loading results">
     <>
-      {/* Circle Transition Overlay */}
-      {showTransition && (
-        <motion.div
-          className="fixed inset-0 z-[9999] pointer-events-none flex items-center justify-center bg-background"
-          animate={{ 
-            clipPath: transitionPhase === 'shrinking' 
-              ? 'circle(0% at 50% 50%)' 
-              : 'circle(150% at 50% 50%)' 
-          }}
-          initial={{ clipPath: 'circle(0% at 50% 50%)' }}
-          transition={{ duration: 0.6, ease: [0.4, 0, 0.2, 1] }}
-        >
-          <LoadingScreen text="Starting new game" />
-        </motion.div>
-      )}
-      
       <div className="min-h-screen bg-background pb-24">
       <Confetti isActive={showConfetti} />
       
