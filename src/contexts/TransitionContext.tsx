@@ -204,7 +204,7 @@ const TransitionOverlay: React.FC<TransitionOverlayProps> = ({ phase, loadingTex
     if (phase === 'expanding') {
       return `circle(0% at ${originX} ${originY})`;
     }
-    return `circle(150% at 50% 50%)`;
+    return undefined; // Don't reset initial for other phases
   };
 
   const isActive = phase !== 'idle';
@@ -213,12 +213,13 @@ const TransitionOverlay: React.FC<TransitionOverlayProps> = ({ phase, loadingTex
     <AnimatePresence>
       {isActive && (
         <motion.div
-          key={`transition-${phase}`}
+          key="transition-overlay"
           className="fixed inset-0 z-[9999] flex items-center justify-center bg-background"
-          initial={{ clipPath: getInitialClipPath() }}
+          initial={getInitialClipPath() ? { clipPath: getInitialClipPath() } : false}
           animate={{ clipPath: getClipPath() }}
+          exit={{ clipPath: 'circle(0% at 50% 50%)' }}
           transition={{ 
-            duration: phase === 'expanding' ? EXPAND_DURATION / 1000 : SHRINK_DURATION / 1000,
+            duration: phase === 'shrinking' ? SHRINK_DURATION / 1000 : EXPAND_DURATION / 1000,
             ease: [0.4, 0, 0.2, 1]
           }}
         >
