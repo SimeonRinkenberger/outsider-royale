@@ -3,7 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { supabase } from '@/integrations/supabase/client';
-import { getStoredDisplayName, clearStorage, setStoredDisplayName } from '@/lib/gameUtils';
+import { getStoredDisplayName, clearStorage, setStoredDisplayName, setStoredAvatarId } from '@/lib/gameUtils';
 import { toast } from 'sonner';
 import { ArrowLeft, Trophy, Target, Flame, MessageSquare, Vote, LogOut, TrendingUp } from 'lucide-react';
 import { motion } from 'framer-motion';
@@ -70,6 +70,9 @@ const Stats = () => {
       if (profileData) {
         setProfileId(profileData.id);
         setAvatarUrl(profileData.avatar_url);
+        if (profileData.avatar_url) {
+          setStoredAvatarId(profileData.avatar_url);
+        }
         if (profileData.display_name) {
           setDisplayName(profileData.display_name);
         }
@@ -101,6 +104,7 @@ const Stats = () => {
       toast.error('Failed to update avatar');
     } else {
       setAvatarUrl(avatarId);
+      setStoredAvatarId(avatarId);
       toast.success('Avatar updated!');
     }
   };

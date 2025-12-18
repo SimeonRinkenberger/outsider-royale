@@ -23,7 +23,16 @@ export const setStoredDisplayName = (name: string): void => {
   localStorage.setItem('displayName', name);
 };
 
+export const getStoredAvatarId = (): string | null => {
+  return localStorage.getItem('avatarId');
+};
+
+export const setStoredAvatarId = (avatarId: string): void => {
+  localStorage.setItem('avatarId', avatarId);
+};
+
 export const clearStorage = (): void => {
   localStorage.removeItem('userId');
   localStorage.removeItem('displayName');
+  localStorage.removeItem('avatarId');
 };

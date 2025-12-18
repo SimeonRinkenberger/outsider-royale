@@ -69,33 +69,9 @@ const Game = () => {
   const [guessInput, setGuessInput] = useState('');
   const [showGuessInput, setShowGuessInput] = useState(false);
   const [hasGuessed, setHasGuessed] = useState(false);
-  const [playerAvatars, setPlayerAvatars] = useState<Record<string, string | null>>({});
   const { customModifiers } = useCustomContent();
   const userId = getStoredUserId();
   const { setMusicState } = useAudio();
-
-  // Fetch avatars for all players
-  useEffect(() => {
-    const fetchAvatars = async () => {
-      if (players.length === 0) return;
-      
-      const userIds = players.map(p => p.user_id);
-      const { data: profiles } = await supabase
-        .from('profiles')
-        .select('id, avatar_url')
-        .in('id', userIds);
-      
-      if (profiles) {
-        const avatarMap: Record<string, string | null> = {};
-        profiles.forEach(p => {
-          avatarMap[p.id] = p.avatar_url;
-        });
-        setPlayerAvatars(avatarMap);
-      }
-    };
-    
-    fetchAvatars();
-  }, [players]);
 
   useEffect(() => {
     const isTimedRound = gameMetadata?.modifiers?.includes('timed-round') ?? false;
@@ -913,8 +889,7 @@ const Game = () => {
               {shuffledPlayers.map((player, index) => {
                 const playerClue = clues.find(c => c.player_id === player.id);
                 const isCurrentTurn = index === currentTurnIndex && !playerClue;
-                const avatarId = playerAvatars[player.user_id];
-                const avatar = avatarId ? getAvatarById(avatarId) : null;
+                const avatar = player.avatar_url ? getAvatarById(player.avatar_url) : null;
                 
                 return (
                   <Card 
