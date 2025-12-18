@@ -484,6 +484,11 @@ const Results = () => {
 
   const isLoading = !game || !secretWord || outsiderPlayers.length === 0 || !resultsReady;
 
+  // Early return if critical data is missing to prevent null access errors
+  if (!game || !secretWord) {
+    return <LoadingReveal isLoading={true} loadingText="Loading results"><div className="min-h-screen bg-background" /></LoadingReveal>;
+  }
+
   return (
     <LoadingReveal isLoading={isLoading} loadingText="Loading results">
     <div className="min-h-screen bg-background pb-24">
