@@ -1,5 +1,4 @@
 import { useEffect, useState, useRef, useMemo } from 'react';
-import LoadingReveal from '@/components/LoadingReveal';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -457,11 +456,12 @@ const Lobby = () => {
       setIsStarting(false);
     }
   };
-
-  const isLoading = !lobby;
+  // Debug log to verify single mount
+  useEffect(() => {
+    console.log('Lobby mounted');
+  }, []);
 
   return (
-    <LoadingReveal isLoading={isLoading} loadingText="Loading lobby">
     <div className="min-h-screen bg-background pb-48" style={{ scrollbarGutter: 'stable' }}>
       <GameHeader title="Lobby" showBack={true} onBack={leaveLobby} />
 
@@ -677,7 +677,6 @@ const Lobby = () => {
         )}
       </main>
     </div>
-    </LoadingReveal>
   );
 };
 

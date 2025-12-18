@@ -1,6 +1,7 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
+import LoadingScreen from './LoadingScreen';
 
 interface TransitionState {
   isActive: boolean;
@@ -9,13 +10,14 @@ interface TransitionState {
   targetPath: string;
 }
 
+type Phase = 'idle' | 'expanding' | 'holding' | 'navigated' | 'shrinking' | 'done';
+
 let triggerTransition: ((x: number, y: number, path: string) => void) | null = null;
 
 export const usePageTransition = () => {
   const navigate = useNavigate();
 
   const navigateWithTransition = useCallback((path: string, event?: React.MouseEvent) => {
-    // Check for reduced motion preference
     const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     
     if (prefersReducedMotion || !event || !triggerTransition) {
@@ -58,44 +60,79 @@ export const PageTransitionOverlay = () => {
     y: 0,
     targetPath: '',
   });
-  const [phase, setPhase] = useState<'idle' | 'press' | 'expand' | 'done'>('idle');
+  const [phase, setPhase] = useState<Phase>('idle');
+  const hasNavigatedRef = useRef(false);
+  const timersRef = useRef<Set<NodeJS.Timeout>>(new Set());
 
+  // Cleanup helper
+  const clearAllTimers = useCallback(() => {
+    timersRef.current.forEach(timer => clearTimeout(timer));
+    timersRef.current.clear();
+  }, []);
+
+  const addTimer = useCallback((callback: () => void, delay: number) => {
+    const timer = setTimeout(() => {
+      timersRef.current.delete(timer);
+      callback();
+    }, delay);
+    timersRef.current.add(timer);
+    return timer;
+  }, []);
+
+  // Register the global trigger
   useEffect(() => {
     triggerTransition = (x: number, y: number, path: string) => {
+      // Reset navigation guard for new transition
+      hasNavigatedRef.current = false;
       setState({ isActive: true, x, y, targetPath: path });
-      setPhase('press');
+      setPhase('expanding');
     };
 
     return () => {
       triggerTransition = null;
+      clearAllTimers();
     };
-  }, []);
+  }, [clearAllTimers]);
 
+  // Phase state machine
   useEffect(() => {
-    if (phase === 'press') {
-      // Brief press effect before expand
-      const timer = setTimeout(() => setPhase('expand'), 100);
-      return () => clearTimeout(timer);
+    if (phase === 'expanding') {
+      // After expand animation completes, hold briefly
+      addTimer(() => setPhase('holding'), 400);
     }
 
-    if (phase === 'expand') {
-      // Navigate after expansion completes
-      const timer = setTimeout(() => {
-        navigate(state.targetPath);
-        setPhase('done');
-      }, 500);
-      return () => clearTimeout(timer);
+    if (phase === 'holding') {
+      // Brief hold, then navigate
+      addTimer(() => {
+        if (!hasNavigatedRef.current) {
+          hasNavigatedRef.current = true;
+          console.log('Navigate to Lobby');
+          navigate(state.targetPath);
+          setPhase('navigated');
+        }
+      }, 200);
+    }
+
+    if (phase === 'navigated') {
+      // Give React a frame to mount the new page, then start shrinking
+      addTimer(() => setPhase('shrinking'), 50);
+    }
+
+    if (phase === 'shrinking') {
+      // After shrink animation completes, cleanup
+      addTimer(() => setPhase('done'), 450);
     }
 
     if (phase === 'done') {
-      // Cleanup after navigation
-      const timer = setTimeout(() => {
-        setState(prev => ({ ...prev, isActive: false }));
-        setPhase('idle');
-      }, 100);
-      return () => clearTimeout(timer);
+      setState(prev => ({ ...prev, isActive: false }));
+      setPhase('idle');
     }
-  }, [phase, navigate, state.targetPath]);
+  }, [phase, navigate, state.targetPath, addTimer]);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => clearAllTimers();
+  }, [clearAllTimers]);
 
   if (!state.isActive) return null;
 
@@ -104,33 +141,47 @@ export const PageTransitionOverlay = () => {
   const maxY = Math.max(state.y, window.innerHeight - state.y);
   const finalRadius = Math.sqrt(maxX * maxX + maxY * maxY) + 50;
 
+  const isExpanded = phase === 'expanding' || phase === 'holding' || phase === 'navigated' || phase === 'shrinking';
+  const isShrinking = phase === 'shrinking';
+
   return createPortal(
     <div
-      className="fixed inset-0 z-[9999] pointer-events-none"
-      style={{
-        '--reveal-x': `${state.x}px`,
-        '--reveal-y': `${state.y}px`,
-        '--final-radius': `${finalRadius}px`,
-      } as React.CSSProperties}
+      className="fixed inset-0 z-[9999] pointer-events-none overflow-hidden"
+      aria-hidden="true"
     >
       <div
-        className={`
-          absolute rounded-full bg-background
-          transition-all
-          ${phase === 'press' ? 'page-transition-press' : ''}
-          ${phase === 'expand' || phase === 'done' ? 'page-transition-expand' : ''}
-        `}
+        className="absolute bg-background"
         style={{
-          left: 'var(--reveal-x)',
-          top: 'var(--reveal-y)',
-          transform: 'translate(-50%, -50%)',
-          width: phase === 'idle' || phase === 'press' ? '0px' : `calc(var(--final-radius) * 2)`,
-          height: phase === 'idle' || phase === 'press' ? '0px' : `calc(var(--final-radius) * 2)`,
-          transition: phase === 'expand' || phase === 'done' 
-            ? 'width 500ms cubic-bezier(0.2, 0.8, 0.2, 1), height 500ms cubic-bezier(0.2, 0.8, 0.2, 1)'
-            : 'none',
+          left: state.x,
+          top: state.y,
+          width: isExpanded ? finalRadius * 2 : 0,
+          height: isExpanded ? finalRadius * 2 : 0,
+          borderRadius: '50%',
+          transform: `translate(-50%, -50%) ${isShrinking ? 'scale(0)' : 'scale(1)'}`,
+          transition: isShrinking
+            ? 'transform 400ms cubic-bezier(0.2, 0.8, 0.2, 1)'
+            : phase === 'expanding'
+              ? 'width 400ms cubic-bezier(0.2, 0.8, 0.2, 1), height 400ms cubic-bezier(0.2, 0.8, 0.2, 1)'
+              : 'none',
+          transformOrigin: 'center center',
         }}
-      />
+      >
+        {/* LoadingScreen inside the circle */}
+        <div 
+          className="absolute inset-0 flex items-center justify-center"
+          style={{
+            // Position the loading screen content at the center of the viewport
+            // relative to where the circle is positioned
+            left: '50%',
+            top: '50%',
+            width: '100vw',
+            height: '100vh',
+            transform: 'translate(-50%, -50%)',
+          }}
+        >
+          <LoadingScreen text="Loading" />
+        </div>
+      </div>
     </div>,
     document.body
   );
