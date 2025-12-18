@@ -497,19 +497,27 @@ const Game = () => {
       setTimeout(() => setTransitionPhase('shrinking'), 1000);
       setTimeout(() => setShowTransition(false), 1600);
       
-      // Mark current round as complete
-      await supabase
-        .from('rounds')
-        .update({ is_complete: true })
-        .eq('id', currentRound.id);
+      // Delay DB operations until after the transition animation completes (at shrink phase)
+      setTimeout(async () => {
+        try {
+          // Mark current round as complete
+          await supabase
+            .from('rounds')
+            .update({ is_complete: true })
+            .eq('id', currentRound.id);
 
-      // Skip directly to voting
-      await supabase
-        .from('games')
-        .update({ status: 'voting' })
-        .eq('id', game.id);
+          // Skip directly to voting
+          await supabase
+            .from('games')
+            .update({ status: 'voting' })
+            .eq('id', game.id);
 
-      toast.success('Skipped to voting!');
+          toast.success('Skipped to voting!');
+        } catch (error) {
+          console.error('Error skipping to voting:', error);
+          toast.error('Failed to skip to voting');
+        }
+      }, 1200); // Execute after shrink starts but before transition hides
     } catch (error) {
       console.error('Error skipping to voting:', error);
       toast.error('Failed to skip to voting');
@@ -722,28 +730,32 @@ const Game = () => {
     return <LoadingScreen text="Loading game" />;
   }
 
+  // Global skip transition overlay - rendered regardless of game status
+  const skipTransitionOverlay = (
+    <AnimatePresence>
+      {showTransition && (
+        <motion.div
+          key={`skip-transition-${transitionPhase}`}
+          className="fixed inset-0 z-[9999] pointer-events-none flex items-center justify-center bg-background"
+          initial={{ clipPath: transitionPhase === 'expanding' ? 'circle(0% at 50% 50%)' : 'circle(150% at 50% 50%)' }}
+          animate={{ 
+            clipPath: transitionPhase === 'shrinking' 
+              ? 'circle(0% at 50% 50%)' 
+              : 'circle(150% at 50% 50%)' 
+          }}
+          transition={{ duration: 0.6, ease: [0.4, 0, 0.2, 1] }}
+        >
+          <LoadingScreen text="Skipping to voting" />
+        </motion.div>
+      )}
+    </AnimatePresence>
+  );
+
   // Clue Round View
   if (game.status === 'clue_round') {
     return (
       <>
-        {/* Circle Transition Overlay for Skip */}
-        <AnimatePresence>
-          {showTransition && (
-            <motion.div
-              key={`skip-transition-${transitionPhase}`}
-              className="fixed inset-0 z-[9999] pointer-events-none flex items-center justify-center bg-background"
-              initial={{ clipPath: transitionPhase === 'expanding' ? 'circle(0% at 50% 50%)' : 'circle(150% at 50% 50%)' }}
-              animate={{ 
-                clipPath: transitionPhase === 'shrinking' 
-                  ? 'circle(0% at 50% 50%)' 
-                  : 'circle(150% at 50% 50%)' 
-              }}
-              transition={{ duration: 0.6, ease: [0.4, 0, 0.2, 1] }}
-            >
-              <LoadingScreen text="Skipping to voting" />
-            </motion.div>
-          )}
-        </AnimatePresence>
+        {skipTransitionOverlay}
         
         {/* Circle Transition Overlay for Results */}
         <AnimatePresence>
@@ -1053,6 +1065,7 @@ const Game = () => {
     
     return (
       <>
+        {skipTransitionOverlay}
         {/* Circle Transition Overlay for Results */}
         <AnimatePresence>
           {showResultsTransition && (
