@@ -35,7 +35,6 @@ class AudioManager {
   private tracks: Map<string, AudioTrack> = new Map();
   private currentState: MusicState = 'silent';
   private currentTrack: AudioTrack | null = null;
-  private fadeInterval: NodeJS.Timeout | null = null;
   private masterVolume: number = 1;
   private isMuted: boolean = false;
   private isInitialized: boolean = false;
@@ -126,26 +125,26 @@ class AudioManager {
   // Fade out current track
   private fadeOut(track: AudioTrack, duration: number): Promise<void> {
     return new Promise((resolve) => {
-      if (this.fadeInterval) {
-        clearInterval(this.fadeInterval);
+      const startVolume = track.audio.volume;
+      if (startVolume === 0) {
+        track.audio.pause();
+        track.audio.currentTime = 0;
+        resolve();
+        return;
       }
 
-      const startVolume = track.audio.volume;
       const steps = 20;
       const stepDuration = duration / steps;
       const volumeStep = startVolume / steps;
       let currentStep = 0;
 
-      this.fadeInterval = setInterval(() => {
+      const fadeInterval = setInterval(() => {
         currentStep++;
         const newVolume = Math.max(0, startVolume - (volumeStep * currentStep));
         track.audio.volume = newVolume;
 
         if (currentStep >= steps) {
-          if (this.fadeInterval) {
-            clearInterval(this.fadeInterval);
-            this.fadeInterval = null;
-          }
+          clearInterval(fadeInterval);
           track.audio.pause();
           track.audio.currentTime = 0;
           resolve();
@@ -163,25 +162,18 @@ class AudioManager {
       track.audio.currentTime = 0;
       
       track.audio.play().then(() => {
-        if (this.fadeInterval) {
-          clearInterval(this.fadeInterval);
-        }
-
         const steps = 20;
         const stepDuration = duration / steps;
         const volumeStep = targetVolume / steps;
         let currentStep = 0;
 
-        this.fadeInterval = setInterval(() => {
+        const fadeInterval = setInterval(() => {
           currentStep++;
           const newVolume = Math.min(targetVolume, volumeStep * currentStep);
           track.audio.volume = newVolume;
 
           if (currentStep >= steps) {
-            if (this.fadeInterval) {
-              clearInterval(this.fadeInterval);
-              this.fadeInterval = null;
-            }
+            clearInterval(fadeInterval);
             resolve();
           }
         }, stepDuration);
@@ -192,25 +184,18 @@ class AudioManager {
     });
   }
 
-  // Crossfade between tracks
-  private async crossfade(fromTrack: AudioTrack | null, toTrack: AudioTrack, crossfadeDuration: number): Promise<void> {
-    const fadeOutDuration = this.getFadeDuration(crossfadeDuration);
+  // Sequential transition - fade out completely, then fade in (no overlap)
+  private async transition(fromTrack: AudioTrack | null, toTrack: AudioTrack): Promise<void> {
+    const fadeOutDuration = this.getFadeDuration(300);
     const fadeInDuration = this.getFadeDuration(400);
 
-    // Start fade in slightly before fade out completes for overlap
-    const overlapMs = Math.min(fadeOutDuration * 0.5, 150);
-
-    if (fromTrack) {
-      // Start fade out
-      const fadeOutPromise = this.fadeOut(fromTrack, fadeOutDuration);
-      
-      // Wait a bit then start fade in
-      await new Promise(resolve => setTimeout(resolve, fadeOutDuration - overlapMs));
-      await this.fadeIn(toTrack, fadeInDuration);
-      await fadeOutPromise;
-    } else {
-      await this.fadeIn(toTrack, fadeInDuration);
+    // First, completely stop the old track
+    if (fromTrack && !fromTrack.audio.paused) {
+      await this.fadeOut(fromTrack, fadeOutDuration);
     }
+
+    // Then start the new track
+    await this.fadeIn(toTrack, fadeInDuration);
   }
 
   // Set the current music state
@@ -250,9 +235,8 @@ class AudioManager {
       return;
     }
 
-    // Normal crossfade for background music
-    const crossfadeDuration = this.getFadeDuration(300);
-    await this.crossfade(this.currentTrack, newTrack, crossfadeDuration);
+    // Sequential transition for background music (no overlap to prevent dual playback)
+    await this.transition(this.currentTrack, newTrack);
     this.currentTrack = newTrack;
   }
 
@@ -353,10 +337,6 @@ class AudioManager {
 
   // Cleanup
   destroy(): void {
-    if (this.fadeInterval) {
-      clearInterval(this.fadeInterval);
-    }
-    
     this.tracks.forEach(track => {
       track.audio.pause();
       track.audio.src = '';
