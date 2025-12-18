@@ -972,92 +972,133 @@ const Game = () => {
           </motion.div>
 
           {/* Turn indicator */}
-          {!hasSubmittedClue && currentTurnPlayer && (
-            <motion.div
-              initial={{ opacity: 0, y: 30 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.4, ease: [0.4, 0, 0.2, 1], delay: 0.1 }}
-            >
-              <Card className={`p-4 transition-all duration-300 ${isMyTurn ? 'bg-primary/10 border-primary animate-pulse-glow' : 'bg-muted/50 border-border'}`}>
-                <div className="text-center">
-                  {isMyTurn ? (
-                    <p className="font-semibold text-primary animate-bounce-in">It's your turn to give a clue!</p>
-                  ) : (
-                    <p className="text-muted-foreground">
-                      Waiting for <span className="font-semibold text-foreground">{currentTurnPlayer.display_name}</span> to submit their clue...
-                    </p>
-                  )}
-                </div>
-              </Card>
-            </motion.div>
-          )}
-
-          {!isSpectator && !hasSubmittedClue && isMyTurn ? (
-            <motion.div
-              initial={{ opacity: 0, y: 30 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.4, ease: [0.4, 0, 0.2, 1], delay: 0.2 }}
-              className="space-y-4"
-            >
-              {/* Timed Round Timer */}
-              {isTimedRound && (
-                <SpeedRoundTimer
-                  key={`timer-${currentTurnPlayer?.id}-${game.current_round_number}-${clues.length}`}
-                  isActive={isMyTurn && !hasSubmittedClue}
-                  duration={timedRoundDuration}
-                  onTimeUp={handleSpeedRoundTimeUp}
-                />
-              )}
-              
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Your Clue</label>
-                <Input
-                  placeholder="Enter a one-word clue"
-                  value={clueInput}
-                  onChange={(e) => setClueInput(e.target.value)}
-                  maxLength={30}
-                  className={`h-12 text-base ${isTimedRound ? 'border-primary focus:ring-primary' : ''}`}
-                  onKeyDown={(e) => e.key === 'Enter' && submitClue()}
-                  autoFocus={isTimedRound}
-                />
-                <p className="text-xs text-muted-foreground">
-                  {isTimedRound ? 'Quick! Submit before time runs out!' : 'Keep it short and relevant!'}
-                </p>
-              </div>
-              <Button
-                onClick={submitClue}
-                disabled={isSubmitting || !clueInput.trim()}
-                className="w-full h-12"
+          {/* Turn indicator - slides based on whose turn */}
+          <AnimatePresence mode="wait">
+            {!hasSubmittedClue && currentTurnPlayer && (
+              <motion.div
+                key={`turn-indicator-${isMyTurn ? 'my-turn' : 'waiting'}`}
+                initial={{ opacity: 0, y: -20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -20 }}
+                transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
               >
-                <Send className="h-4 w-4 mr-2" />
-                {isSubmitting ? 'Submitting...' : 'Submit Clue'}
-              </Button>
-            </motion.div>
-          ) : !isSpectator && hasSubmittedClue ? (
-            <motion.div
-              initial={{ opacity: 0, y: 30 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.4, ease: [0.4, 0, 0.2, 1], delay: 0.2 }}
-            >
-              <Card className="p-6 bg-gradient-card border-border text-center space-y-4">
-                <div>
-                  <CheckCircle2 className="h-12 w-12 text-primary mx-auto mb-2" />
-                  <h3 className="font-bold text-lg mb-1">Clue Submitted!</h3>
-                  <p className="text-sm text-muted-foreground">
-                    {allCluesSubmitted 
-                      ? "All clues submitted! Waiting for host..."
-                      : `Waiting for ${shuffledPlayers.length - clues.length} other player(s)...`}
-                  </p>
-                </div>
-                {currentPlayer?.is_host && allCluesSubmitted && (
-                  <Button onClick={startNextRound} className="w-full h-12">
-                    <ArrowRight className="h-4 w-4 mr-2" />
-                    {isEliminationMode ? 'Go to Voting' : isLastRound ? 'Go to Voting' : 'Next Round'}
-                  </Button>
+                <Card className={`p-4 ${isMyTurn ? 'bg-primary/10 border-primary' : 'bg-muted/50 border-border'}`}>
+                  <div className="text-center">
+                    {isMyTurn ? (
+                      <p className="font-semibold text-primary">It's your turn to give a clue!</p>
+                    ) : (
+                      <p className="text-muted-foreground">
+                        Waiting for <span className="font-semibold text-foreground">{currentTurnPlayer.display_name}</span> to submit their clue...
+                      </p>
+                    )}
+                  </div>
+                </Card>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {/* Clue input / Submitted card - flies in/out */}
+          <AnimatePresence mode="wait">
+            {!isSpectator && !hasSubmittedClue && isMyTurn && (
+              <motion.div
+                key="clue-input"
+                initial={{ opacity: 0, x: 100, scale: 0.95 }}
+                animate={{ opacity: 1, x: 0, scale: 1 }}
+                exit={{ opacity: 0, x: -100, scale: 0.95 }}
+                transition={{ duration: 0.4, ease: [0.4, 0, 0.2, 1] }}
+                className="space-y-4"
+              >
+                {/* Timed Round Timer */}
+                {isTimedRound && (
+                  <SpeedRoundTimer
+                    key={`timer-${currentTurnPlayer?.id}-${game.current_round_number}-${clues.length}`}
+                    isActive={isMyTurn && !hasSubmittedClue}
+                    duration={timedRoundDuration}
+                    onTimeUp={handleSpeedRoundTimeUp}
+                  />
                 )}
-              </Card>
-            </motion.div>
-          ) : null}
+                
+                <motion.div 
+                  className="space-y-2"
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.1, duration: 0.3 }}
+                >
+                  <label className="text-sm font-medium">Your Clue</label>
+                  <Input
+                    placeholder="Enter a one-word clue"
+                    value={clueInput}
+                    onChange={(e) => setClueInput(e.target.value)}
+                    maxLength={30}
+                    className={`h-12 text-base ${isTimedRound ? 'border-primary focus:ring-primary' : ''}`}
+                    onKeyDown={(e) => e.key === 'Enter' && submitClue()}
+                    autoFocus={isTimedRound}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    {isTimedRound ? 'Quick! Submit before time runs out!' : 'Keep it short and relevant!'}
+                  </p>
+                </motion.div>
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.2, duration: 0.3 }}
+                >
+                  <Button
+                    onClick={submitClue}
+                    disabled={isSubmitting || !clueInput.trim()}
+                    className="w-full h-12"
+                  >
+                    <Send className="h-4 w-4 mr-2" />
+                    {isSubmitting ? 'Submitting...' : 'Submit Clue'}
+                  </Button>
+                </motion.div>
+              </motion.div>
+            )}
+            
+            {!isSpectator && hasSubmittedClue && (
+              <motion.div
+                key="clue-submitted"
+                initial={{ opacity: 0, x: 100, scale: 0.95 }}
+                animate={{ opacity: 1, x: 0, scale: 1 }}
+                exit={{ opacity: 0, x: -100, scale: 0.95 }}
+                transition={{ duration: 0.4, ease: [0.4, 0, 0.2, 1] }}
+              >
+                <Card className="p-6 bg-gradient-card border-border text-center space-y-4">
+                  <motion.div
+                    initial={{ scale: 0 }}
+                    animate={{ scale: 1 }}
+                    transition={{ delay: 0.2, type: "spring", stiffness: 200 }}
+                  >
+                    <CheckCircle2 className="h-12 w-12 text-primary mx-auto mb-2" />
+                  </motion.div>
+                  <motion.div
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.3 }}
+                  >
+                    <h3 className="font-bold text-lg mb-1">Clue Submitted!</h3>
+                    <p className="text-sm text-muted-foreground">
+                      {allCluesSubmitted 
+                        ? "All clues submitted! Waiting for host..."
+                        : `Waiting for ${shuffledPlayers.length - clues.length} other player(s)...`}
+                    </p>
+                  </motion.div>
+                  {currentPlayer?.is_host && allCluesSubmitted && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.4 }}
+                    >
+                      <Button onClick={startNextRound} className="w-full h-12">
+                        <ArrowRight className="h-4 w-4 mr-2" />
+                        {isEliminationMode ? 'Go to Voting' : isLastRound ? 'Go to Voting' : 'Next Round'}
+                      </Button>
+                    </motion.div>
+                  )}
+                </Card>
+              </motion.div>
+            )}
+          </AnimatePresence>
 
           <motion.div
             initial={{ opacity: 0, y: 30 }}
