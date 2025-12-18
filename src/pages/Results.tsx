@@ -10,6 +10,7 @@ import { getStoredUserId } from '@/lib/gameUtils';
 import { toast } from 'sonner';
 import { Trophy, XCircle, RotateCcw, DoorOpen, Settings, ChevronDown, User } from 'lucide-react';
 import cryingFoxImg from '@/assets/crying_fox.png';
+import happyFoxImg from '@/assets/happy_fox.png';
 import Confetti from '@/components/Confetti';
 import { GameConfigPanel, GameConfig, getActiveModifierLabels } from '@/components/GameConfigPanel';
 import { GameMode } from '@/types/game';
@@ -638,7 +639,11 @@ const Results = () => {
                 </>
               ) : (
                 <>
-                  <XCircle className={`h-16 w-16 text-destructive mx-auto mb-3 ${shouldAnimate ? 'animate-shake' : ''}`} />
+                  <img 
+                    src={happyFoxImg} 
+                    alt="Happy fox mascot" 
+                    className={`h-36 w-36 mx-auto mb-3 object-contain ${shouldAnimate ? 'animate-float' : ''}`} 
+                  />
                   <h2 className="text-2xl font-bold text-destructive mb-2">Outsider Wins!</h2>
                   <p className="text-muted-foreground">
                     {outsiderGuessedCorrectly 
