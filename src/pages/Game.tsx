@@ -82,10 +82,36 @@ const Game = () => {
   const { setMusicState } = useAudio();
   const votingAnimatedRef = useRef(false);
   
+  // Track displayed status for exit/enter animations between game phases
+  const [displayedStatus, setDisplayedStatus] = useState<string | null>(null);
+  const [isExiting, setIsExiting] = useState(false);
+  
   // Track round changes for fly-off/fly-on animations
   const prevRoundRef = useRef<number | null>(null);
   const [isRoundTransitioning, setIsRoundTransitioning] = useState(false);
   const roundAnimationKey = game?.current_round_number ?? 1;
+  
+  // Handle transitions between game statuses with exit animations
+  useEffect(() => {
+    if (!game?.status) return;
+    
+    // Initial load - set status immediately
+    if (displayedStatus === null) {
+      setDisplayedStatus(game.status);
+      return;
+    }
+    
+    // Status changed - trigger exit animation then update
+    if (game.status !== displayedStatus && !isExiting) {
+      setIsExiting(true);
+      // Wait for exit animation, then show new status
+      const timer = setTimeout(() => {
+        setDisplayedStatus(game.status);
+        setIsExiting(false);
+      }, 400); // Match exit animation duration
+      return () => clearTimeout(timer);
+    }
+  }, [game?.status, displayedStatus, isExiting]);
   
   // Track when we first enter voting to only animate once
   useEffect(() => {
@@ -784,7 +810,7 @@ const Game = () => {
   );
 
   // Clue Round View
-  if (game.status === 'clue_round') {
+  if (displayedStatus === 'clue_round') {
     return (
       <>
         {skipTransitionOverlay}
@@ -841,12 +867,10 @@ const Game = () => {
         </header>
 
         <main className="p-4 max-w-md mx-auto space-y-6 py-6 overflow-hidden">
-          <AnimatePresence mode="wait">
           <motion.div
             key={`round-content-${roundAnimationKey}`}
             initial={{ opacity: 0, x: 100 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -100 }}
+            animate={isExiting ? { opacity: 0, x: -100 } : { opacity: 1, x: 0 }}
             transition={{ duration: 0.4, ease: [0.4, 0, 0.2, 1] }}
             className="space-y-6"
           >
@@ -1202,7 +1226,6 @@ const Game = () => {
             />
           </motion.div>
           </motion.div>
-          </AnimatePresence>
         </main>
         </div>
       </>
@@ -1210,7 +1233,7 @@ const Game = () => {
   }
 
   // Voting View
-  if (game.status === 'voting') {
+  if (displayedStatus === 'voting') {
     const votablePlayers = isEliminationMode ? activePlayers : players;
     
     return (
