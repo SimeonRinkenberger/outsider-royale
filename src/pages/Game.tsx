@@ -10,12 +10,13 @@ import { useCustomContent } from '@/hooks/useCustomContent';
 
 import { getStoredUserId } from '@/lib/gameUtils';
 import { toast } from 'sonner';
-import { Send, Eye, EyeOff, Users, CheckCircle2, DoorOpen, FastForward, ArrowRight, Lightbulb, User } from 'lucide-react';
+import { Send, Eye, EyeOff, Users, CheckCircle2, DoorOpen, FastForward, ArrowRight, Lightbulb, User, Check } from 'lucide-react';
 import { ActiveModifiersDisplay } from '@/components/ActiveModifiersDisplay';
 import { SpeedRoundTimer } from '@/components/SpeedRoundTimer';
 import { getAvatarById } from '@/components/AvatarPicker';
 import { useAudio } from '@/contexts/AudioContext';
 import { usePageTransition } from '@/components/PageTransition';
+import { motion, AnimatePresence } from 'framer-motion';
 
 interface CustomModifierData {
   id: string;
@@ -72,9 +73,27 @@ const Game = () => {
   const [guessInput, setGuessInput] = useState('');
   const [showGuessInput, setShowGuessInput] = useState(false);
   const [hasGuessed, setHasGuessed] = useState(false);
+  const [showTransition, setShowTransition] = useState(false);
   const { customModifiers } = useCustomContent();
   const userId = getStoredUserId();
   const { setMusicState } = useAudio();
+
+  // Listen for skip transition broadcast
+  useEffect(() => {
+    if (!lobbyId) return;
+
+    const channel = supabase.channel(`game-transition-${lobbyId}`)
+      .on('broadcast', { event: 'skip-to-voting' }, () => {
+        setShowTransition(true);
+        // Hide transition after animation
+        setTimeout(() => setShowTransition(false), 1500);
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [lobbyId]);
 
   useEffect(() => {
     const isTimedRound = gameMetadata?.modifiers?.includes('timed-round') ?? false;
@@ -446,6 +465,14 @@ const Game = () => {
     if (!game || !currentPlayer?.is_host || !currentRound) return;
 
     try {
+      // Broadcast transition to all players
+      const channel = supabase.channel(`game-transition-${lobbyId}`);
+      await channel.subscribe();
+      await channel.send({
+        type: 'broadcast',
+        event: 'skip-to-voting',
+      });
+      
       // Mark current round as complete
       await supabase
         .from('rounds')
@@ -659,7 +686,23 @@ const Game = () => {
   // Clue Round View
   if (game.status === 'clue_round') {
     return (
-      <div className="min-h-screen bg-background pb-24">
+      <>
+        {/* Circle Transition Overlay */}
+        <AnimatePresence>
+          {showTransition && (
+            <motion.div
+              className="fixed inset-0 z-[9999] pointer-events-none flex items-center justify-center bg-background"
+              initial={{ clipPath: 'circle(0% at 50% 50%)' }}
+              animate={{ clipPath: 'circle(150% at 50% 50%)' }}
+              exit={{ clipPath: 'circle(0% at 50% 50%)' }}
+              transition={{ duration: 0.6, ease: [0.4, 0, 0.2, 1] }}
+            >
+              <LoadingScreen text="Skipping to voting" />
+            </motion.div>
+          )}
+        </AnimatePresence>
+        
+        <div className="min-h-screen bg-background pb-24">
         <header className="bg-card border-b border-border p-4 sticky top-0 z-10">
           <div className="max-w-md mx-auto flex items-center justify-between">
             <div className="text-center flex-1">
@@ -937,7 +980,8 @@ const Game = () => {
             compact
           />
         </main>
-      </div>
+        </div>
+      </>
     );
   }
 
@@ -1003,73 +1047,134 @@ const Game = () => {
                 )}
               </Card>
 
-              {!votesSubmitted ? (
-                <div className="space-y-3">
-                  {/* Show outsider count if enabled */}
-                  {gameMetadata?.showOutsiderCount && (
-                    <Card className="p-3 bg-muted/50 border-border text-center">
+              <AnimatePresence mode="wait">
+                {!votesSubmitted ? (
+                  <motion.div 
+                    key="voting-ui"
+                    initial={{ opacity: 1 }}
+                    exit={{ opacity: 0, height: 0, marginTop: 0 }}
+                    transition={{ duration: 0.3 }}
+                    className="space-y-3"
+                  >
+                    {/* Show outsider count if enabled */}
+                    {gameMetadata?.showOutsiderCount && (
+                      <Card className="p-3 bg-muted/50 border-border text-center">
+                        <p className="text-sm text-muted-foreground">
+                          There {outsiders.length === 1 ? 'is' : 'are'} <span className="font-bold text-primary">{outsiders.length}</span> outsider{outsiders.length !== 1 ? 's' : ''} to find
+                        </p>
+                      </Card>
+                    )}
+                    
+                    <h3 className="text-sm font-semibold text-muted-foreground px-1">
+                      {maxVotes > 1 
+                        ? `Select up to ${maxVotes} players (${selectedVotes.length}/${maxVotes})` 
+                        : `Select a player${isEliminationMode ? ' (or skip)' : ''}`}:
+                    </h3>
+                    <div className="space-y-2">
+                      {votablePlayers.map((player) => {
+                        const isSelected = selectedVotes.includes(player.id);
+                        const canSelect = player.id !== currentPlayer?.id && !player.is_spectator && (isSelected || selectedVotes.length < maxVotes);
+                        const avatar = player.avatar_url ? getAvatarById(player.avatar_url) : null;
+                        
+                        return (
+                          <Button
+                            key={player.id}
+                            onClick={() => toggleVoteSelection(player.id)}
+                            disabled={isSubmitting || player.id === currentPlayer?.id || player.is_spectator || (!isSelected && !canSelect)}
+                            variant={isSelected ? 'default' : 'outline'}
+                            className="w-full h-14 text-base justify-between px-4"
+                          >
+                            <div className="flex items-center gap-3">
+                              <div className={`w-8 h-8 rounded-full flex items-center justify-center text-lg ${avatar ? avatar.color : 'bg-muted'}`}>
+                                {avatar ? avatar.emoji : <User className="h-4 w-4 text-muted-foreground" />}
+                              </div>
+                              <span>
+                                {player.display_name}
+                                {player.id === currentPlayer?.id && ' (You)'}
+                                {player.is_spectator && ' (Spectator)'}
+                              </span>
+                            </div>
+                            <AnimatePresence>
+                              {isSelected && (
+                                <motion.div
+                                  initial={{ scale: 0, opacity: 0 }}
+                                  animate={{ scale: 1, opacity: 1 }}
+                                  exit={{ scale: 0, opacity: 0 }}
+                                  transition={{ type: 'spring', stiffness: 500, damping: 30 }}
+                                >
+                                  <Check className="h-5 w-5" />
+                                </motion.div>
+                              )}
+                            </AnimatePresence>
+                          </Button>
+                        );
+                      })}
+                      {isEliminationMode && (
+                        <Button
+                          onClick={() => toggleVoteSelection('skip')}
+                          disabled={isSubmitting}
+                          variant={selectedVotes.includes('skip') ? 'default' : 'outline'}
+                          className="w-full h-14 text-base justify-between px-4 text-muted-foreground"
+                        >
+                          <span>Skip vote (no elimination)</span>
+                          <AnimatePresence>
+                            {selectedVotes.includes('skip') && (
+                              <motion.div
+                                initial={{ scale: 0, opacity: 0 }}
+                                animate={{ scale: 1, opacity: 1 }}
+                                exit={{ scale: 0, opacity: 0 }}
+                                transition={{ type: 'spring', stiffness: 500, damping: 30 }}
+                              >
+                                <Check className="h-5 w-5" />
+                              </motion.div>
+                            )}
+                          </AnimatePresence>
+                        </Button>
+                      )}
+                    </div>
+                    
+                    <AnimatePresence>
+                      {selectedVotes.length > 0 && (
+                        <motion.div
+                          initial={{ opacity: 0, y: 20, height: 0 }}
+                          animate={{ opacity: 1, y: 0, height: 'auto' }}
+                          exit={{ opacity: 0, y: 20, height: 0 }}
+                          transition={{ type: 'spring', stiffness: 400, damping: 30 }}
+                        >
+                          <Button
+                            onClick={submitVotes}
+                            disabled={isSubmitting || selectedVotes.length === 0}
+                            className="w-full h-12 mt-4"
+                          >
+                            {isSubmitting ? 'Submitting...' : `Submit ${selectedVotes.length} Vote${selectedVotes.length > 1 ? 's' : ''}`}
+                          </Button>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </motion.div>
+                ) : (
+                  <motion.div
+                    key="votes-submitted"
+                    initial={{ opacity: 0, scale: 0.9, y: 20 }}
+                    animate={{ opacity: 1, scale: 1, y: 0 }}
+                    transition={{ type: 'spring', stiffness: 400, damping: 30 }}
+                  >
+                    <Card className="p-6 bg-gradient-card border-border text-center">
+                      <motion.div
+                        initial={{ scale: 0 }}
+                        animate={{ scale: 1 }}
+                        transition={{ type: 'spring', stiffness: 400, damping: 20, delay: 0.1 }}
+                      >
+                        <CheckCircle2 className="h-12 w-12 text-primary mx-auto mb-2" />
+                      </motion.div>
+                      <h3 className="font-bold text-lg mb-1">Votes Submitted!</h3>
                       <p className="text-sm text-muted-foreground">
-                        There {outsiders.length === 1 ? 'is' : 'are'} <span className="font-bold text-primary">{outsiders.length}</span> outsider{outsiders.length !== 1 ? 's' : ''} to find
+                        Waiting for other players...
                       </p>
                     </Card>
-                  )}
-                  
-                  <h3 className="text-sm font-semibold text-muted-foreground px-1">
-                    {maxVotes > 1 
-                      ? `Select up to ${maxVotes} players (${selectedVotes.length}/${maxVotes})` 
-                      : `Select a player${isEliminationMode ? ' (or skip)' : ''}`}:
-                  </h3>
-                  <div className="space-y-2">
-                    {votablePlayers.map((player) => {
-                      const isSelected = selectedVotes.includes(player.id);
-                      const canSelect = player.id !== currentPlayer?.id && !player.is_spectator && (isSelected || selectedVotes.length < maxVotes);
-                      return (
-                        <Button
-                          key={player.id}
-                          onClick={() => toggleVoteSelection(player.id)}
-                          disabled={isSubmitting || player.id === currentPlayer?.id || player.is_spectator || (!isSelected && !canSelect)}
-                          variant={isSelected ? 'default' : 'outline'}
-                          className="w-full h-14 text-base justify-start"
-                        >
-                          {player.display_name}
-                          {player.id === currentPlayer?.id && ' (You)'}
-                          {player.is_spectator && ' (Spectator)'}
-                          {isSelected && ' ✓'}
-                        </Button>
-                      );
-                    })}
-                    {isEliminationMode && (
-                      <Button
-                        onClick={() => toggleVoteSelection('skip')}
-                        disabled={isSubmitting}
-                        variant={selectedVotes.includes('skip') ? 'default' : 'outline'}
-                        className="w-full h-14 text-base justify-start text-muted-foreground"
-                      >
-                        Skip vote (no elimination)
-                        {selectedVotes.includes('skip') && ' ✓'}
-                      </Button>
-                    )}
-                  </div>
-                  
-                  {selectedVotes.length > 0 && (
-                    <Button
-                      onClick={submitVotes}
-                      disabled={isSubmitting || selectedVotes.length === 0}
-                      className="w-full h-12 mt-4"
-                    >
-                      {isSubmitting ? 'Submitting...' : `Submit ${selectedVotes.length} Vote${selectedVotes.length > 1 ? 's' : ''}`}
-                    </Button>
-                  )}
-                </div>
-              ) : (
-                <Card className="p-6 bg-gradient-card border-border text-center">
-                  <CheckCircle2 className="h-12 w-12 text-primary mx-auto mb-2" />
-                  <h3 className="font-bold text-lg mb-1">Votes Submitted!</h3>
-                  <p className="text-sm text-muted-foreground">
-                    Waiting for other players...
-                  </p>
-                </Card>
-              )}
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </>
           )}
 
