@@ -478,7 +478,7 @@ const Lobby = () => {
                 <p className="text-white/80 text-sm mb-1">Lobby Code</p>
                 <div className="flex items-center justify-center gap-3">
                   <h2 className="text-4xl font-bold font-mono tracking-wider">
-                    {lobby.code}
+                    {lobby?.code}
                   </h2>
                   <Button
                     variant="secondary"
