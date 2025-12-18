@@ -1157,14 +1157,12 @@ const Game = () => {
                       animate={{ opacity: isCurrentTurn ? 1 : 0 }}
                       transition={{ duration: 0.5, ease: "easeInOut" }}
                     />
-                    <motion.div
-                      className="relative p-4 rounded-lg border"
-                      animate={{
-                        backgroundColor: isCurrentTurn ? 'hsl(var(--primary) / 0.1)' : 'hsl(var(--card))',
-                        borderColor: isCurrentTurn ? 'hsl(var(--primary))' : 'hsl(var(--border))',
-                        scale: isCurrentTurn ? 1.02 : 1,
-                      }}
-                      transition={{ duration: 0.4, ease: [0.4, 0, 0.2, 1] }}
+                    <div
+                      className={`relative p-4 rounded-lg border transition-all duration-400 ${
+                        isCurrentTurn 
+                          ? 'bg-primary/10 border-primary scale-[1.02]' 
+                          : 'bg-card border-border scale-100'
+                      }`}
                     >
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
@@ -1204,7 +1202,7 @@ const Game = () => {
                           </span>
                         )}
                       </div>
-                    </motion.div>
+                    </div>
                   </motion.div>
                 );
               })}
@@ -1287,46 +1285,39 @@ const Game = () => {
         </header>
 
         <main className="p-4 max-w-md mx-auto space-y-6 py-6 overflow-hidden">
-          
+          <motion.div
+            key="voting-content"
+            initial={{ opacity: 0, x: 100 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.4, ease: [0.4, 0, 0.2, 1] }}
+            className="space-y-6"
+          >
           {isSpectator ? (
-            <motion.div
-              initial={{ opacity: 0, x: 100 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.5, ease: [0.4, 0, 0.2, 1] }}
-            >
-              <Card className="p-6 bg-muted/50 border-border text-center">
-                <Eye className="h-12 w-12 text-muted-foreground mx-auto mb-2" />
-                <h3 className="font-bold text-lg mb-1">Spectating Voting</h3>
-                <p className="text-sm text-muted-foreground">
-                  Watch as the remaining players vote.
-                </p>
-                <p className="text-lg font-bold text-primary mt-4">Secret Word: {secretWord.text}</p>
-                <p className="text-sm text-muted-foreground">
-                  Outsider{outsiders.length > 1 ? 's' : ''}: {players.filter(p => outsiders.some(o => o.player_id === p.id)).map(p => p.display_name).join(', ')}
-                </p>
-              </Card>
-            </motion.div>
+            <Card className="p-6 bg-muted/50 border-border text-center">
+              <Eye className="h-12 w-12 text-muted-foreground mx-auto mb-2" />
+              <h3 className="font-bold text-lg mb-1">Spectating Voting</h3>
+              <p className="text-sm text-muted-foreground">
+                Watch as the remaining players vote.
+              </p>
+              <p className="text-lg font-bold text-primary mt-4">Secret Word: {secretWord.text}</p>
+              <p className="text-sm text-muted-foreground">
+                Outsider{outsiders.length > 1 ? 's' : ''}: {players.filter(p => outsiders.some(o => o.player_id === p.id)).map(p => p.display_name).join(', ')}
+              </p>
+            </Card>
           ) : (
             <>
-              <motion.div
-                initial={{ opacity: 0, x: 100 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ duration: 0.5, ease: [0.4, 0, 0.2, 1] }}
-              >
-                <Card className="p-6 bg-gradient-primary text-white shadow-card border-0 text-center">
-                  <p className="text-white/80 text-sm mb-1">The secret word was</p>
-                  <h2 className="text-3xl font-bold">{secretWord.text}</h2>
-                  <p className="text-white/70 text-xs uppercase tracking-wider mt-1">
-                    Category: {gameMetadata?.customCategory || secretWord.category}
+              <Card className="p-6 bg-gradient-primary text-white shadow-card border-0 text-center">
+                <p className="text-white/80 text-sm mb-1">The secret word was</p>
+                <h2 className="text-3xl font-bold">{secretWord.text}</h2>
+                <p className="text-white/70 text-xs uppercase tracking-wider mt-1">
+                  Category: {gameMetadata?.customCategory || secretWord.category}
+                </p>
+                {isHiddenImposterMode && imposterWord && (
+                  <p className="text-white/80 text-sm mt-2">
+                    Outsider word: <span className="font-bold">{imposterWord.text}</span>
                   </p>
-                  {isHiddenImposterMode && imposterWord && (
-                    <p className="text-white/80 text-sm mt-2">
-                      Outsider word: <span className="font-bold">{imposterWord.text}</span>
-                    </p>
-                  )}
-                </Card>
-              </motion.div>
-
+                )}
+              </Card>
               <AnimatePresence mode="wait">
                 {!votesSubmitted ? (
                   <motion.div 
@@ -1494,6 +1485,7 @@ const Game = () => {
               gameMode={game.game_mode}
               compact
             />
+          </motion.div>
           </motion.div>
         </main>
       </div>
