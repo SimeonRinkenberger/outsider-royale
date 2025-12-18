@@ -233,10 +233,10 @@ All colors MUST be HSL.
 /* Loading reveal animation */
 @keyframes reveal-shrink {
   0% {
-    clip-path: circle(var(--reveal-radius) at var(--reveal-x) var(--reveal-y));
+    clip-path: circle(150vmax at 50vw 50vh);
   }
   100% {
-    clip-path: circle(0px at var(--reveal-x) var(--reveal-y));
+    clip-path: circle(0px at 50vw 50vh);
   }
 }
 
