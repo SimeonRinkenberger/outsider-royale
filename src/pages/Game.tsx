@@ -15,7 +15,7 @@ import { ActiveModifiersDisplay } from '@/components/ActiveModifiersDisplay';
 import { SpeedRoundTimer } from '@/components/SpeedRoundTimer';
 import { getAvatarById } from '@/components/AvatarPicker';
 import { useAudio } from '@/contexts/AudioContext';
-import { usePageTransition } from '@/components/PageTransition';
+import { useTransition } from '@/contexts/TransitionContext';
 import { motion, AnimatePresence } from 'framer-motion';
 
 interface CustomModifierData {
@@ -62,7 +62,7 @@ const getShuffledPlayersForGame = <T,>(players: T[], gameId: string): T[] => {
 const Game = () => {
   const { lobbyId } = useParams();
   const navigate = useNavigate();
-  const { navigateWithTransitionFromCoords } = usePageTransition();
+  const { startTransition } = useTransition();
   const { lobby, players, game, currentRound, clues, allClues, votes, secretWord, imposterWord, outsiders } = useGameState(lobbyId || null);
   const [clueInput, setClueInput] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -810,7 +810,7 @@ const Game = () => {
               )}
               <Button variant="ghost" size="icon" onClick={(e) => {
                 const rect = e.currentTarget.getBoundingClientRect();
-                navigateWithTransitionFromCoords('/stats', rect.left + rect.width / 2, rect.top + rect.height / 2);
+                startTransition('/stats', { origin: { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 } });
               }}>
                 <User className="h-5 w-5" />
               </Button>
@@ -1115,7 +1115,7 @@ const Game = () => {
             <div className="flex items-center gap-2">
               <Button variant="ghost" size="icon" onClick={(e) => {
                 const rect = e.currentTarget.getBoundingClientRect();
-                navigateWithTransitionFromCoords('/stats', rect.left + rect.width / 2, rect.top + rect.height / 2);
+                startTransition('/stats', { origin: { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 } });
               }}>
                 <User className="h-5 w-5" />
               </Button>
