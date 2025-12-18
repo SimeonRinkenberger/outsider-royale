@@ -17,7 +17,7 @@ import { getAvatarById } from '@/components/AvatarPicker';
 import { useTransition } from '@/contexts/TransitionContext';
 import { motion, AnimatePresence, LayoutGroup } from 'framer-motion';
 import { useAudio } from '@/contexts/AudioContext';
-import LoadingScreen from '@/components/LoadingScreen';
+
 
 const Lobby = () => {
   const { lobbyId } = useParams();
