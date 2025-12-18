@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import LoadingScreen from '@/components/LoadingScreen';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -127,11 +128,7 @@ const InPersonGame = () => {
   };
 
   if (!config) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="animate-pulse text-muted-foreground">Loading...</div>
-      </div>
-    );
+    return <LoadingScreen />;
   }
 
   const isCurrentPlayerOutsider = config.outsiderIndices?.includes(config.currentPlayerIndex);

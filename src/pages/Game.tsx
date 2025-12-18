@@ -1,4 +1,5 @@
 import { useEffect, useState, useMemo, useCallback } from 'react';
+import LoadingScreen from '@/components/LoadingScreen';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -650,11 +651,7 @@ const Game = () => {
   }, [game?.status, lobbyId, navigate]);
 
   if (!game || !secretWord || !currentRound) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <p className="text-muted-foreground">Loading game...</p>
-      </div>
-    );
+    return <LoadingScreen text="Loading game" />;
   }
 
   // Clue Round View
