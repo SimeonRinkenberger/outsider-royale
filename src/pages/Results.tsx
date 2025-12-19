@@ -711,13 +711,14 @@ const Results = () => {
       <main className="p-4 max-w-md mx-auto space-y-6 py-6">
         {/* Only animate on first render for this game */}
         {(() => {
-          const shouldAnimate = hasAnimatedResultRef.current !== game.id;
+          const gameId = effectiveGame?.id ?? 'unknown';
+          const shouldAnimate = hasAnimatedResultRef.current !== gameId;
           if (shouldAnimate) {
-            hasAnimatedResultRef.current = game.id;
+            hasAnimatedResultRef.current = gameId;
           }
           return (
             <Card 
-              key={game.id}
+              key={gameId}
               className={`p-6 shadow-card border-0 text-center ${shouldAnimate ? 'animate-bounce-in' : ''} ${
                 groupWins ? 'bg-primary/15 border border-primary/30' : 'bg-destructive/10 border-destructive/20'
               }`}
@@ -756,7 +757,7 @@ const Results = () => {
         <Card className="p-6 bg-gradient-card border-border">
           <div className="text-center mb-4">
             <p className="text-sm text-muted-foreground mb-1">The secret word was</p>
-            <h3 className="text-3xl font-bold text-primary">{secretWord.text}</h3>
+            <h3 className="text-3xl font-bold text-primary">{effectiveSecretWord?.text ?? 'Unknown'}</h3>
           </div>
           <div className="border-t border-border pt-4">
             <p className="text-sm text-muted-foreground mb-1">
