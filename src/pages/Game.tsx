@@ -767,22 +767,52 @@ const Game = () => {
   // Log render state
   console.log('[GAME] render hasData=', hasData, 'isTransitioning=', isTransitioning);
 
-  // NEVER return null - always render something (overlay covers during transition)
-  if (!game || !secretWord || !currentRound) {
-    console.log('[GAME PLACEHOLDER] rendered - data not ready');
+  // Inline skeleton - renders page shell immediately, shows skeleton content if data not ready
+  // This prevents any "second loading screen" flash
+  const showSkeleton = !game || !secretWord || !currentRound;
+  
+  if (showSkeleton) {
+    console.log('[GAME] Rendering inline skeleton - data not ready');
     return (
-      <DebugLoader name="GAME_PLACEHOLDER" filePath="src/pages/Game.tsx">
-        <div className="min-h-screen bg-background flex items-center justify-center">
-          <span className="absolute top-2 left-2 text-[10px] text-muted-foreground/50 font-mono">GAME PLACEHOLDER</span>
-          <div className="text-center space-y-4">
-            <div className="animate-pulse">
-              <div className="h-8 w-48 bg-muted rounded mx-auto mb-4"></div>
-              <div className="h-4 w-32 bg-muted rounded mx-auto"></div>
+      <div className="min-h-screen bg-background">
+        {/* Header skeleton */}
+        <header className="bg-card border-b border-border p-4 sticky top-0 z-10">
+          <div className="max-w-md mx-auto flex items-center justify-between">
+            <div className="flex-1">
+              <div className="h-4 w-20 bg-muted rounded mx-auto mb-2 animate-pulse"></div>
+              <div className="h-6 w-32 bg-muted rounded mx-auto animate-pulse"></div>
             </div>
-            <p className="text-muted-foreground">Loading game...</p>
+            <div className="flex gap-2">
+              <div className="h-9 w-9 bg-muted rounded animate-pulse"></div>
+              <div className="h-9 w-9 bg-muted rounded animate-pulse"></div>
+            </div>
           </div>
-        </div>
-      </DebugLoader>
+        </header>
+        
+        {/* Content skeleton */}
+        <main className="p-4 max-w-md mx-auto space-y-6 py-6">
+          {/* Word card skeleton */}
+          <div className="p-6 rounded-lg border border-border bg-card animate-pulse">
+            <div className="h-4 w-24 bg-muted rounded mx-auto mb-4"></div>
+            <div className="h-8 w-40 bg-muted rounded mx-auto mb-2"></div>
+            <div className="h-3 w-20 bg-muted rounded mx-auto"></div>
+          </div>
+          
+          {/* Turn order skeleton */}
+          <div className="space-y-3">
+            <div className="h-5 w-28 bg-muted rounded animate-pulse"></div>
+            {[1, 2, 3, 4].map((i) => (
+              <div key={i} className="flex items-center gap-3 p-3 rounded-lg border border-border bg-card animate-pulse">
+                <div className="h-10 w-10 bg-muted rounded-full"></div>
+                <div className="flex-1">
+                  <div className="h-4 w-24 bg-muted rounded mb-1"></div>
+                  <div className="h-3 w-32 bg-muted rounded"></div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </main>
+      </div>
     );
   }
 
