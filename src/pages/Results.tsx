@@ -21,6 +21,7 @@ import { getAvatarById } from '@/components/AvatarPicker';
 import { User as UserIcon } from 'lucide-react';
 import { useTransition } from '@/contexts/TransitionContext';
 import { DebugLoader } from '@/components/DebugLoader';
+import { traceScreenMount, traceScreenDataReady, traceMarkRevealReady, flushTransitionTrace, resetTransitionTrace } from '@/utils/transitionTrace';
 
 const Results = () => {
   const { lobbyId } = useParams();
@@ -589,48 +590,66 @@ const Results = () => {
 
   const isLoading = !game || !secretWord || outsiderPlayers.length === 0 || !resultsReady;
   const hasData = !isLoading;
+  const hasLoggedDataReadyRef = useRef(false);
+  const hasFlushedReportRef = useRef(false);
 
-  // Mark reveal ready when we have data and can paint AND awaiting reveal - use useLayoutEffect for immediate notification
+  // Log screen mount once
+  useEffect(() => {
+    traceScreenMount('Results', hasData, { lobbyId, gameId: game?.id });
+  }, []);
+
+  // Log when data becomes ready (once) and flush Game→Results report
+  useEffect(() => {
+    if (hasData && !hasLoggedDataReadyRef.current) {
+      hasLoggedDataReadyRef.current = true;
+      traceScreenDataReady('Results', { lobbyId, gameId: game?.id });
+      
+      // Flush Game→Results transition report
+      if (!hasFlushedReportRef.current) {
+        hasFlushedReportRef.current = true;
+        setTimeout(() => {
+          flushTransitionTrace('Game→Results report');
+          resetTransitionTrace(); // Reset for next flow
+        }, 100);
+      }
+    }
+  }, [hasData, lobbyId, game?.id]);
+
+  // Mark reveal ready when we have data and can paint AND awaiting reveal
   const hasMarkedRevealRef = useRef(false);
   useLayoutEffect(() => {
     if (hasData && awaitingRevealId && !hasMarkedRevealRef.current) {
       hasMarkedRevealRef.current = true;
-      console.log(`[RESULTS] useLayoutEffect: hasData=true, calling markRevealReady(${awaitingRevealId})`);
+      traceMarkRevealReady('Results', awaitingRevealId);
       markRevealReady(awaitingRevealId);
     }
   }, [hasData, awaitingRevealId, markRevealReady]);
 
-  // Reset reveal marker when game changes
+  // Reset refs when game changes
   useEffect(() => {
     if (game?.id) {
       hasMarkedRevealRef.current = false;
+      hasLoggedDataReadyRef.current = false;
+      hasFlushedReportRef.current = false;
     }
   }, [game?.id]);
 
-  // Log render state
-  console.log('[RESULTS] render hasData=', hasData, 'isTransitioning=', isTransitioning);
-
   // NEVER return null - always render something
-  // If loading, show lightweight placeholder (overlay will cover during transition)
   if (isLoading) {
-    console.log('[RESULTS PLACEHOLDER] rendered - data not ready');
     return (
       <DebugLoader name="RESULTS_PLACEHOLDER" filePath="src/pages/Results.tsx">
         <div className="min-h-screen bg-background flex items-center justify-center relative">
-          <span className="absolute top-2 left-2 text-[10px] text-muted-foreground/50 font-mono">RESULTS PLACEHOLDER</span>
           <div className="text-center space-y-4">
             <div className="animate-pulse">
               <div className="h-8 w-48 bg-muted rounded mx-auto mb-4"></div>
               <div className="h-4 w-32 bg-muted rounded mx-auto"></div>
             </div>
-            <p className="text-muted-foreground">Preparing results...</p>
           </div>
         </div>
       </DebugLoader>
     );
   }
 
-  console.log('[RESULTS] rendering full content');
 
   return (
     <>

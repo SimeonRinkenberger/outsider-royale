@@ -18,6 +18,7 @@ import { useAudio } from '@/contexts/AudioContext';
 import { useTransition } from '@/contexts/TransitionContext';
 import { motion, AnimatePresence } from 'framer-motion';
 import { DebugLoader } from '@/components/DebugLoader';
+import { traceScreenMount, traceScreenDataReady, traceMarkRevealReady, flushTransitionTrace } from '@/utils/transitionTrace';
 
 interface CustomModifierData {
   id: string;
@@ -746,35 +747,57 @@ const Game = () => {
 
   // Determine if we have data ready to paint
   const hasData = !!(game && secretWord && currentRound);
+  const hasLoggedDataReadyRef = useRef(false);
+  const hasFlushedReportRef = useRef(false);
+  
+  // Log screen mount once
+  useEffect(() => {
+    traceScreenMount('Game', hasData, { lobbyId, gameId: game?.id });
+  }, []);
+  
+  // Log when data becomes ready (once) and flush Lobby→Game report
+  useEffect(() => {
+    if (hasData && !hasLoggedDataReadyRef.current) {
+      hasLoggedDataReadyRef.current = true;
+      traceScreenDataReady('Game', { lobbyId, gameId: game?.id });
+      
+      // Flush Lobby→Game transition report
+      if (!hasFlushedReportRef.current) {
+        hasFlushedReportRef.current = true;
+        setTimeout(() => {
+          flushTransitionTrace('Lobby→Game report');
+        }, 100);
+      }
+    }
+  }, [hasData, lobbyId, game?.id]);
   
   // Mark reveal ready when we have data AND awaiting reveal - use useLayoutEffect for immediate notification
   const hasMarkedRevealRef = useRef(false);
   useLayoutEffect(() => {
     if (hasData && awaitingRevealId && !hasMarkedRevealRef.current) {
       hasMarkedRevealRef.current = true;
-      console.log(`[GAME] useLayoutEffect: hasData=true, calling markRevealReady(${awaitingRevealId})`);
+      traceMarkRevealReady('Game', awaitingRevealId);
       markRevealReady(awaitingRevealId);
     }
   }, [hasData, awaitingRevealId, markRevealReady]);
 
-  // Reset reveal marker when game changes
+  // Reset refs when game changes
   useEffect(() => {
     if (game?.id) {
       hasMarkedRevealRef.current = false;
+      hasLoggedDataReadyRef.current = false;
+      hasFlushedReportRef.current = false;
     }
   }, [game?.id]);
-
-  // Log render state
-  console.log('[GAME] render hasData=', hasData, 'isTransitioning=', isTransitioning);
 
   // Inline skeleton - renders page shell immediately, shows skeleton content if data not ready
   // This prevents any "second loading screen" flash
   const showSkeleton = !game || !secretWord || !currentRound;
   
   if (showSkeleton) {
-    console.log('[GAME] Rendering inline skeleton - data not ready');
     return (
-      <div className="min-h-screen bg-background">
+      <DebugLoader name="GAME_SKELETON" filePath="src/pages/Game.tsx">
+        <div className="min-h-screen bg-background">
         {/* Header skeleton */}
         <header className="bg-card border-b border-border p-4 sticky top-0 z-10">
           <div className="max-w-md mx-auto flex items-center justify-between">
@@ -813,6 +836,7 @@ const Game = () => {
           </div>
         </main>
       </div>
+      </DebugLoader>
     );
   }
 
