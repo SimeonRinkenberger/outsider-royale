@@ -23,7 +23,7 @@ import { DebugLoader } from '@/components/DebugLoader';
 const Lobby = () => {
   const { lobbyId } = useParams();
   const navigate = useNavigate();
-  const { startTransition, markRevealReady, isTransitioning } = useTransition();
+  const { startTransition, markRevealReady, isTransitioning, awaitingRevealId } = useTransition();
   const { lobby, players } = useGameState(lobbyId || null);
   const pendingTransitionRef = useRef<{ x: number; y: number } | null>(null);
   const hasMarkedRevealRef = useRef(false);
@@ -200,15 +200,15 @@ const Lobby = () => {
     }
   }, [players.length]);
 
-  // Mark reveal ready when lobby data is available
+  // Mark reveal ready when lobby data is available AND we're awaiting reveal
   const hasData = lobby && players.length > 0;
   useLayoutEffect(() => {
-    if (hasData && !hasMarkedRevealRef.current) {
+    if (hasData && awaitingRevealId && !hasMarkedRevealRef.current) {
       hasMarkedRevealRef.current = true;
-      console.log('[LOBBY] useLayoutEffect: hasData=true, calling markRevealReady');
-      markRevealReady();
+      console.log(`[LOBBY] useLayoutEffect: hasData=true, calling markRevealReady(${awaitingRevealId})`);
+      markRevealReady(awaitingRevealId);
     }
-  }, [hasData, markRevealReady]);
+  }, [hasData, awaitingRevealId, markRevealReady]);
 
   // Reset reveal marker when lobby changes
   useEffect(() => {

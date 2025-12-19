@@ -61,7 +61,7 @@ const Results = () => {
   const [settingsLoaded, setSettingsLoaded] = useState(false);
   const userId = getStoredUserId();
   const { setMusicState } = useAudio();
-  const { startTransition, isTransitioning, markRevealReady } = useTransition();
+  const { startTransition, isTransitioning, markRevealReady, awaitingRevealId } = useTransition();
   
   // Guard refs for idempotency
   const playAgainInFlightRef = useRef(false);
@@ -590,15 +590,15 @@ const Results = () => {
   const isLoading = !game || !secretWord || outsiderPlayers.length === 0 || !resultsReady;
   const hasData = !isLoading;
 
-  // Mark reveal ready when we have data and can paint - use useLayoutEffect for immediate notification
+  // Mark reveal ready when we have data and can paint AND awaiting reveal - use useLayoutEffect for immediate notification
   const hasMarkedRevealRef = useRef(false);
   useLayoutEffect(() => {
-    if (hasData && !hasMarkedRevealRef.current) {
+    if (hasData && awaitingRevealId && !hasMarkedRevealRef.current) {
       hasMarkedRevealRef.current = true;
-      console.log('[RESULTS] useLayoutEffect: hasData=true, calling markRevealReady');
-      markRevealReady();
+      console.log(`[RESULTS] useLayoutEffect: hasData=true, calling markRevealReady(${awaitingRevealId})`);
+      markRevealReady(awaitingRevealId);
     }
-  }, [hasData, markRevealReady]);
+  }, [hasData, awaitingRevealId, markRevealReady]);
 
   // Reset reveal marker when game changes
   useEffect(() => {

@@ -25,8 +25,8 @@ interface TransitionContextType {
   phase: TransitionPhase;
   isTransitioning: boolean;
   // Reveal handshake - destination calls this when ready to paint
-  markRevealReady: () => void;
-  pendingRevealId: number;
+  markRevealReady: (id: number) => void;
+  awaitingRevealId: number | null;
 }
 
 const TransitionContext = createContext<TransitionContextType | null>(null);
@@ -48,8 +48,7 @@ export const TransitionProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   const [transitionId, setTransitionId] = useState(0);
   const [currentRadius, setCurrentRadius] = useState(0);
   const [reason, setReason] = useState<string>('');
-  const [pendingRevealId, setPendingRevealId] = useState(0);
-  const [revealReady, setRevealReady] = useState(false);
+  const [awaitingRevealId, setAwaitingRevealId] = useState<number | null>(null);
   const [maxRadius, setMaxRadius] = useState(() => 
     typeof window !== 'undefined' ? Math.hypot(window.innerWidth, window.innerHeight) : 2000
   );
@@ -107,17 +106,37 @@ export const TransitionProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       prepareCallbackRef.current = null;
       shrinkCompleteRef.current = false;
       revealReadyRef.current = false;
-      setRevealReady(false);
+      setAwaitingRevealId(null);
     }
   }, []);
 
   // Reveal ready handshake - destination calls this when ready to paint
-  const markRevealReady = useCallback(() => {
-    console.log(`[TRANSITION] 🎯 markRevealReady called, phase=${phase}`);
+  // MUST be called with the correct transition ID
+  const markRevealReady = useCallback((id: number) => {
+    const currentAwaitingId = currentTransitionIdRef.current;
+    
+    // Ignore if no transition is awaiting reveal
+    if (awaitingRevealId === null) {
+      console.log(`[TRANSITION] 🎯 markRevealReady(${id}) IGNORED - awaitingRevealId is null`);
+      return;
+    }
+    
+    // Ignore if ID doesn't match
+    if (id !== awaitingRevealId) {
+      console.log(`[TRANSITION] 🎯 markRevealReady(${id}) IGNORED - expected id=${awaitingRevealId}`);
+      return;
+    }
+    
+    // Ignore if already processed
+    if (revealReadyRef.current) {
+      console.log(`[TRANSITION] 🎯 markRevealReady(${id}) IGNORED - already marked ready`);
+      return;
+    }
+    
+    console.log(`[TRANSITION] 🎯 markRevealReady(${id}) ACCEPTED`);
     revealReadyRef.current = true;
-    setRevealReady(true);
     completeTransition();
-  }, [completeTransition, phase]);
+  }, [completeTransition, awaitingRevealId]);
 
   const startTransition = useCallback(async (toRoute: string, options: TransitionOptions = {}) => {
     // HARD LOCK: Cannot start second transition
@@ -136,13 +155,12 @@ export const TransitionProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     // Reset reveal state
     shrinkCompleteRef.current = false;
     revealReadyRef.current = false;
-    setRevealReady(false);
+    setAwaitingRevealId(null); // Will be set after shrink completes
     
     // Increment transition ID
     const thisTransitionId = currentTransitionIdRef.current + 1;
     currentTransitionIdRef.current = thisTransitionId;
     setTransitionId(thisTransitionId);
-    setPendingRevealId(thisTransitionId);
     setReason(options.reason || 'navigation');
     
     console.log(`[TRANSITION] ▶️ START id=${thisTransitionId} reason="${options.reason || 'navigation'}" to="${toRoute}"`);
@@ -255,24 +273,22 @@ export const TransitionProvider: React.FC<{ children: React.ReactNode }> = ({ ch
             console.log(`[TRANSITION] ✅ Shrink animation complete id=${thisTransitionId}`);
             shrinkCompleteRef.current = true;
             
-            // Check if reveal is already ready
-            if (revealReadyRef.current) {
-              completeTransition();
-            } else {
-              // Wait for reveal ready - set phase to waiting
-              console.log(`[TRANSITION] ⏳ Waiting for reveal ready id=${thisTransitionId}`);
-              setPhase('waiting-reveal');
-              setTransitionPhase('waiting-reveal');
-              
-              // Safety timeout - give destination time to load data (2000ms max)
-              setTimeout(() => {
-                if (transitionLockRef.current && shrinkCompleteRef.current) {
-                  console.log(`[TRANSITION] ⚠️ Reveal ready timeout - forcing complete id=${thisTransitionId}`);
-                  revealReadyRef.current = true;
-                  completeTransition();
-                }
-              }, 2000);
-            }
+            // Now set awaitingRevealId so destination can call markRevealReady
+            setAwaitingRevealId(thisTransitionId);
+            
+            // Enter invisible waiting phase (overlay stays mounted but invisible)
+            console.log(`[TRANSITION] ⏳ Waiting for reveal id=${thisTransitionId} (invisible)`);
+            setPhase('waiting-reveal');
+            setTransitionPhase('waiting-reveal');
+            
+            // Safety timeout - 500ms max, but no visual change
+            setTimeout(() => {
+              if (transitionLockRef.current && shrinkCompleteRef.current && !revealReadyRef.current) {
+                console.log(`[TRANSITION] ⚠️ Reveal timeout - forcing complete id=${thisTransitionId}`);
+                revealReadyRef.current = true;
+                completeTransition();
+              }
+            }, 500);
           },
         });
       },
@@ -282,7 +298,7 @@ export const TransitionProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   const isTransitioning = phase !== 'idle';
 
   return (
-    <TransitionContext.Provider value={{ startTransition, phase, isTransitioning, markRevealReady, pendingRevealId }}>
+    <TransitionContext.Provider value={{ startTransition, phase, isTransitioning, markRevealReady, awaitingRevealId }}>
       {children}
       <TransitionOverlay 
         phase={phase} 
@@ -293,7 +309,7 @@ export const TransitionProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         maxRadius={maxRadius}
         transitionId={transitionId}
         reason={reason}
-        revealReady={revealReady}
+        awaitingRevealId={awaitingRevealId}
       />
     </TransitionContext.Provider>
   );
@@ -308,7 +324,7 @@ interface TransitionOverlayProps {
   maxRadius: number;
   transitionId: number;
   reason: string;
-  revealReady: boolean;
+  awaitingRevealId: number | null;
 }
 
 const TransitionOverlay: React.FC<TransitionOverlayProps> = ({ 
@@ -319,13 +335,13 @@ const TransitionOverlay: React.FC<TransitionOverlayProps> = ({
   maxRadius,
   transitionId,
   reason,
-  revealReady,
+  awaitingRevealId,
 }) => {
   const [isOverlayMounted] = useState(true);
 
-  // Overlay is visible during expanding, loading, shrinking, AND waiting-reveal
-  // Only idle = not visible
-  const isVisible = phase !== 'idle';
+  // Overlay is visible during expanding, loading, shrinking
+  // waiting-reveal is INVISIBLE (no UI flash)
+  const isVisible = phase !== 'idle' && phase !== 'waiting-reveal';
   const isShrinking = phase === 'shrinking';
   const isWaitingReveal = phase === 'waiting-reveal';
   
@@ -349,19 +365,18 @@ const TransitionOverlay: React.FC<TransitionOverlayProps> = ({
         minWidth: 200,
       }}
     >
-      <div>Phase: <strong style={{ color: isShrinking ? '#f00' : phase === 'loading' ? '#ff0' : phase === 'waiting-reveal' ? '#f90' : '#0f0' }}>{phase}</strong></div>
+      <div>Phase: <strong style={{ color: isShrinking ? '#f00' : phase === 'loading' ? '#ff0' : isWaitingReveal ? '#f90' : '#0f0' }}>{phase}</strong></div>
       <div>Radius: <strong>{currentRadius}px</strong></div>
       <div>MaxRadius: <strong>{Math.round(maxRadius)}px</strong></div>
       <div>Mounted: <strong style={{ color: '#0f0' }}>{isOverlayMounted ? 'YES' : 'NO'}</strong></div>
       <div>ID: <strong>{transitionId}</strong></div>
       <div>Reason: <strong>{reason || '-'}</strong></div>
-      <div>RevealReady: <strong style={{ color: revealReady ? '#0f0' : '#f00' }}>{revealReady ? 'YES' : 'NO'}</strong></div>
+      <div>AwaitingReveal: <strong style={{ color: awaitingRevealId ? '#f90' : '#0f0' }}>{awaitingRevealId ?? 'none'}</strong></div>
     </div>,
     document.body
   ) : null;
 
-  // ALWAYS render debug UI
-  // Only render overlay content when visible (not during waiting-reveal or idle)
+  // Render nothing visible during waiting-reveal or idle (only debug UI)
   if (!isVisible) {
     return debugUI;
   }
@@ -371,37 +386,8 @@ const TransitionOverlay: React.FC<TransitionOverlayProps> = ({
   const outline = isShrinking ? '3px solid red' : 'none';
 
   // Build clipPath string from radius
-  const cx = phase === 'expanding' ? `${origin.x}%` : '50%';
+  const cx = phase === 'expanding' ? `${origin.x}%` : '50%'
   const cy = phase === 'expanding' ? `${origin.y}%` : '50%';
-
-  // During waiting-reveal, show full-screen overlay (no clip path since radius is 0)
-  if (isWaitingReveal) {
-    return (
-      <>
-        {debugUI}
-        {createPortal(
-          <div
-            style={{
-              position: 'fixed',
-              inset: 0,
-              zIndex: 999999,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              backgroundColor: 'hsl(var(--background))',
-              opacity: 1,
-              pointerEvents: 'all',
-            }}
-          >
-            <DebugLoader name="TRANSITION_OVERLAY_WAITING" filePath="src/contexts/TransitionContext.tsx">
-              <LoadingScreen text={loadingText} isTransitionOverlay={true} />
-            </DebugLoader>
-          </div>,
-          document.body
-        )}
-      </>
-    );
-  }
 
   return (
     <>
