@@ -22,10 +22,15 @@ import { User as UserIcon } from 'lucide-react';
 import { useTransition } from '@/contexts/TransitionContext';
 import { DebugLoader } from '@/components/DebugLoader';
 import { traceScreenMount, traceScreenDataReady, traceMarkRevealReady, flushTransitionTrace, resetTransitionTrace } from '@/utils/transitionTrace';
+import { getCachedResultsData } from '@/lib/gamePreloadCache';
 
 const Results = () => {
   const { lobbyId } = useParams();
   const navigate = useNavigate();
+  
+  // Try to get preloaded data first for instant render
+  const cachedResultsData = lobbyId ? getCachedResultsData(lobbyId) : null;
+  
   const { lobby, players, game, votes, secretWord, outsiders } = useGameState(lobbyId || null);
   const {
     customCategories,
@@ -588,21 +593,32 @@ const Results = () => {
   };
 
 
-  const isLoading = !game || !secretWord || outsiderPlayers.length === 0 || !resultsReady;
+  // Use cached data if available for instant first paint
+  const effectiveGame = game || cachedResultsData?.game;
+  const effectiveSecretWord = secretWord || cachedResultsData?.secretWord;
+  const effectivePlayers = players.length > 0 ? players : (cachedResultsData?.players || []);
+  const effectiveOutsiders = outsiders.length > 0 ? outsiders : (cachedResultsData?.outsiders || []);
+  const effectiveVotes = votes.length > 0 ? votes : (cachedResultsData?.votes || []);
+  
+  // Recalculate outsider players with effective data
+  const effectiveOutsiderPlayers = effectivePlayers.filter(p => effectiveOutsiders.some(o => o.player_id === p.id));
+  
+  // Check loading with cached data fallback
+  const isLoading = !effectiveGame || !effectiveSecretWord || effectiveOutsiderPlayers.length === 0 || (!resultsReady && effectiveVotes.length === 0);
   const hasData = !isLoading;
   const hasLoggedDataReadyRef = useRef(false);
   const hasFlushedReportRef = useRef(false);
 
   // Log screen mount once
   useEffect(() => {
-    traceScreenMount('Results', hasData, { lobbyId, gameId: game?.id });
+    traceScreenMount('Results', hasData, { lobbyId, gameId: effectiveGame?.id });
   }, []);
 
   // Log when data becomes ready (once) and flush Game→Results report
   useEffect(() => {
     if (hasData && !hasLoggedDataReadyRef.current) {
       hasLoggedDataReadyRef.current = true;
-      traceScreenDataReady('Results', { lobbyId, gameId: game?.id });
+      traceScreenDataReady('Results', { lobbyId, gameId: effectiveGame?.id });
       
       // Flush Game→Results transition report
       if (!hasFlushedReportRef.current) {
@@ -613,7 +629,7 @@ const Results = () => {
         }, 100);
       }
     }
-  }, [hasData, lobbyId, game?.id]);
+  }, [hasData, lobbyId, effectiveGame?.id]);
 
   // Mark reveal ready when we have data and can paint AND awaiting reveal
   const hasMarkedRevealRef = useRef(false);
@@ -627,26 +643,51 @@ const Results = () => {
 
   // Reset refs when game changes
   useEffect(() => {
-    if (game?.id) {
+    if (effectiveGame?.id) {
       hasMarkedRevealRef.current = false;
       hasLoggedDataReadyRef.current = false;
       hasFlushedReportRef.current = false;
     }
-  }, [game?.id]);
+  }, [effectiveGame?.id]);
 
-  // NEVER return null - always render something
-  if (isLoading) {
+  // CRITICAL: Don't show placeholder during transitions - let the overlay handle loading
+  if (isLoading && !isTransitioning) {
+    // Render inline skeleton within page shell - NOT a separate loading screen
     return (
-      <DebugLoader name="RESULTS_PLACEHOLDER" filePath="src/pages/Results.tsx">
-        <div className="min-h-screen bg-background flex items-center justify-center relative">
-          <div className="text-center space-y-4">
-            <div className="animate-pulse">
-              <div className="h-8 w-48 bg-muted rounded mx-auto mb-4"></div>
-              <div className="h-4 w-32 bg-muted rounded mx-auto"></div>
-            </div>
+      <div className="min-h-screen bg-background pb-24">
+        <GameHeader 
+          title="Game Results" 
+          showBack={false} 
+        />
+        <main className="p-4 max-w-md mx-auto space-y-6 py-6">
+          {/* Result card skeleton */}
+          <Card className="p-6 shadow-card border-0 animate-pulse">
+            <div className="h-36 w-36 bg-muted rounded-full mx-auto mb-3"></div>
+            <div className="h-8 w-40 bg-muted rounded mx-auto mb-2"></div>
+            <div className="h-4 w-56 bg-muted rounded mx-auto"></div>
+          </Card>
+          
+          {/* Word reveal skeleton */}
+          <Card className="p-4 shadow-card border-0 animate-pulse">
+            <div className="h-4 w-24 bg-muted rounded mx-auto mb-2"></div>
+            <div className="h-6 w-32 bg-muted rounded mx-auto"></div>
+          </Card>
+          
+          {/* Vote breakdown skeleton */}
+          <div className="space-y-3">
+            <div className="h-5 w-32 bg-muted rounded animate-pulse"></div>
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="flex items-center gap-3 p-3 rounded-lg border border-border bg-card animate-pulse">
+                <div className="h-10 w-10 bg-muted rounded-full"></div>
+                <div className="flex-1">
+                  <div className="h-4 w-24 bg-muted rounded mb-1"></div>
+                  <div className="h-3 w-16 bg-muted rounded"></div>
+                </div>
+              </div>
+            ))}
           </div>
-        </div>
-      </DebugLoader>
+        </main>
+      </div>
     );
   }
 
@@ -657,7 +698,7 @@ const Results = () => {
       <Confetti isActive={showConfetti} />
       
       <GameHeader 
-        title="Game Results" 
+        title="Game Results"
         showBack={false} 
         rightContent={
           <Button variant="ghost" size="sm" onClick={goHome} className="gap-1 text-muted-foreground">

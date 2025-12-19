@@ -19,6 +19,7 @@ import { useTransition } from '@/contexts/TransitionContext';
 import { motion, AnimatePresence } from 'framer-motion';
 import { DebugLoader } from '@/components/DebugLoader';
 import { traceScreenMount, traceScreenDataReady, traceMarkRevealReady, flushTransitionTrace } from '@/utils/transitionTrace';
+import { getCachedGameData, preloadResultsData } from '@/lib/gamePreloadCache';
 
 interface CustomModifierData {
   id: string;
@@ -65,6 +66,10 @@ const Game = () => {
   const { lobbyId } = useParams();
   const navigate = useNavigate();
   const { startTransition, markRevealReady, isTransitioning, awaitingRevealId } = useTransition();
+  
+  // Try to get preloaded data first for instant render
+  const cachedGameData = lobbyId ? getCachedGameData(lobbyId) : null;
+  
   const { lobby, players, game, currentRound, clues, allClues, votes, secretWord, imposterWord, outsiders } = useGameState(lobbyId || null);
   const [clueInput, setClueInput] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -523,6 +528,10 @@ const Game = () => {
           .from('lobbies')
           .update({ status: 'results' })
           .eq('id', lobbyId);
+        
+        // Preload results data so Results page can render immediately
+        console.log('[Game] Host: Preloading results data');
+        await preloadResultsData(lobbyId!, game.id);
       }
     });
   };
@@ -735,31 +744,41 @@ const Game = () => {
   // Host handles this via moveToResults() with startTransition
   useEffect(() => {
     // Only non-hosts react to status change
-    if (!currentPlayer?.is_host && game?.status === 'results' && !hasNavigatedToResultsRef.current) {
+    if (!currentPlayer?.is_host && game?.status === 'results' && !hasNavigatedToResultsRef.current && lobbyId) {
       hasNavigatedToResultsRef.current = true;
       console.log('[Game] Non-host: Status changed to results, using startTransition');
       startTransition(`/results/${lobbyId}`, {
         loadingText: 'Tallying votes',
         reason: 'status-change-nonhost',
+        prepare: async () => {
+          // Preload results data for non-host too
+          console.log('[Game] Non-host: Preloading results data');
+          await preloadResultsData(lobbyId, game.id);
+        }
       });
     }
-  }, [game?.status, lobbyId, startTransition, currentPlayer?.is_host]);
+  }, [game?.status, game?.id, lobbyId, startTransition, currentPlayer?.is_host]);
 
-  // Determine if we have data ready to paint
-  const hasData = !!(game && secretWord && currentRound);
+  // Use cached data if available, otherwise use live data - moved up for hasData calculation
+  const effectiveGame = game || cachedGameData?.game;
+  const effectiveSecretWord = secretWord || cachedGameData?.secretWord;
+  const effectiveCurrentRound = currentRound || cachedGameData?.currentRound;
+
+  // Determine if we have data ready to paint (using effective values with cache fallback)
+  const hasData = !!(effectiveGame && effectiveSecretWord && effectiveCurrentRound);
   const hasLoggedDataReadyRef = useRef(false);
   const hasFlushedReportRef = useRef(false);
   
   // Log screen mount once
   useEffect(() => {
-    traceScreenMount('Game', hasData, { lobbyId, gameId: game?.id });
+    traceScreenMount('Game', hasData, { lobbyId, gameId: effectiveGame?.id });
   }, []);
   
   // Log when data becomes ready (once) and flush Lobby→Game report
   useEffect(() => {
     if (hasData && !hasLoggedDataReadyRef.current) {
       hasLoggedDataReadyRef.current = true;
-      traceScreenDataReady('Game', { lobbyId, gameId: game?.id });
+      traceScreenDataReady('Game', { lobbyId, gameId: effectiveGame?.id });
       
       // Flush Lobby→Game transition report
       if (!hasFlushedReportRef.current) {
@@ -769,7 +788,7 @@ const Game = () => {
         }, 100);
       }
     }
-  }, [hasData, lobbyId, game?.id]);
+  }, [hasData, lobbyId, effectiveGame?.id]);
   
   // Mark reveal ready when we have data AND awaiting reveal - use useLayoutEffect for immediate notification
   const hasMarkedRevealRef = useRef(false);
@@ -790,14 +809,15 @@ const Game = () => {
     }
   }, [game?.id]);
 
+  
   // Inline skeleton - renders page shell immediately, shows skeleton content if data not ready
-  // This prevents any "second loading screen" flash
-  const showSkeleton = !game || !secretWord || !currentRound;
+  // CRITICAL: Don't show skeleton during active transition - let the overlay handle loading
+  const showSkeleton = (!effectiveGame || !effectiveSecretWord || !effectiveCurrentRound) && !isTransitioning;
   
   if (showSkeleton) {
+    // Render inline skeleton within page shell - NOT a separate loading screen
     return (
-      <DebugLoader name="GAME_SKELETON" filePath="src/pages/Game.tsx">
-        <div className="min-h-screen bg-background">
+      <div className="min-h-screen bg-background">
         {/* Header skeleton */}
         <header className="bg-card border-b border-border p-4 sticky top-0 z-10">
           <div className="max-w-md mx-auto flex items-center justify-between">
@@ -836,7 +856,6 @@ const Game = () => {
           </div>
         </main>
       </div>
-      </DebugLoader>
     );
   }
 

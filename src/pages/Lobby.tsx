@@ -19,6 +19,7 @@ import { motion, AnimatePresence, LayoutGroup } from 'framer-motion';
 import { useAudio } from '@/contexts/AudioContext';
 import { DebugLoader } from '@/components/DebugLoader';
 import { traceScreenMount, traceScreenDataReady, traceMarkRevealReady, flushTransitionTrace } from '@/utils/transitionTrace';
+import { preloadGameData } from '@/lib/gamePreloadCache';
 
 
 const Lobby = () => {
@@ -235,14 +236,20 @@ const Lobby = () => {
   }, [lobbyId]);
 
   useEffect(() => {
-    if (lobby?.current_game_id) {
+    if (lobby?.current_game_id && lobbyId) {
       const originX = pendingTransitionRef.current?.x ?? window.innerWidth / 2;
       const originY = pendingTransitionRef.current?.y ?? window.innerHeight / 2;
       pendingTransitionRef.current = null;
       
       startTransition(`/game/${lobbyId}`, {
         origin: { x: originX, y: originY },
-        loadingText: 'Starting game'
+        loadingText: 'Starting game',
+        reason: 'lobby-to-game',
+        prepare: async () => {
+          // Preload game data so Game page can render immediately
+          console.log('[Lobby] Preloading game data before navigation');
+          await preloadGameData(lobbyId);
+        }
       });
     }
   }, [lobby?.current_game_id, lobbyId, startTransition]);
