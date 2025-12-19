@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef, useMemo } from 'react';
+import { useEffect, useState, useRef, useMemo, useLayoutEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -17,14 +17,16 @@ import { getAvatarById } from '@/components/AvatarPicker';
 import { useTransition } from '@/contexts/TransitionContext';
 import { motion, AnimatePresence, LayoutGroup } from 'framer-motion';
 import { useAudio } from '@/contexts/AudioContext';
+import { DebugLoader } from '@/components/DebugLoader';
 
 
 const Lobby = () => {
   const { lobbyId } = useParams();
   const navigate = useNavigate();
-  const { startTransition } = useTransition();
+  const { startTransition, markRevealReady, isTransitioning } = useTransition();
   const { lobby, players } = useGameState(lobbyId || null);
   const pendingTransitionRef = useRef<{ x: number; y: number } | null>(null);
+  const hasMarkedRevealRef = useRef(false);
   const {
     customCategories,
     customModifiers,
@@ -197,6 +199,26 @@ const Lobby = () => {
       }));
     }
   }, [players.length]);
+
+  // Mark reveal ready when lobby data is available
+  const hasData = lobby && players.length > 0;
+  useLayoutEffect(() => {
+    if (hasData && !hasMarkedRevealRef.current) {
+      hasMarkedRevealRef.current = true;
+      console.log('[LOBBY] useLayoutEffect: hasData=true, calling markRevealReady');
+      markRevealReady();
+    }
+  }, [hasData, markRevealReady]);
+
+  // Reset reveal marker when lobby changes
+  useEffect(() => {
+    if (lobbyId) {
+      hasMarkedRevealRef.current = false;
+    }
+  }, [lobbyId]);
+
+  // Log render state
+  console.log('[LOBBY] render hasData=', hasData, 'isTransitioning=', isTransitioning);
 
   useEffect(() => {
     if (lobby?.current_game_id) {

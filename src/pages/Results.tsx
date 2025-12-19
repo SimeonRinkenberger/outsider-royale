@@ -20,6 +20,7 @@ import { motion } from 'framer-motion';
 import { getAvatarById } from '@/components/AvatarPicker';
 import { User as UserIcon } from 'lucide-react';
 import { useTransition } from '@/contexts/TransitionContext';
+import { DebugLoader } from '@/components/DebugLoader';
 
 const Results = () => {
   const { lobbyId } = useParams();
@@ -614,16 +615,18 @@ const Results = () => {
   if (isLoading) {
     console.log('[RESULTS PLACEHOLDER] rendered - data not ready');
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center relative">
-        <span className="absolute top-2 left-2 text-[10px] text-muted-foreground/50 font-mono">RESULTS PLACEHOLDER</span>
-        <div className="text-center space-y-4">
-          <div className="animate-pulse">
-            <div className="h-8 w-48 bg-muted rounded mx-auto mb-4"></div>
-            <div className="h-4 w-32 bg-muted rounded mx-auto"></div>
+      <DebugLoader name="RESULTS_PLACEHOLDER" filePath="src/pages/Results.tsx">
+        <div className="min-h-screen bg-background flex items-center justify-center relative">
+          <span className="absolute top-2 left-2 text-[10px] text-muted-foreground/50 font-mono">RESULTS PLACEHOLDER</span>
+          <div className="text-center space-y-4">
+            <div className="animate-pulse">
+              <div className="h-8 w-48 bg-muted rounded mx-auto mb-4"></div>
+              <div className="h-4 w-32 bg-muted rounded mx-auto"></div>
+            </div>
+            <p className="text-muted-foreground">Preparing results...</p>
           </div>
-          <p className="text-muted-foreground">Preparing results...</p>
         </div>
-      </div>
+      </DebugLoader>
     );
   }
 

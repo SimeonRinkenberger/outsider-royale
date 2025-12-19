@@ -12,6 +12,7 @@ import { useTransition } from '@/contexts/TransitionContext';
 import { useAudio } from '@/contexts/AudioContext';
 import { MusicControls } from '@/components/MusicControls';
 import welcomeFox from '@/assets/welcome_fox.png';
+import { DebugLoader } from '@/components/DebugLoader';
 
 const Menu = () => {
   const navigate = useNavigate();
@@ -142,21 +143,23 @@ const Menu = () => {
   if (isLoading) {
     // Inline skeleton - TransitionOverlay is the only full-screen loader
     return (
-      <div className="min-h-screen bg-background flex flex-col">
-        <header className="bg-card border-b border-border p-4">
-          <div className="max-w-md mx-auto flex items-center justify-between">
-            <div className="h-8 w-40 bg-muted rounded animate-pulse"></div>
-            <div className="h-8 w-8 bg-muted rounded animate-pulse"></div>
-          </div>
-        </header>
-        <main className="flex-1 p-4 max-w-md mx-auto w-full flex flex-col justify-center space-y-6">
-          <div className="h-48 w-48 mx-auto bg-muted rounded-full animate-pulse"></div>
-          <div className="space-y-4">
-            <div className="h-12 bg-muted rounded animate-pulse"></div>
-            <div className="h-12 bg-muted rounded animate-pulse"></div>
-          </div>
-        </main>
-      </div>
+      <DebugLoader name="MENU_SKELETON" filePath="src/pages/Menu.tsx">
+        <div className="min-h-screen bg-background flex flex-col">
+          <header className="bg-card border-b border-border p-4">
+            <div className="max-w-md mx-auto flex items-center justify-between">
+              <div className="h-8 w-40 bg-muted rounded animate-pulse"></div>
+              <div className="h-8 w-8 bg-muted rounded animate-pulse"></div>
+            </div>
+          </header>
+          <main className="flex-1 p-4 max-w-md mx-auto w-full flex flex-col justify-center space-y-6">
+            <div className="h-48 w-48 mx-auto bg-muted rounded-full animate-pulse"></div>
+            <div className="space-y-4">
+              <div className="h-12 bg-muted rounded animate-pulse"></div>
+              <div className="h-12 bg-muted rounded animate-pulse"></div>
+            </div>
+          </main>
+        </div>
+      </DebugLoader>
     );
   }
 
