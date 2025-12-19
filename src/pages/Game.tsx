@@ -948,7 +948,7 @@ const Game = () => {
                     You don't know the secret word. Try to blend in by guessing what it might be from others' clues!
                   </p>
                   <p className="text-xs text-muted-foreground mt-2">
-                    Category: <span className="font-semibold">{gameMetadata?.customCategory || secretWord.category}</span>
+                    Category: <span className="font-semibold">{gameMetadata?.customCategory || secretWord?.category || 'Unknown'}</span>
                   </p>
                   
                   {/* Outsider Guess Feature */}
