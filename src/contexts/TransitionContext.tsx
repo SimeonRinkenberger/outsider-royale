@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { createPortal } from 'react-dom';
 import { useMotionValue, animate } from 'framer-motion';
 import LoadingScreen from '@/components/LoadingScreen';
-
+import { DebugLoader, setTransitionPhase, resetLoaderTracker, logLoadersRenderedThisTransition } from '@/components/DebugLoader';
 // Animation durations in seconds
 const EXPAND_DURATION = 0.45;
 const SHRINK_DURATION = 0.45;
@@ -99,7 +99,9 @@ export const TransitionProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   const completeTransition = useCallback(() => {
     if (shrinkCompleteRef.current && revealReadyRef.current) {
       console.log(`[TRANSITION] ✅ Both shrink complete AND reveal ready - setting phase to idle`);
+      logLoadersRenderedThisTransition(); // Log all loaders that rendered during this transition
       setPhase('idle');
+      setTransitionPhase('idle');
       transitionLockRef.current = false;
       pendingNavigationRef.current = null;
       prepareCallbackRef.current = null;
@@ -170,6 +172,8 @@ export const TransitionProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     
     // Start expanding phase
     setPhase('expanding');
+    setTransitionPhase('expanding');
+    resetLoaderTracker(); // Reset tracker for this new transition
     
     console.log(`[TRANSITION] 📈 Expanding id=${thisTransitionId}: 0 -> ${Math.round(max)}px`);
     
@@ -186,6 +190,7 @@ export const TransitionProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         console.log(`[TRANSITION] ✅ Expand complete id=${thisTransitionId}`);
         
         setPhase('loading');
+        setTransitionPhase('loading');
         
         let finalRoute = pendingNavigationRef.current;
         
@@ -240,6 +245,7 @@ export const TransitionProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         console.log(`[TRANSITION] 📉 Shrink start id=${thisTransitionId} from ${Math.round(currentMax)}px -> 0`);
         
         setPhase('shrinking');
+        setTransitionPhase('shrinking');
         
         // Animate shrink
         animate(radius, 0, {
@@ -256,6 +262,7 @@ export const TransitionProvider: React.FC<{ children: React.ReactNode }> = ({ ch
               // Wait for reveal ready - set phase to waiting
               console.log(`[TRANSITION] ⏳ Waiting for reveal ready id=${thisTransitionId}`);
               setPhase('waiting-reveal');
+              setTransitionPhase('waiting-reveal');
               
               // Safety timeout - give destination time to load data (2000ms max)
               setTimeout(() => {
@@ -386,7 +393,9 @@ const TransitionOverlay: React.FC<TransitionOverlayProps> = ({
               pointerEvents: 'all',
             }}
           >
-            <LoadingScreen text={loadingText} isTransitionOverlay={true} />
+            <DebugLoader name="TRANSITION_OVERLAY_WAITING" filePath="src/contexts/TransitionContext.tsx">
+              <LoadingScreen text={loadingText} isTransitionOverlay={true} />
+            </DebugLoader>
           </div>,
           document.body
         )}
@@ -414,7 +423,9 @@ const TransitionOverlay: React.FC<TransitionOverlayProps> = ({
             WebkitClipPath: `circle(${currentRadius}px at ${cx} ${cy})`,
           }}
         >
-          <LoadingScreen text={loadingText} isTransitionOverlay={true} />
+          <DebugLoader name="TRANSITION_OVERLAY_MAIN" filePath="src/contexts/TransitionContext.tsx">
+            <LoadingScreen text={loadingText} isTransitionOverlay={true} />
+          </DebugLoader>
         </div>,
         document.body
       )}

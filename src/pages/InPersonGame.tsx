@@ -9,6 +9,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import Confetti from '@/components/Confetti';
 import GameHeader from '@/components/GameHeader';
 import { useAudio } from '@/contexts/AudioContext';
+import { DebugLoader } from '@/components/DebugLoader';
 
 interface InPersonGameConfig {
   players: string[];
@@ -129,17 +130,19 @@ const InPersonGame = () => {
   if (!config) {
     // Inline skeleton - TransitionOverlay is the only full-screen loader
     return (
-      <div className="min-h-screen bg-background">
-        <header className="bg-card border-b border-border p-4">
-          <div className="max-w-md mx-auto">
-            <div className="h-6 w-32 bg-muted rounded animate-pulse"></div>
-          </div>
-        </header>
-        <main className="p-4 max-w-md mx-auto space-y-4">
-          <div className="h-48 bg-muted rounded-lg animate-pulse"></div>
-          <div className="h-12 bg-muted rounded animate-pulse"></div>
-        </main>
-      </div>
+      <DebugLoader name="INPERSONGAME_SKELETON" filePath="src/pages/InPersonGame.tsx">
+        <div className="min-h-screen bg-background">
+          <header className="bg-card border-b border-border p-4">
+            <div className="max-w-md mx-auto">
+              <div className="h-6 w-32 bg-muted rounded animate-pulse"></div>
+            </div>
+          </header>
+          <main className="p-4 max-w-md mx-auto space-y-4">
+            <div className="h-48 bg-muted rounded-lg animate-pulse"></div>
+            <div className="h-12 bg-muted rounded animate-pulse"></div>
+          </main>
+        </div>
+      </DebugLoader>
     );
   }
 

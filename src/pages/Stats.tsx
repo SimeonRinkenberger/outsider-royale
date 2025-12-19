@@ -10,6 +10,7 @@ import { motion } from 'framer-motion';
 import { AvatarPicker, getAvatarById } from '@/components/AvatarPicker';
 import { AccountSettings } from '@/components/AccountSettings';
 import { useTransition } from '@/contexts/TransitionContext';
+import { DebugLoader } from '@/components/DebugLoader';
 
 interface UserStats {
   games_played: number;
@@ -138,22 +139,24 @@ const Stats = () => {
   if (isLoading) {
     // Inline skeleton - TransitionOverlay is the only full-screen loader
     return (
-      <div className="min-h-screen bg-background">
-        <header className="bg-card border-b border-border p-4">
-          <div className="max-w-md mx-auto flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <div className="h-10 w-10 bg-muted rounded animate-pulse"></div>
-              <div className="h-6 w-24 bg-muted rounded animate-pulse"></div>
+      <DebugLoader name="STATS_SKELETON" filePath="src/pages/Stats.tsx">
+        <div className="min-h-screen bg-background">
+          <header className="bg-card border-b border-border p-4">
+            <div className="max-w-md mx-auto flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <div className="h-10 w-10 bg-muted rounded animate-pulse"></div>
+                <div className="h-6 w-24 bg-muted rounded animate-pulse"></div>
+              </div>
+              <div className="h-8 w-20 bg-muted rounded animate-pulse"></div>
             </div>
-            <div className="h-8 w-20 bg-muted rounded animate-pulse"></div>
-          </div>
-        </header>
-        <main className="p-4 max-w-md mx-auto space-y-4">
-          <div className="h-32 bg-muted rounded-lg animate-pulse"></div>
-          <div className="h-24 bg-muted rounded-lg animate-pulse"></div>
-          <div className="h-24 bg-muted rounded-lg animate-pulse"></div>
-        </main>
-      </div>
+          </header>
+          <main className="p-4 max-w-md mx-auto space-y-4">
+            <div className="h-32 bg-muted rounded-lg animate-pulse"></div>
+            <div className="h-24 bg-muted rounded-lg animate-pulse"></div>
+            <div className="h-24 bg-muted rounded-lg animate-pulse"></div>
+          </main>
+        </div>
+      </DebugLoader>
     );
   }
 
