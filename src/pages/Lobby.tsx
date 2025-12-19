@@ -18,6 +18,7 @@ import { useTransition } from '@/contexts/TransitionContext';
 import { motion, AnimatePresence, LayoutGroup } from 'framer-motion';
 import { useAudio } from '@/contexts/AudioContext';
 import { DebugLoader } from '@/components/DebugLoader';
+import { traceScreenMount, traceScreenDataReady, traceMarkRevealReady, flushTransitionTrace } from '@/utils/transitionTrace';
 
 
 const Lobby = () => {
@@ -202,10 +203,25 @@ const Lobby = () => {
 
   // Mark reveal ready when lobby data is available AND we're awaiting reveal
   const hasData = lobby && players.length > 0;
+  const hasLoggedDataReadyRef = useRef(false);
+  
+  // Log screen mount
+  useEffect(() => {
+    traceScreenMount('Lobby', hasData, { lobbyId, playerCount: players.length });
+  }, []);
+  
+  // Log when data becomes ready (once)
+  useEffect(() => {
+    if (hasData && !hasLoggedDataReadyRef.current) {
+      hasLoggedDataReadyRef.current = true;
+      traceScreenDataReady('Lobby', { lobbyId, playerCount: players.length });
+    }
+  }, [hasData, lobbyId, players.length]);
+  
   useLayoutEffect(() => {
     if (hasData && awaitingRevealId && !hasMarkedRevealRef.current) {
       hasMarkedRevealRef.current = true;
-      console.log(`[LOBBY] useLayoutEffect: hasData=true, calling markRevealReady(${awaitingRevealId})`);
+      traceMarkRevealReady('Lobby', awaitingRevealId);
       markRevealReady(awaitingRevealId);
     }
   }, [hasData, awaitingRevealId, markRevealReady]);
@@ -214,11 +230,9 @@ const Lobby = () => {
   useEffect(() => {
     if (lobbyId) {
       hasMarkedRevealRef.current = false;
+      hasLoggedDataReadyRef.current = false;
     }
   }, [lobbyId]);
-
-  // Log render state
-  console.log('[LOBBY] render hasData=', hasData, 'isTransitioning=', isTransitioning);
 
   useEffect(() => {
     if (lobby?.current_game_id) {

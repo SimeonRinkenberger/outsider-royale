@@ -1,4 +1,5 @@
 import React, { useEffect } from 'react';
+import { registerLoaderRender } from '@/utils/transitionTrace';
 
 // Global tracker for loaders rendered during this transition
 declare global {
@@ -32,7 +33,6 @@ export function DebugLoader({ name, filePath, children }: DebugLoaderProps) {
   useEffect(() => {
     if (!window.__LOADER_DEBUG_ENABLED__) return;
 
-    const stack = new Error().stack;
     const phase = window.__TRANSITION_PHASE__ || 'unknown';
     
     // Add to global tracker
@@ -41,14 +41,8 @@ export function DebugLoader({ name, filePath, children }: DebugLoaderProps) {
       window.__LAST_RENDERED_LOADERS__.push(entry);
     }
 
-    console.group(`[DEBUG LOADER RENDER] 🔍`);
-    console.log(`%cLoader name: ${name}`, 'color: #ff6b6b; font-weight: bold; font-size: 14px');
-    console.log(`%cFile path: ${filePath}`, 'color: #4ecdc4; font-weight: bold');
-    console.log(`%cTransition phase: ${phase}`, `color: ${phase === 'idle' ? '#f39c12' : '#27ae60'}; font-weight: bold`);
-    console.log(`%cTimestamp: ${new Date().toISOString()}`, 'color: #999');
-    console.log('%cStack trace:', 'color: #888; font-style: italic');
-    console.log(stack);
-    console.groupEnd();
+    // Register with transition trace system
+    registerLoaderRender(name, filePath);
 
     // Return cleanup to track unmount
     return () => {

@@ -1,9 +1,11 @@
 import React, { createContext, useContext, useState, useCallback, useRef, useEffect, useLayoutEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { createPortal } from 'react-dom';
 import { useMotionValue, animate } from 'framer-motion';
 import LoadingScreen from '@/components/LoadingScreen';
 import { DebugLoader, setTransitionPhase, resetLoaderTracker, logLoadersRenderedThisTransition } from '@/components/DebugLoader';
+import { traceTransition, setTraceContext, clearLoaderRenders } from '@/utils/transitionTrace';
+
 // Animation durations in seconds
 const EXPAND_DURATION = 0.45;
 const SHRINK_DURATION = 0.45;
@@ -41,6 +43,7 @@ export const useTransition = () => {
 
 export const TransitionProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const navigate = useNavigate();
+  const location = useLocation();
   
   const [phase, setPhase] = useState<TransitionPhase>('idle');
   const [loadingText, setLoadingText] = useState('Loading');
@@ -98,13 +101,15 @@ export const TransitionProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   // Kept for API compatibility with destination components that still call it
   const markRevealReady = useCallback((id: number) => {
     // No-op: transition completes immediately at shrink, no handshake needed
-    console.log(`[TRANSITION] 🎯 markRevealReady(${id}) - no-op (transition completes at shrink)`);
+    traceTransition('REVEAL_READY_CALLED', { id, note: 'no-op' });
   }, []);
 
   const startTransition = useCallback(async (toRoute: string, options: TransitionOptions = {}) => {
+    const currentRoute = location.pathname;
+    
     // HARD LOCK: Cannot start second transition
     if (transitionLockRef.current) {
-      console.log(`[TRANSITION] ⛔ BLOCKED second start reason="${options.reason || 'unknown'}" to="${toRoute}" (current transition in progress)`);
+      traceTransition('START_BLOCKED_ALREADY_TRANSITIONING', { toRoute, reason: options.reason });
       return;
     }
     
@@ -126,7 +131,17 @@ export const TransitionProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     setTransitionId(thisTransitionId);
     setReason(options.reason || 'navigation');
     
-    console.log(`[TRANSITION] ▶️ START id=${thisTransitionId} reason="${options.reason || 'navigation'}" to="${toRoute}"`);
+    // Set trace context for all subsequent trace calls
+    setTraceContext({
+      transitionId: thisTransitionId,
+      phase: 'expanding',
+      reason: options.reason || 'navigation',
+      routeFrom: currentRoute,
+      routeTo: toRoute,
+    });
+    clearLoaderRenders();
+    
+    traceTransition('START_TRANSITION', { toRoute, reason: options.reason });
     
     // ACQUIRE LOCK
     transitionLockRef.current = true;
@@ -154,9 +169,10 @@ export const TransitionProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     // Start expanding phase
     setPhase('expanding');
     setTransitionPhase('expanding');
+    setTraceContext({ phase: 'expanding' });
     resetLoaderTracker(); // Reset tracker for this new transition
     
-    console.log(`[TRANSITION] 📈 Expanding id=${thisTransitionId}: 0 -> ${Math.round(max)}px`);
+    traceTransition('EXPAND_START', { maxRadius: Math.round(max) });
     
     // Animate expansion
     animate(radius, max, {
@@ -164,31 +180,34 @@ export const TransitionProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       ease: [0.4, 0, 0.2, 1],
       onComplete: async () => {
         if (!mountedRef.current) {
-          console.log(`[TRANSITION] ⚠️ Expand done but unmounted id=${thisTransitionId}`);
+          traceTransition('EXPAND_DONE_UNMOUNTED');
           return;
         }
         
-        console.log(`[TRANSITION] ✅ Expand complete id=${thisTransitionId}`);
+        traceTransition('EXPAND_DONE');
         
         setPhase('loading');
         setTransitionPhase('loading');
+        setTraceContext({ phase: 'loading' });
         
         let finalRoute = pendingNavigationRef.current;
         
         // Run prepare callback
         try {
           if (prepareCallbackRef.current) {
-            console.log(`[TRANSITION] ⏳ Prepare start id=${thisTransitionId}`);
+            traceTransition('PREPARE_START');
             const dynamicRoute = await prepareCallbackRef.current();
             if (dynamicRoute) {
               finalRoute = dynamicRoute;
+              setTraceContext({ routeTo: dynamicRoute });
             }
-            console.log(`[TRANSITION] ✅ Prepare done id=${thisTransitionId}`);
+            traceTransition('PREPARE_DONE', { finalRoute });
           }
         } catch (error) {
-          console.error(`[TRANSITION] ❌ Prepare failed id=${thisTransitionId}:`, error);
+          traceTransition('PREPARE_FAILED', { error: String(error) });
           // RELEASE LOCK on error
           setPhase('idle');
+          setTraceContext({ phase: 'idle' });
           radius.set(0);
           transitionLockRef.current = false;
           pendingNavigationRef.current = null;
@@ -197,13 +216,13 @@ export const TransitionProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         }
         
         if (!mountedRef.current) {
-          console.log(`[TRANSITION] ⚠️ After prepare but unmounted id=${thisTransitionId}`);
+          traceTransition('AFTER_PREPARE_UNMOUNTED');
           return;
         }
         
         // NAVIGATE while overlay covers everything
         if (finalRoute) {
-          console.log(`[TRANSITION] 🧭 Navigated id=${thisTransitionId} to="${finalRoute}"`);
+          traceTransition('NAVIGATE', { finalRoute });
           navigate(finalRoute);
         }
         
@@ -215,7 +234,7 @@ export const TransitionProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         });
         
         if (!mountedRef.current) {
-          console.log(`[TRANSITION] ⚠️ After nav but unmounted id=${thisTransitionId}`);
+          traceTransition('AFTER_NAV_UNMOUNTED');
           return;
         }
         
@@ -223,23 +242,28 @@ export const TransitionProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         const currentMax = Math.hypot(window.innerWidth, window.innerHeight);
         radius.set(currentMax);
         
-        console.log(`[TRANSITION] 📉 Shrink start id=${thisTransitionId} from ${Math.round(currentMax)}px -> 0`);
-        
         setPhase('shrinking');
         setTransitionPhase('shrinking');
+        setTraceContext({ phase: 'shrinking' });
+        
+        traceTransition('SHRINK_START', { fromRadius: Math.round(currentMax) });
         
         // Animate shrink
         animate(radius, 0, {
           duration: SHRINK_DURATION,
           ease: [0.4, 0, 0.2, 1],
           onComplete: () => {
-            console.log(`[TRANSITION] ✅ Shrink animation complete id=${thisTransitionId} - transition DONE`);
+            traceTransition('SHRINK_DONE');
             
             // IMMEDIATELY complete transition - no waiting-reveal phase
             // This prevents any post-shrink loader flash
             logLoadersRenderedThisTransition();
             setPhase('idle');
             setTransitionPhase('idle');
+            setTraceContext({ phase: 'idle', transitionId: null });
+            
+            traceTransition('IDLE');
+            
             transitionLockRef.current = false;
             pendingNavigationRef.current = null;
             prepareCallbackRef.current = null;
@@ -250,7 +274,7 @@ export const TransitionProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         });
       },
     });
-  }, [navigate, radius]);
+  }, [navigate, radius, location.pathname]);
 
   const isTransitioning = phase !== 'idle';
 
