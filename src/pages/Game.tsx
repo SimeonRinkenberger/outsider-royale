@@ -916,9 +916,9 @@ const Game = () => {
                   <p className="text-sm text-muted-foreground">
                     You've been eliminated. Watch the game unfold!
                   </p>
-                  <p className="text-lg font-bold text-primary mt-4">Secret Word: {secretWord.text}</p>
+                  <p className="text-lg font-bold text-primary mt-4">Secret Word: {secretWord?.text ?? 'Loading...'}</p>
                   <p className="text-xs text-muted-foreground">
-                    Category: {gameMetadata?.customCategory || secretWord.category}
+                    Category: {gameMetadata?.customCategory || secretWord?.category || 'Unknown'}
                   </p>
                   <p className="text-sm text-muted-foreground">
                     Outsider{outsiders.length > 1 ? 's' : ''}: {players.filter(p => outsiders.some(o => o.player_id === p.id)).map(p => p.display_name).join(', ')}
@@ -930,9 +930,9 @@ const Game = () => {
                 <div className="text-center space-y-2">
                   <Eye className="h-8 w-8 mx-auto" />
                   <p className="text-white/80 text-sm">Your Word</p>
-                  <h2 className="text-4xl font-bold">{displayWord?.text}</h2>
+                  <h2 className="text-4xl font-bold">{displayWord?.text ?? 'Loading...'}</h2>
                   <p className="text-white/70 text-xs uppercase tracking-wider mt-1">
-                    Category: {gameMetadata?.customCategory || secretWord.category}
+                    Category: {gameMetadata?.customCategory || secretWord?.category || 'Unknown'}
                   </p>
                   <p className="text-white/90 text-sm">
                     Give a clue that relates to this word
@@ -1012,9 +1012,9 @@ const Game = () => {
                 <div className="text-center space-y-2">
                   <Eye className="h-8 w-8 mx-auto" />
                   <p className="text-white/80 text-sm">Secret Word</p>
-                  <h2 className="text-4xl font-bold">{secretWord.text}</h2>
+                  <h2 className="text-4xl font-bold">{secretWord?.text ?? 'Loading...'}</h2>
                   <p className="text-white/70 text-xs uppercase tracking-wider mt-1">
-                    Category: {gameMetadata?.customCategory || secretWord.category}
+                    Category: {gameMetadata?.customCategory || secretWord?.category || 'Unknown'}
                   </p>
                   <p className="text-white/90 text-sm">
                     Give a clue that relates to this word
@@ -1308,7 +1308,7 @@ const Game = () => {
               <p className="text-sm text-muted-foreground">
                 Watch as the remaining players vote.
               </p>
-              <p className="text-lg font-bold text-primary mt-4">Secret Word: {secretWord.text}</p>
+              <p className="text-lg font-bold text-primary mt-4">Secret Word: {secretWord?.text ?? 'Loading...'}</p>
               <p className="text-sm text-muted-foreground">
                 Outsider{outsiders.length > 1 ? 's' : ''}: {players.filter(p => outsiders.some(o => o.player_id === p.id)).map(p => p.display_name).join(', ')}
               </p>
@@ -1317,13 +1317,13 @@ const Game = () => {
             <>
               <Card className="p-6 bg-gradient-primary text-white shadow-card border-0 text-center">
                 <p className="text-white/80 text-sm mb-1">The secret word was</p>
-                <h2 className="text-3xl font-bold">{secretWord.text}</h2>
+                <h2 className="text-3xl font-bold">{secretWord?.text ?? 'Loading...'}</h2>
                 <p className="text-white/70 text-xs uppercase tracking-wider mt-1">
-                  Category: {gameMetadata?.customCategory || secretWord.category}
+                  Category: {gameMetadata?.customCategory || secretWord?.category || 'Unknown'}
                 </p>
                 {isHiddenImposterMode && imposterWord && (
                   <p className="text-white/80 text-sm mt-2">
-                    Outsider word: <span className="font-bold">{imposterWord.text}</span>
+                    Outsider word: <span className="font-bold">{imposterWord?.text ?? 'Loading...'}</span>
                   </p>
                 )}
               </Card>

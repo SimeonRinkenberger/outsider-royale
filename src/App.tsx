@@ -9,6 +9,7 @@ import { AudioProvider } from './contexts/AudioContext';
 import { TransitionProvider } from './contexts/TransitionContext';
 import ThemeToggle from './components/ThemeToggle';
 import ForceUpdateButton from './components/ForceUpdateButton';
+import ErrorBoundary from './components/ErrorBoundary';
 import Menu from './pages/Menu';
 import Onboarding from './pages/Onboarding';
 import Home from './pages/Home';
@@ -71,7 +72,9 @@ const App = () => (
                 path="/game/:lobbyId"
                 element={
                   <ProtectedRoute>
-                    <Game />
+                    <ErrorBoundary fallbackMessage="Something went wrong loading the game. Tap to retry.">
+                      <Game />
+                    </ErrorBoundary>
                   </ProtectedRoute>
                 }
               />
@@ -79,7 +82,9 @@ const App = () => (
                 path="/results/:lobbyId"
                 element={
                   <ProtectedRoute>
-                    <Results />
+                    <ErrorBoundary fallbackMessage="Something went wrong loading the results. Tap to retry.">
+                      <Results />
+                    </ErrorBoundary>
                   </ProtectedRoute>
                 }
               />
