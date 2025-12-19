@@ -94,49 +94,12 @@ export const TransitionProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     };
   }, []);
 
-  // Function to complete the transition (called when both shrink is done AND reveal is ready)
-  const completeTransition = useCallback(() => {
-    if (shrinkCompleteRef.current && revealReadyRef.current) {
-      console.log(`[TRANSITION] ✅ Both shrink complete AND reveal ready - setting phase to idle`);
-      logLoadersRenderedThisTransition(); // Log all loaders that rendered during this transition
-      setPhase('idle');
-      setTransitionPhase('idle');
-      transitionLockRef.current = false;
-      pendingNavigationRef.current = null;
-      prepareCallbackRef.current = null;
-      shrinkCompleteRef.current = false;
-      revealReadyRef.current = false;
-      setAwaitingRevealId(null);
-    }
-  }, []);
-
-  // Reveal ready handshake - destination calls this when ready to paint
-  // MUST be called with the correct transition ID
+  // markRevealReady is now a no-op - we complete transition immediately at shrink complete
+  // Kept for API compatibility with destination components that still call it
   const markRevealReady = useCallback((id: number) => {
-    const currentAwaitingId = currentTransitionIdRef.current;
-    
-    // Ignore if no transition is awaiting reveal
-    if (awaitingRevealId === null) {
-      console.log(`[TRANSITION] 🎯 markRevealReady(${id}) IGNORED - awaitingRevealId is null`);
-      return;
-    }
-    
-    // Ignore if ID doesn't match
-    if (id !== awaitingRevealId) {
-      console.log(`[TRANSITION] 🎯 markRevealReady(${id}) IGNORED - expected id=${awaitingRevealId}`);
-      return;
-    }
-    
-    // Ignore if already processed
-    if (revealReadyRef.current) {
-      console.log(`[TRANSITION] 🎯 markRevealReady(${id}) IGNORED - already marked ready`);
-      return;
-    }
-    
-    console.log(`[TRANSITION] 🎯 markRevealReady(${id}) ACCEPTED`);
-    revealReadyRef.current = true;
-    completeTransition();
-  }, [completeTransition, awaitingRevealId]);
+    // No-op: transition completes immediately at shrink, no handshake needed
+    console.log(`[TRANSITION] 🎯 markRevealReady(${id}) - no-op (transition completes at shrink)`);
+  }, []);
 
   const startTransition = useCallback(async (toRoute: string, options: TransitionOptions = {}) => {
     // HARD LOCK: Cannot start second transition
@@ -270,30 +233,24 @@ export const TransitionProvider: React.FC<{ children: React.ReactNode }> = ({ ch
           duration: SHRINK_DURATION,
           ease: [0.4, 0, 0.2, 1],
           onComplete: () => {
-            console.log(`[TRANSITION] ✅ Shrink animation complete id=${thisTransitionId}`);
-            shrinkCompleteRef.current = true;
+            console.log(`[TRANSITION] ✅ Shrink animation complete id=${thisTransitionId} - transition DONE`);
             
-            // Now set awaitingRevealId so destination can call markRevealReady
-            setAwaitingRevealId(thisTransitionId);
-            
-            // Enter invisible waiting phase (overlay stays mounted but invisible)
-            console.log(`[TRANSITION] ⏳ Waiting for reveal id=${thisTransitionId} (invisible)`);
-            setPhase('waiting-reveal');
-            setTransitionPhase('waiting-reveal');
-            
-            // Safety timeout - 500ms max, but no visual change
-            setTimeout(() => {
-              if (transitionLockRef.current && shrinkCompleteRef.current && !revealReadyRef.current) {
-                console.log(`[TRANSITION] ⚠️ Reveal timeout - forcing complete id=${thisTransitionId}`);
-                revealReadyRef.current = true;
-                completeTransition();
-              }
-            }, 500);
+            // IMMEDIATELY complete transition - no waiting-reveal phase
+            // This prevents any post-shrink loader flash
+            logLoadersRenderedThisTransition();
+            setPhase('idle');
+            setTransitionPhase('idle');
+            transitionLockRef.current = false;
+            pendingNavigationRef.current = null;
+            prepareCallbackRef.current = null;
+            shrinkCompleteRef.current = false;
+            revealReadyRef.current = false;
+            setAwaitingRevealId(null);
           },
         });
       },
     });
-  }, [navigate, radius, completeTransition]);
+  }, [navigate, radius]);
 
   const isTransitioning = phase !== 'idle';
 
@@ -339,11 +296,10 @@ const TransitionOverlay: React.FC<TransitionOverlayProps> = ({
 }) => {
   const [isOverlayMounted] = useState(true);
 
-  // Overlay is visible during expanding, loading, shrinking
-  // waiting-reveal is INVISIBLE (no UI flash)
-  const isVisible = phase !== 'idle' && phase !== 'waiting-reveal';
+  // Overlay is only visible during expanding, loading, shrinking
+  // No waiting-reveal phase anymore - transition ends at shrink complete
+  const isVisible = phase !== 'idle';
   const isShrinking = phase === 'shrinking';
-  const isWaitingReveal = phase === 'waiting-reveal';
   
   // Debug UI - ALWAYS render when DEBUG_MODE is true
   const debugUI = DEBUG_MODE ? createPortal(
@@ -365,7 +321,7 @@ const TransitionOverlay: React.FC<TransitionOverlayProps> = ({
         minWidth: 200,
       }}
     >
-      <div>Phase: <strong style={{ color: isShrinking ? '#f00' : phase === 'loading' ? '#ff0' : isWaitingReveal ? '#f90' : '#0f0' }}>{phase}</strong></div>
+      <div>Phase: <strong style={{ color: isShrinking ? '#f00' : phase === 'loading' ? '#ff0' : '#0f0' }}>{phase}</strong></div>
       <div>Radius: <strong>{currentRadius}px</strong></div>
       <div>MaxRadius: <strong>{Math.round(maxRadius)}px</strong></div>
       <div>Mounted: <strong style={{ color: '#0f0' }}>{isOverlayMounted ? 'YES' : 'NO'}</strong></div>
