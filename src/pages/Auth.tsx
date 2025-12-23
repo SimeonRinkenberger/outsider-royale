@@ -27,6 +27,7 @@ const Auth = () => {
   
   // Get the previous route to return to after auth
   const from = (location.state as { from?: string })?.from || '/menu';
+  console.log('[Auth] location.state:', location.state, 'from:', from);
 
   const validateForm = () => {
     const newErrors: typeof errors = {};
