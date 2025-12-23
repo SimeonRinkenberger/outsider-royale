@@ -20,8 +20,6 @@ import { motion } from 'framer-motion';
 import { getAvatarById } from '@/components/AvatarPicker';
 import { User as UserIcon } from 'lucide-react';
 import { useTransition } from '@/contexts/TransitionContext';
-import { DebugLoader } from '@/components/DebugLoader';
-import { traceScreenMount, traceScreenDataReady, traceMarkRevealReady, flushTransitionTrace, resetTransitionTrace } from '@/utils/transitionTrace';
 import { getCachedResultsData } from '@/lib/gamePreloadCache';
 
 const Results = () => {
@@ -606,37 +604,12 @@ const Results = () => {
   // Check loading with cached data fallback
   const isLoading = !effectiveGame || !effectiveSecretWord || effectiveOutsiderPlayers.length === 0 || (!resultsReady && effectiveVotes.length === 0);
   const hasData = !isLoading;
-  const hasLoggedDataReadyRef = useRef(false);
-  const hasFlushedReportRef = useRef(false);
-
-  // Log screen mount once
-  useEffect(() => {
-    traceScreenMount('Results', hasData, { lobbyId, gameId: effectiveGame?.id });
-  }, []);
-
-  // Log when data becomes ready (once) and flush Game→Results report
-  useEffect(() => {
-    if (hasData && !hasLoggedDataReadyRef.current) {
-      hasLoggedDataReadyRef.current = true;
-      traceScreenDataReady('Results', { lobbyId, gameId: effectiveGame?.id });
-      
-      // Flush Game→Results transition report
-      if (!hasFlushedReportRef.current) {
-        hasFlushedReportRef.current = true;
-        setTimeout(() => {
-          flushTransitionTrace('Game→Results report');
-          resetTransitionTrace(); // Reset for next flow
-        }, 100);
-      }
-    }
-  }, [hasData, lobbyId, effectiveGame?.id]);
 
   // Mark reveal ready when we have data and can paint AND awaiting reveal
   const hasMarkedRevealRef = useRef(false);
   useLayoutEffect(() => {
     if (hasData && awaitingRevealId && !hasMarkedRevealRef.current) {
       hasMarkedRevealRef.current = true;
-      traceMarkRevealReady('Results', awaitingRevealId);
       markRevealReady(awaitingRevealId);
     }
   }, [hasData, awaitingRevealId, markRevealReady]);
@@ -645,8 +618,6 @@ const Results = () => {
   useEffect(() => {
     if (effectiveGame?.id) {
       hasMarkedRevealRef.current = false;
-      hasLoggedDataReadyRef.current = false;
-      hasFlushedReportRef.current = false;
     }
   }, [effectiveGame?.id]);
 

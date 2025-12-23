@@ -9,11 +9,7 @@ interface LoadingScreenExtendedProps extends LoadingScreenProps {
   isTransitionOverlay?: boolean;
 }
 
-/**
- * LoadingScreen - Used ONLY by TransitionOverlay.
- * All page-level loading should use inline skeletons instead.
- */
-const LoadingScreen = ({ text = 'Loading', isTransitionOverlay = false }: LoadingScreenExtendedProps) => {
+const LoadingScreen = ({ text = 'Loading' }: LoadingScreenExtendedProps) => {
   const [dots, setDots] = useState('.');
 
   useEffect(() => {
@@ -28,21 +24,8 @@ const LoadingScreen = ({ text = 'Loading', isTransitionOverlay = false }: Loadin
     return () => clearInterval(interval);
   }, []);
 
-  // Log when this component renders
-  useEffect(() => {
-    if (!isTransitionOverlay) {
-      console.log(`[LOADER POLICE] ⚠️ LoadingScreen rendered outside TransitionOverlay: "${text}"`);
-    }
-  }, [isTransitionOverlay, text]);
-
   return (
     <div className="min-h-screen bg-background flex flex-col items-center justify-center gap-4 relative">
-      {/* Watermark to identify if this is the transition overlay loader */}
-      {isTransitionOverlay && (
-        <span className="absolute top-2 left-2 text-[10px] text-muted-foreground/50 font-mono">
-          TRANSITION LOADING
-        </span>
-      )}
       <img 
         src={foxMascot} 
         alt="Loading" 

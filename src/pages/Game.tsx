@@ -17,8 +17,6 @@ import { getAvatarById } from '@/components/AvatarPicker';
 import { useAudio } from '@/contexts/AudioContext';
 import { useTransition } from '@/contexts/TransitionContext';
 import { motion, AnimatePresence } from 'framer-motion';
-import { DebugLoader } from '@/components/DebugLoader';
-import { traceScreenMount, traceScreenDataReady, traceMarkRevealReady, flushTransitionTrace } from '@/utils/transitionTrace';
 import { getCachedGameData, preloadResultsData } from '@/lib/gamePreloadCache';
 
 interface CustomModifierData {
@@ -285,18 +283,6 @@ const Game = () => {
     return isOutsider ? null : secretWord;
   }, [game?.game_mode, secretWord, imposterWord, isOutsider, gameMetadata?.imposterCustomWord]);
 
-  // Debug logging
-  useEffect(() => {
-    if (game && currentPlayer) {
-      console.log('Game outsider check:', {
-        outsiders: outsiders.map(o => o.player_id),
-        currentPlayerId: currentPlayer.id,
-        currentPlayerName: currentPlayer.display_name,
-        isOutsider,
-        outsiderCount: outsiders.length
-      });
-    }
-  }, [outsiders, currentPlayer?.id, isOutsider]);
 
   // Track if all clues are submitted for this round
   const allCluesSubmitted = clues.length === shuffledPlayers.length;
@@ -518,7 +504,6 @@ const Game = () => {
       loadingText: 'Tallying votes',
       reason: 'voting-complete',
       prepare: async () => {
-        // Update game and lobby status while overlay is showing
         await supabase
           .from('games')
           .update({ status: 'results' })
@@ -529,8 +514,6 @@ const Game = () => {
           .update({ status: 'results' })
           .eq('id', lobbyId);
         
-        // Preload results data so Results page can render immediately
-        console.log('[Game] Host: Preloading results data');
         await preloadResultsData(lobbyId!, game.id);
       }
     });
@@ -766,36 +749,12 @@ const Game = () => {
 
   // Determine if we have data ready to paint (using effective values with cache fallback)
   const hasData = !!(effectiveGame && effectiveSecretWord && effectiveCurrentRound);
-  const hasLoggedDataReadyRef = useRef(false);
-  const hasFlushedReportRef = useRef(false);
   
-  // Log screen mount once
-  useEffect(() => {
-    traceScreenMount('Game', hasData, { lobbyId, gameId: effectiveGame?.id });
-  }, []);
-  
-  // Log when data becomes ready (once) and flush Lobby→Game report
-  useEffect(() => {
-    if (hasData && !hasLoggedDataReadyRef.current) {
-      hasLoggedDataReadyRef.current = true;
-      traceScreenDataReady('Game', { lobbyId, gameId: effectiveGame?.id });
-      
-      // Flush Lobby→Game transition report
-      if (!hasFlushedReportRef.current) {
-        hasFlushedReportRef.current = true;
-        setTimeout(() => {
-          flushTransitionTrace('Lobby→Game report');
-        }, 100);
-      }
-    }
-  }, [hasData, lobbyId, effectiveGame?.id]);
-  
-  // Mark reveal ready when we have data AND awaiting reveal - use useLayoutEffect for immediate notification
+  // Mark reveal ready when we have data AND awaiting reveal
   const hasMarkedRevealRef = useRef(false);
   useLayoutEffect(() => {
     if (hasData && awaitingRevealId && !hasMarkedRevealRef.current) {
       hasMarkedRevealRef.current = true;
-      traceMarkRevealReady('Game', awaitingRevealId);
       markRevealReady(awaitingRevealId);
     }
   }, [hasData, awaitingRevealId, markRevealReady]);
@@ -804,8 +763,6 @@ const Game = () => {
   useEffect(() => {
     if (game?.id) {
       hasMarkedRevealRef.current = false;
-      hasLoggedDataReadyRef.current = false;
-      hasFlushedReportRef.current = false;
     }
   }, [game?.id]);
 
