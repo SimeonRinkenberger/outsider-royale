@@ -1,3 +1,6 @@
+// Session modes for the app
+export type SessionMode = 'guest' | 'authed' | 'none';
+
 export const generateLobbyCode = (): string => {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // Removed similar looking characters
   let code = '';
@@ -31,8 +34,50 @@ export const setStoredAvatarId = (avatarId: string): void => {
   localStorage.setItem('avatarId', avatarId);
 };
 
+export const getStoredIsGuest = (): boolean => {
+  return localStorage.getItem('isGuest') === 'true';
+};
+
+export const setStoredIsGuest = (isGuest: boolean): void => {
+  localStorage.setItem('isGuest', isGuest ? 'true' : 'false');
+};
+
 export const clearStorage = (): void => {
   localStorage.removeItem('userId');
   localStorage.removeItem('displayName');
   localStorage.removeItem('avatarId');
+  localStorage.removeItem('isGuest');
+};
+
+/**
+ * Get the current session mode:
+ * - 'authed': User has a userId and is NOT a guest (signed in with email)
+ * - 'guest': User has a userId and IS a guest
+ * - 'none': No userId at all
+ */
+export const getSessionMode = (): SessionMode => {
+  const userId = getStoredUserId();
+  if (!userId) {
+    console.log('[SESSION] mode=none');
+    return 'none';
+  }
+  
+  const isGuest = getStoredIsGuest();
+  const mode = isGuest ? 'guest' : 'authed';
+  console.log('[SESSION] mode=', mode);
+  return mode;
+};
+
+/**
+ * Check if user has any valid session (guest or authed)
+ */
+export const hasValidSession = (): boolean => {
+  return getSessionMode() !== 'none';
+};
+
+/**
+ * Check if user is authenticated (not a guest)
+ */
+export const isAuthenticated = (): boolean => {
+  return getSessionMode() === 'authed';
 };

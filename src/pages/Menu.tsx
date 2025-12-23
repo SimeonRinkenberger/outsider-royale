@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { supabase } from '@/integrations/supabase/client';
-import { getStoredUserId, getStoredDisplayName, clearStorage, setStoredUserId, setStoredDisplayName } from '@/lib/gameUtils';
+import { getStoredUserId, getStoredDisplayName, clearStorage, setStoredUserId, setStoredDisplayName, setStoredIsGuest } from '@/lib/gameUtils';
 import { setAuthReturnTo } from '@/lib/authRedirect';
 import { Users, Wifi, User, LogIn, BarChart3 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -118,6 +118,7 @@ const Menu = () => {
         
         setStoredUserId(data.id);
         setStoredDisplayName(data.display_name);
+        setStoredIsGuest(true); // Mark as guest session
         toast.success(`Welcome, ${data.display_name}!`);
         setIsCreatingGuest(false);
       }
