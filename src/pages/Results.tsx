@@ -204,35 +204,42 @@ const Results = () => {
 
   const outsiderGuessedCorrectly = gameMetadata?.outsiderGuessedCorrectly ?? false;
   
-  // Track if results have been calculated (need votes to be loaded)
-  const [resultsReady, setResultsReady] = useState(false);
+  // Use cached data if available for instant first paint - MOVED UP before win calculations
+  const effectiveGame = game || cachedResultsData?.game;
+  const effectiveSecretWord = secretWord || cachedResultsData?.secretWord;
+  const effectivePlayers = players.length > 0 ? players : (cachedResultsData?.players || []);
+  const effectiveOutsiders = outsiders.length > 0 ? outsiders : (cachedResultsData?.outsiders || []);
+  const effectiveVotes = votes.length > 0 ? votes : (cachedResultsData?.votes || []);
   
-  // Calculate vote results
-  const votesByPlayer = players.map(player => {
-    const votesReceived = votes.filter(v => v.suspected_outsider_player_id === player.id).length;
+  // Recalculate outsider players with effective data
+  const effectiveOutsiderPlayers = effectivePlayers.filter(p => effectiveOutsiders.some(o => o.player_id === p.id));
+  
+  // Check loading with cached data fallback
+  const isLoading = !effectiveGame || !effectiveSecretWord || effectiveOutsiderPlayers.length === 0 || effectiveVotes.length === 0;
+
+  // Calculate vote results using effective data
+  const votesByPlayer = effectivePlayers.map(player => {
+    const votesReceived = effectiveVotes.filter(v => v.suspected_outsider_player_id === player.id).length;
     return { player, votesReceived };
   });
 
   // For elimination mode: check if all outsiders are spectators (group wins) or if outsiders have majority
-  const isEliminationMode = game?.game_mode === 'elimination';
-  const activePlayers = players.filter(p => !p.is_spectator);
-  const activeOutsiders = outsiders.filter(o => activePlayers.some(p => p.id === o.player_id));
+  const isEliminationMode = effectiveGame?.game_mode === 'elimination';
+  const activePlayers = effectivePlayers.filter(p => !p.is_spectator);
+  const activeOutsiders = effectiveOutsiders.filter(o => activePlayers.some(p => p.id === o.player_id));
   
   // Outsider wins if they guessed correctly, otherwise check votes
   const outsiderWins = outsiderGuessedCorrectly || (
     isEliminationMode 
       ? activeOutsiders.length >= activePlayers.length / 2 // Outsiders have majority
-      : votes.filter(v => outsiders.some(o => o.player_id === v.suspected_outsider_player_id)).length < players.length / 2
+      : effectiveVotes.filter(v => effectiveOutsiders.some(o => o.player_id === v.suspected_outsider_player_id)).length < effectivePlayers.length / 2
   );
   
   const groupWins = !outsiderWins;
-
+  
   // Mark results as ready once we have votes (or if outsider guessed correctly)
-  useEffect(() => {
-    if (outsiderGuessedCorrectly || votes.length > 0) {
-      setResultsReady(true);
-    }
-  }, [outsiderGuessedCorrectly, votes.length]);
+  const resultsReady = outsiderGuessedCorrectly || effectiveVotes.length > 0;
+
 
   useEffect(() => {
     if (resultsReady) {
@@ -584,18 +591,6 @@ const Results = () => {
   };
 
 
-  // Use cached data if available for instant first paint
-  const effectiveGame = game || cachedResultsData?.game;
-  const effectiveSecretWord = secretWord || cachedResultsData?.secretWord;
-  const effectivePlayers = players.length > 0 ? players : (cachedResultsData?.players || []);
-  const effectiveOutsiders = outsiders.length > 0 ? outsiders : (cachedResultsData?.outsiders || []);
-  const effectiveVotes = votes.length > 0 ? votes : (cachedResultsData?.votes || []);
-  
-  // Recalculate outsider players with effective data
-  const effectiveOutsiderPlayers = effectivePlayers.filter(p => effectiveOutsiders.some(o => o.player_id === p.id));
-  
-  // Check loading with cached data fallback
-  const isLoading = !effectiveGame || !effectiveSecretWord || effectiveOutsiderPlayers.length === 0 || (!resultsReady && effectiveVotes.length === 0);
   const hasData = !isLoading;
 
   // Mark reveal ready when we have data and can paint AND awaiting reveal
