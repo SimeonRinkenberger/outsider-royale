@@ -12,6 +12,7 @@ import { getStoredUserId } from '@/lib/gameUtils';
 import { toast } from 'sonner';
 import { Send, Eye, EyeOff, Users, CheckCircle2, DoorOpen, FastForward, ArrowRight, Lightbulb, User, Check } from 'lucide-react';
 import { ActiveModifiersDisplay } from '@/components/ActiveModifiersDisplay';
+import { MusicControls } from '@/components/MusicControls';
 import { SpeedRoundTimer } from '@/components/SpeedRoundTimer';
 import { getAvatarById } from '@/components/AvatarPicker';
 import { useAudio } from '@/contexts/AudioContext';
@@ -838,6 +839,7 @@ const Game = () => {
                   <span className="hidden sm:inline">Skip</span>
                 </Button>
               )}
+              <MusicControls />
               <Button variant="ghost" size="icon" onClick={(e) => {
                 const rect = e.currentTarget.getBoundingClientRect();
                 startTransition('/stats', { origin: { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 } });
@@ -1236,6 +1238,7 @@ const Game = () => {
               </p>
             </div>
             <div className="flex items-center gap-2">
+              <MusicControls />
               <Button variant="ghost" size="icon" onClick={(e) => {
                 const rect = e.currentTarget.getBoundingClientRect();
                 startTransition('/stats', { origin: { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 } });
