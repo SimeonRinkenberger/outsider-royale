@@ -44,6 +44,7 @@ const Stats = () => {
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const logoutButtonRef = useRef<HTMLButtonElement>(null);
   const backButtonRef = useRef<HTMLButtonElement>(null);
+  const [isExiting, setIsExiting] = useState(false);
   
   // Auth form state for guests
   const [authMode, setAuthMode] = useState<'signin' | 'signup'>('signup');
@@ -312,13 +313,25 @@ const Stats = () => {
     );
   }
 
+  const handleBackWithAnimation = () => {
+    setIsExiting(true);
+    setTimeout(() => {
+      navigate(-1);
+    }, 250);
+  };
+
   // Guest view - show create account form
   if (isGuest) {
     return (
-      <div className="min-h-screen bg-background flex flex-col">
+      <motion.div 
+        className="min-h-screen bg-background flex flex-col"
+        initial={{ x: '100%', opacity: 0 }}
+        animate={{ x: isExiting ? '100%' : 0, opacity: isExiting ? 0 : 1 }}
+        transition={{ type: 'tween', duration: 0.25, ease: 'easeInOut' }}
+      >
         <header className="bg-card border-b border-border p-4">
           <div className="max-w-md mx-auto flex items-center gap-4">
-            <Button variant="ghost" size="icon" onClick={() => navigate(-1)}>
+            <Button variant="ghost" size="icon" onClick={handleBackWithAnimation}>
               <ArrowLeft className="h-5 w-5" />
             </Button>
             <h1 className="text-xl font-bold">
@@ -430,7 +443,7 @@ const Stats = () => {
             </Card>
           </motion.div>
         </main>
-      </div>
+      </motion.div>
     );
   }
 
@@ -439,11 +452,19 @@ const Stats = () => {
   const voteAccuracy = stats ? calculatePercentage(stats.total_correct_votes, stats.total_votes_cast) : 0;
 
   const handleBack = () => {
-    navigate(-1); // Always go back to previous page
+    setIsExiting(true);
+    setTimeout(() => {
+      navigate(-1);
+    }, 250);
   };
 
   return (
-    <div className="min-h-screen bg-background">
+    <motion.div 
+      className="min-h-screen bg-background"
+      initial={{ x: '100%', opacity: 0 }}
+      animate={{ x: isExiting ? '100%' : 0, opacity: isExiting ? 0 : 1 }}
+      transition={{ type: 'tween', duration: 0.25, ease: 'easeInOut' }}
+    >
       <header className="bg-card border-b border-border p-4">
         <div className="max-w-md mx-auto flex items-center justify-between">
           <div className="flex items-center gap-4">
@@ -610,7 +631,7 @@ const Stats = () => {
           onDisplayNameChange={handleDisplayNameChange}
         />
       </main>
-    </div>
+    </motion.div>
   );
 };
 
