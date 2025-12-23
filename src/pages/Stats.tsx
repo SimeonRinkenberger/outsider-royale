@@ -4,7 +4,6 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { supabase } from '@/integrations/supabase/client';
 import { getStoredDisplayName, clearStorage, setStoredDisplayName, setStoredAvatarId, isAuthenticated, getSessionMode } from '@/lib/gameUtils';
-import { setAuthReturnTo } from '@/lib/authRedirect';
 import { toast } from 'sonner';
 import { ArrowLeft, Trophy, Target, Flame, MessageSquare, Vote, LogOut, TrendingUp } from 'lucide-react';
 import { motion } from 'framer-motion';
@@ -49,9 +48,10 @@ const Stats = () => {
       const { data: { session } } = await supabase.auth.getSession();
       
       if (!session || !isAuthenticated()) {
-        // Guest or no session - redirect to auth to upgrade
-        setAuthReturnTo('/stats');
-        navigate('/auth', { replace: true });
+        // Guest or no session - redirect to menu (not auth, to avoid loops)
+        // User can sign in from menu if they want stats
+        toast.error('Sign in to view your stats');
+        navigate('/menu', { replace: true });
         return;
       }
 
