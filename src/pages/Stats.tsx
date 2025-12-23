@@ -2,14 +2,20 @@ import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { supabase } from '@/integrations/supabase/client';
-import { getStoredDisplayName, clearStorage, setStoredDisplayName, setStoredAvatarId, isAuthenticated, getSessionMode } from '@/lib/gameUtils';
+import { getStoredDisplayName, clearStorage, setStoredDisplayName, setStoredAvatarId, isAuthenticated, getSessionMode, getStoredUserId, setStoredUserId, setStoredIsGuest } from '@/lib/gameUtils';
 import { toast } from 'sonner';
-import { ArrowLeft, Trophy, Target, Flame, MessageSquare, Vote, LogOut, TrendingUp } from 'lucide-react';
+import { ArrowLeft, Trophy, Target, Flame, MessageSquare, Vote, LogOut, TrendingUp, Mail, Lock, User, Loader2 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { AvatarPicker, getAvatarById } from '@/components/AvatarPicker';
 import { AccountSettings } from '@/components/AccountSettings';
 import { useTransition } from '@/contexts/TransitionContext';
+import { z } from 'zod';
+
+const emailSchema = z.string().email('Please enter a valid email address');
+const passwordSchema = z.string().min(6, 'Password must be at least 6 characters');
 
 interface UserStats {
   games_played: number;
@@ -31,6 +37,7 @@ const Stats = () => {
   const { startTransition } = useTransition();
   const [stats, setStats] = useState<UserStats | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isGuest, setIsGuest] = useState(false);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [profileId, setProfileId] = useState<string | null>(null);
   const [displayName, setDisplayName] = useState(getStoredDisplayName());
@@ -38,20 +45,25 @@ const Stats = () => {
   const logoutButtonRef = useRef<HTMLButtonElement>(null);
   const backButtonRef = useRef<HTMLButtonElement>(null);
   
+  // Auth form state for guests
+  const [authMode, setAuthMode] = useState<'signin' | 'signup'>('signup');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [authDisplayName, setAuthDisplayName] = useState('');
+  const [isAuthLoading, setIsAuthLoading] = useState(false);
+  const [authErrors, setAuthErrors] = useState<{ email?: string; password?: string; displayName?: string }>({});
 
   useEffect(() => {
     const fetchStats = async () => {
-      // Stats page requires authed session (not guest)
       const sessionMode = getSessionMode();
       console.log('[GUARD] route=/stats mode=', sessionMode);
       
       const { data: { session } } = await supabase.auth.getSession();
       
+      // Check if guest (has userId but not authed)
       if (!session || !isAuthenticated()) {
-        // Guest or no session - redirect to menu (not auth, to avoid loops)
-        // User can sign in from menu if they want stats
-        toast.error('Sign in to view your stats');
-        navigate('/menu', { replace: true });
+        setIsGuest(true);
+        setIsLoading(false);
         return;
       }
 
@@ -136,6 +148,148 @@ const Stats = () => {
     return Math.round((wins / total) * 100);
   };
 
+  // Auth form validation for guests
+  const validateAuthForm = () => {
+    const newErrors: typeof authErrors = {};
+    
+    try {
+      emailSchema.parse(email);
+    } catch (e) {
+      if (e instanceof z.ZodError) {
+        newErrors.email = e.errors[0].message;
+      }
+    }
+
+    try {
+      passwordSchema.parse(password);
+    } catch (e) {
+      if (e instanceof z.ZodError) {
+        newErrors.password = e.errors[0].message;
+      }
+    }
+
+    if (authMode === 'signup' && (!authDisplayName.trim() || authDisplayName.length > 50)) {
+      newErrors.displayName = 'Display name must be 1-50 characters';
+    }
+
+    setAuthErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  // Handle auth for guests
+  const handleGuestAuth = async () => {
+    if (!validateAuthForm()) return;
+
+    setIsAuthLoading(true);
+    try {
+      if (authMode === 'signup') {
+        const redirectUrl = `${window.location.origin}/`;
+        const guestProfileId = getStoredUserId();
+        
+        const { data, error } = await supabase.auth.signUp({
+          email,
+          password,
+          options: { emailRedirectTo: redirectUrl }
+        });
+
+        if (error) {
+          if (error.message.includes('already registered')) {
+            toast.error('This email is already registered. Please sign in instead.');
+          } else {
+            throw error;
+          }
+          return;
+        }
+
+        if (data.user) {
+          // Link guest profile to auth account
+          if (guestProfileId) {
+            const { data: updatedProfile, error: updateError } = await supabase
+              .from('profiles')
+              .update({ 
+                auth_user_id: data.user.id,
+                is_guest: false,
+                display_name: authDisplayName.trim()
+              })
+              .eq('id', guestProfileId)
+              .select()
+              .single();
+
+            if (!updateError && updatedProfile) {
+              await supabase.from('user_stats').insert({ user_id: data.user.id });
+              setStoredUserId(updatedProfile.id);
+              setStoredDisplayName(updatedProfile.display_name);
+              setStoredIsGuest(false);
+              toast.success('Account created! Your progress has been saved.');
+              setIsGuest(false);
+              // Refetch stats
+              window.location.reload();
+              return;
+            }
+          }
+          
+          // Create new profile
+          const { data: profile, error: profileError } = await supabase
+            .from('profiles')
+            .insert({ 
+              display_name: authDisplayName.trim(),
+              auth_user_id: data.user.id,
+              is_guest: false
+            })
+            .select()
+            .single();
+
+          if (profileError) throw profileError;
+
+          await supabase.from('user_stats').insert({ user_id: data.user.id });
+          setStoredUserId(profile.id);
+          setStoredDisplayName(profile.display_name);
+          setStoredIsGuest(false);
+          toast.success('Account created successfully!');
+          setIsGuest(false);
+          window.location.reload();
+        }
+      } else {
+        const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+
+        if (error) {
+          if (error.message.includes('Invalid login credentials')) {
+            toast.error('Invalid email or password');
+          } else {
+            throw error;
+          }
+          return;
+        }
+
+        if (data.user) {
+          const { data: profile, error: profileError } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('auth_user_id', data.user.id)
+            .single();
+
+          if (profileError || !profile) {
+            toast.error('Profile not found. Please sign up first.');
+            await supabase.auth.signOut();
+            return;
+          }
+
+          setStoredUserId(profile.id);
+          setStoredDisplayName(profile.display_name);
+          setStoredIsGuest(false);
+          toast.success(`Welcome back, ${profile.display_name}!`);
+          setIsGuest(false);
+          window.location.reload();
+        }
+      }
+    } catch (error: any) {
+      console.error('Auth error:', error);
+      toast.error(error.message || 'Authentication failed');
+    } finally {
+      setIsAuthLoading(false);
+    }
+  };
+
   if (isLoading) {
     // Inline skeleton - TransitionOverlay is the only full-screen loader
     return (
@@ -153,6 +307,128 @@ const Stats = () => {
           <div className="h-32 bg-muted rounded-lg animate-pulse"></div>
           <div className="h-24 bg-muted rounded-lg animate-pulse"></div>
           <div className="h-24 bg-muted rounded-lg animate-pulse"></div>
+        </main>
+      </div>
+    );
+  }
+
+  // Guest view - show create account form
+  if (isGuest) {
+    return (
+      <div className="min-h-screen bg-background flex flex-col">
+        <header className="bg-card border-b border-border p-4">
+          <div className="max-w-md mx-auto flex items-center gap-4">
+            <Button variant="ghost" size="icon" onClick={() => navigate(-1)}>
+              <ArrowLeft className="h-5 w-5" />
+            </Button>
+            <h1 className="text-xl font-bold">
+              {authMode === 'signin' ? 'Sign In' : 'Create Account'}
+            </h1>
+          </div>
+        </header>
+
+        <main className="flex-1 p-4 max-w-md mx-auto w-full flex flex-col justify-center">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3 }}
+          >
+            <Card className="p-6 space-y-6">
+              <div className="text-center space-y-2">
+                <h2 className="text-lg font-semibold">Create an account to track your stats</h2>
+                <p className="text-sm text-muted-foreground">Your game progress will be saved across devices</p>
+              </div>
+
+              <div className="space-y-4">
+                {authMode === 'signup' && (
+                  <div className="space-y-2">
+                    <Label htmlFor="authDisplayName">Display Name</Label>
+                    <div className="relative">
+                      <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        id="authDisplayName"
+                        placeholder="Your name"
+                        value={authDisplayName}
+                        onChange={(e) => setAuthDisplayName(e.target.value)}
+                        maxLength={50}
+                        className="pl-10 h-12"
+                      />
+                    </div>
+                    {authErrors.displayName && (
+                      <p className="text-sm text-destructive">{authErrors.displayName}</p>
+                    )}
+                  </div>
+                )}
+
+                <div className="space-y-2">
+                  <Label htmlFor="email">Email</Label>
+                  <div className="relative">
+                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      id="email"
+                      type="email"
+                      placeholder="you@example.com"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      className="pl-10 h-12"
+                    />
+                  </div>
+                  {authErrors.email && (
+                    <p className="text-sm text-destructive">{authErrors.email}</p>
+                  )}
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="password">Password</Label>
+                  <div className="relative">
+                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      id="password"
+                      type="password"
+                      placeholder="••••••••"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      className="pl-10 h-12"
+                    />
+                  </div>
+                  {authErrors.password && (
+                    <p className="text-sm text-destructive">{authErrors.password}</p>
+                  )}
+                </div>
+
+                <Button
+                  className="w-full h-12 text-base"
+                  onClick={handleGuestAuth}
+                  disabled={isAuthLoading}
+                >
+                  {isAuthLoading ? (
+                    <Loader2 className="h-5 w-5 animate-spin" />
+                  ) : authMode === 'signin' ? (
+                    'Sign In'
+                  ) : (
+                    'Create Account'
+                  )}
+                </Button>
+              </div>
+
+              <div className="text-center">
+                <button
+                  type="button"
+                  className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+                  onClick={() => {
+                    setAuthMode(authMode === 'signin' ? 'signup' : 'signin');
+                    setAuthErrors({});
+                  }}
+                >
+                  {authMode === 'signin' ? (
+                    <>Don't have an account? <span className="text-primary font-medium">Sign up</span></>
+                  ) : (
+                    <>Already have an account? <span className="text-primary font-medium">Sign in</span></>
+                  )}
+                </button>
+              </div>
+            </Card>
+          </motion.div>
         </main>
       </div>
     );
