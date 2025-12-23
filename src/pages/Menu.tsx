@@ -5,6 +5,7 @@ import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { supabase } from '@/integrations/supabase/client';
 import { getStoredUserId, getStoredDisplayName, clearStorage, setStoredUserId, setStoredDisplayName } from '@/lib/gameUtils';
+import { setAuthReturnTo } from '@/lib/authRedirect';
 import { Users, Wifi, User, LogIn, BarChart3 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
@@ -124,8 +125,9 @@ const Menu = () => {
   };
 
   const handleAuth = () => {
-    // Pass current location so Auth knows where to return
-    navigate('/auth', { state: { from: '/menu' } });
+    // Set returnTo before navigating to auth
+    setAuthReturnTo('/menu');
+    navigate('/auth');
   };
 
   const handleStats = (event: React.MouseEvent) => {

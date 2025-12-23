@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { supabase } from '@/integrations/supabase/client';
 import { getStoredDisplayName, clearStorage, setStoredDisplayName, setStoredAvatarId } from '@/lib/gameUtils';
+import { setAuthReturnTo } from '@/lib/authRedirect';
 import { toast } from 'sonner';
 import { ArrowLeft, Trophy, Target, Flame, MessageSquare, Vote, LogOut, TrendingUp } from 'lucide-react';
 import { motion } from 'framer-motion';
@@ -38,19 +39,15 @@ const Stats = () => {
   const logoutButtonRef = useRef<HTMLButtonElement>(null);
   const backButtonRef = useRef<HTMLButtonElement>(null);
   
-  // Check if we came from a game/lobby context
-  const fromGame = location.state?.fromGame || false;
-  // Track the original route to return to (for passing through to Auth)
-  const originalFrom = location.state?.originalFrom;
 
   useEffect(() => {
     const fetchStats = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       
       if (!session) {
-        // Pass the original route or current referrer so Auth can navigate back properly
-        const returnTo = originalFrom || (fromGame ? document.referrer || '/menu' : '/menu');
-        navigate('/auth', { state: { from: returnTo }, replace: true });
+        // Set returnTo so Auth can navigate back here
+        setAuthReturnTo('/stats');
+        navigate('/auth', { replace: true });
         return;
       }
 

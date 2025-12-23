@@ -1,11 +1,12 @@
 import { useState } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { supabase } from '@/integrations/supabase/client';
 import { setStoredUserId, setStoredDisplayName, getStoredUserId } from '@/lib/gameUtils';
+import { getAndClearAuthReturnTo, peekAuthReturnTo } from '@/lib/authRedirect';
 import { toast } from 'sonner';
 import { ArrowLeft, Mail, Lock, User, Loader2 } from 'lucide-react';
 import { motion } from 'framer-motion';
@@ -23,11 +24,6 @@ const Auth = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [errors, setErrors] = useState<{ email?: string; password?: string; displayName?: string }>({});
   const navigate = useNavigate();
-  const location = useLocation();
-  
-  // Get the previous route to return to after auth
-  const from = (location.state as { from?: string })?.from || '/menu';
-  console.log('[Auth] location.state:', location.state, 'from:', from);
 
   const validateForm = () => {
     const newErrors: typeof errors = {};
@@ -109,7 +105,8 @@ const Auth = () => {
               setStoredDisplayName(updatedProfile.display_name);
               
               toast.success('Account created! Your progress has been saved.');
-              navigate(from);
+              const returnTo = getAndClearAuthReturnTo() || '/menu';
+              navigate(returnTo);
               return;
             }
           }
@@ -136,7 +133,8 @@ const Auth = () => {
           setStoredDisplayName(profile.display_name);
           
           toast.success('Account created successfully!');
-          navigate(from);
+          const returnTo = getAndClearAuthReturnTo() || '/menu';
+          navigate(returnTo);
         }
       } else {
         const { data, error } = await supabase.auth.signInWithPassword({
@@ -171,7 +169,8 @@ const Auth = () => {
           setStoredDisplayName(profile.display_name);
           
           toast.success(`Welcome back, ${profile.display_name}!`);
-          navigate(from);
+          const returnTo = getAndClearAuthReturnTo() || '/menu';
+          navigate(returnTo);
         }
       }
     } catch (error: any) {
@@ -183,8 +182,9 @@ const Auth = () => {
   };
 
   const handleBack = () => {
-    // Always go back to the previous page
-    navigate(from);
+    // Go back to the stored returnTo or fallback to menu
+    const returnTo = getAndClearAuthReturnTo() || '/menu';
+    navigate(returnTo);
   };
 
   return (
