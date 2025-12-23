@@ -49,7 +49,6 @@ const CACHE_TTL = 30000;
  * Waits for game to exist before fetching all required data.
  */
 export async function preloadGameData(lobbyId: string): Promise<PreloadedGameData | null> {
-  console.log('[PreloadCache] preloadGameData starting for lobby:', lobbyId);
   
   try {
     // First, wait for the game to exist (poll briefly if needed)
@@ -74,7 +73,6 @@ export async function preloadGameData(lobbyId: string): Promise<PreloadedGameDat
     }
     
     if (!lobbyData?.current_game_id) {
-      console.log('[PreloadCache] No game found after polling');
       return null;
     }
     
@@ -104,7 +102,6 @@ export async function preloadGameData(lobbyId: string): Promise<PreloadedGameDat
     const game = gameResult.data as Game | null;
     
     if (!game) {
-      console.log('[PreloadCache] Game not found');
       return null;
     }
     
@@ -141,7 +138,6 @@ export async function preloadGameData(lobbyId: string): Promise<PreloadedGameDat
     const outsiders = outsidersResult.data as GameOutsider[] || [];
     
     if (!secretWord || !currentRound) {
-      console.log('[PreloadCache] Missing required data:', { secretWord: !!secretWord, currentRound: !!currentRound });
       return null;
     }
     
@@ -184,13 +180,10 @@ export async function preloadGameData(lobbyId: string): Promise<PreloadedGameDat
       timestamp: Date.now(),
     };
     
-    // Store in cache
     gameCache.set(lobbyId, preloadedData);
-    console.log('[PreloadCache] Game data cached for lobby:', lobbyId);
     
     return preloadedData;
-  } catch (error) {
-    console.error('[PreloadCache] Error preloading game data:', error);
+  } catch {
     return null;
   }
 }
@@ -199,7 +192,6 @@ export async function preloadGameData(lobbyId: string): Promise<PreloadedGameDat
  * Preload results data for Game → Results transition.
  */
 export async function preloadResultsData(lobbyId: string, gameId: string): Promise<PreloadedResultsData | null> {
-  console.log('[PreloadCache] preloadResultsData starting for lobby:', lobbyId, 'game:', gameId);
   
   try {
     // Fetch all required data in parallel
@@ -232,7 +224,6 @@ export async function preloadResultsData(lobbyId: string, gameId: string): Promi
     const outsiders = outsidersResult.data as GameOutsider[] || [];
     
     if (!lobby || !game) {
-      console.log('[PreloadCache] Missing lobby or game data');
       return null;
     }
     
@@ -248,7 +239,6 @@ export async function preloadResultsData(lobbyId: string, gameId: string): Promi
     const imposterWord = imposterWordResult.data as Word | null;
     
     if (!secretWord) {
-      console.log('[PreloadCache] Missing secret word');
       return null;
     }
     
@@ -263,13 +253,10 @@ export async function preloadResultsData(lobbyId: string, gameId: string): Promi
       timestamp: Date.now(),
     };
     
-    // Store in cache
     resultsCache.set(lobbyId, preloadedData);
-    console.log('[PreloadCache] Results data cached for lobby:', lobbyId);
     
     return preloadedData;
-  } catch (error) {
-    console.error('[PreloadCache] Error preloading results data:', error);
+  } catch {
     return null;
   }
 }
