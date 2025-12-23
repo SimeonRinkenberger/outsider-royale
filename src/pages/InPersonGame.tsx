@@ -6,7 +6,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Eye, EyeOff, ArrowRight, RotateCcw, Trophy, Users } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import Confetti from '@/components/Confetti';
+
 import GameHeader from '@/components/GameHeader';
 import { useAudio } from '@/contexts/AudioContext';
 
@@ -26,7 +26,7 @@ const InPersonGame = () => {
   const [config, setConfig] = useState<InPersonGameConfig | null>(null);
   const [isWordVisible, setIsWordVisible] = useState(false);
   const [selectedVote, setSelectedVote] = useState<string | null>(null);
-  const [showConfetti, setShowConfetti] = useState(false);
+  
   const { setMusicState } = useAudio();
   
   useEffect(() => {
@@ -109,7 +109,7 @@ const InPersonGame = () => {
     
     if (currentVoterIndex + 1 >= config.players.length) {
       updateConfig({ phase: 'results', votes: newVotes });
-      setShowConfetti(true);
+      
     } else {
       updateConfig({ votes: newVotes, currentVoterIndex: currentVoterIndex + 1 });
       setSelectedVote(null);
@@ -182,7 +182,7 @@ const InPersonGame = () => {
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
-      {showConfetti && <Confetti isActive={showConfetti} />}
+      
       
       <GameHeader 
         title={
