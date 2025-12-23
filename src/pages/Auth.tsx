@@ -11,6 +11,7 @@ import { toast } from 'sonner';
 import { ArrowLeft, Mail, Lock, User, Loader2 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { z } from 'zod';
+import { useTransition } from '@/contexts/TransitionContext';
 
 
 const emailSchema = z.string().email('Please enter a valid email address');
@@ -24,6 +25,7 @@ const Auth = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [errors, setErrors] = useState<{ email?: string; password?: string; displayName?: string }>({});
   const navigate = useNavigate();
+  const { startTransition } = useTransition();
 
   const validateForm = () => {
     const newErrors: typeof errors = {};
@@ -181,10 +183,42 @@ const Auth = () => {
     }
   };
 
-  const handleBack = () => {
-    // Go back to the stored returnTo or fallback to menu
-    const returnTo = getAndClearAuthReturnTo() || '/menu';
-    navigate(returnTo);
+  const handleBack = (event: React.MouseEvent) => {
+    const returnTo = peekAuthReturnTo();
+    const historyLen = window.history.length;
+    
+    console.log('[AUTH_BACK] clicked returnTo=', returnTo, 'historyLen=', historyLen);
+    
+    // Get click origin for transition animation
+    const rect = event.currentTarget.getBoundingClientRect();
+    const origin = { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
+    
+    // Option 1: Use stored returnTo if it exists and is not /auth
+    if (returnTo && returnTo !== '/auth') {
+      console.log('[AUTH_BACK] using returnTo');
+      // Clear it before navigating
+      getAndClearAuthReturnTo();
+      startTransition(returnTo, {
+        origin,
+        loadingText: 'Returning…'
+      });
+      return;
+    }
+    
+    // Option 2: Use browser history if we have somewhere to go back to
+    // history.length > 2 means there's a real page to go back to (not just the initial page)
+    if (historyLen > 2) {
+      console.log('[AUTH_BACK] using navigate(-1)');
+      navigate(-1);
+      return;
+    }
+    
+    // Option 3: Fallback to menu
+    console.log('[AUTH_BACK] fallback to /menu');
+    startTransition('/menu', {
+      origin,
+      loadingText: 'Returning…'
+    });
   };
 
   return (
