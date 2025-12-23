@@ -10,7 +10,7 @@ import { toast } from 'sonner';
 import { Trophy, XCircle, RotateCcw, DoorOpen, Settings, ChevronDown, User } from 'lucide-react';
 import cryingFoxImg from '@/assets/crying_fox.png';
 import happyFoxImg from '@/assets/happy_fox.png';
-import Confetti from '@/components/Confetti';
+
 import { GameConfigPanel, GameConfig, getActiveModifierLabels } from '@/components/GameConfigPanel';
 import { GameMode } from '@/types/game';
 import GameHeader from '@/components/GameHeader';
@@ -48,7 +48,6 @@ const Results = () => {
   } = useCustomContent();
   
   const [isResetting, setIsResetting] = useState(false);
-  const [showConfetti, setShowConfetti] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [gameConfig, setGameConfig] = useState<GameConfig>({
     selectedCategories: ['animal', 'brand', 'food', 'movie', 'person', 'place', 'thing'],
@@ -322,12 +321,6 @@ const Results = () => {
     updateUserStats();
   }, [resultsReady, game?.id, userId, players, outsiders, outsiderWins, groupWins, votes]);
 
-  // Trigger confetti on group win - must be before early return
-  useEffect(() => {
-    if (resultsReady && groupWins && game && secretWord) {
-      setShowConfetti(true);
-    }
-  }, [resultsReady, groupWins, game, secretWord]);
 
   const playAgain = async () => {
     // Idempotency guard - prevent double execution
@@ -666,7 +659,6 @@ const Results = () => {
   return (
     <>
       <div className="min-h-screen bg-background pb-24">
-      <Confetti isActive={showConfetti} />
       
       <GameHeader 
         title="Game Results"
