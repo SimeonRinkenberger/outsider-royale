@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
-import { setStoredUserId, setStoredDisplayName } from '@/lib/gameUtils';
+import { setStoredUserId, setStoredDisplayName, setStoredIsGuest } from '@/lib/gameUtils';
 import { getAndClearAuthReturnTo } from '@/lib/authRedirect';
 import { toast } from 'sonner';
 
@@ -26,6 +26,7 @@ const AuthCallback = () => {
           if (existingProfile) {
             setStoredUserId(existingProfile.id);
             setStoredDisplayName(existingProfile.display_name);
+            setStoredIsGuest(false); // OAuth = authed
             toast.success(`Welcome back, ${existingProfile.display_name}!`);
             const returnTo = getAndClearAuthReturnTo() || '/menu';
             navigate(returnTo);
@@ -57,6 +58,7 @@ const AuthCallback = () => {
 
           setStoredUserId(profile.id);
           setStoredDisplayName(profile.display_name);
+          setStoredIsGuest(false); // OAuth = authed
           
           toast.success('Account created successfully!');
           const returnTo = getAndClearAuthReturnTo() || '/menu';

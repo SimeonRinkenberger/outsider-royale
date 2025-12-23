@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { supabase } from '@/integrations/supabase/client';
-import { setStoredUserId, setStoredDisplayName, getStoredUserId } from '@/lib/gameUtils';
+import { setStoredUserId, setStoredDisplayName, getStoredUserId, setStoredIsGuest, getSessionMode } from '@/lib/gameUtils';
 import { getAndClearAuthReturnTo, peekAuthReturnTo } from '@/lib/authRedirect';
 import { toast } from 'sonner';
 import { ArrowLeft, Mail, Lock, User, Loader2 } from 'lucide-react';
@@ -105,6 +105,7 @@ const Auth = () => {
 
               setStoredUserId(updatedProfile.id);
               setStoredDisplayName(updatedProfile.display_name);
+              setStoredIsGuest(false); // Upgraded to authed
               
               toast.success('Account created! Your progress has been saved.');
               const returnTo = getAndClearAuthReturnTo() || '/menu';
@@ -133,6 +134,7 @@ const Auth = () => {
 
           setStoredUserId(profile.id);
           setStoredDisplayName(profile.display_name);
+          setStoredIsGuest(false); // New authed account
           
           toast.success('Account created successfully!');
           const returnTo = getAndClearAuthReturnTo() || '/menu';
@@ -169,6 +171,7 @@ const Auth = () => {
 
           setStoredUserId(profile.id);
           setStoredDisplayName(profile.display_name);
+          setStoredIsGuest(false); // Signed in = authed
           
           toast.success(`Welcome back, ${profile.display_name}!`);
           const returnTo = getAndClearAuthReturnTo() || '/menu';
@@ -186,8 +189,9 @@ const Auth = () => {
   const handleBack = (event: React.MouseEvent) => {
     const returnTo = peekAuthReturnTo();
     const historyLen = window.history.length;
+    const sessionMode = getSessionMode();
     
-    console.log('[AUTH_BACK] clicked returnTo=', returnTo, 'historyLen=', historyLen);
+    console.log('[AUTH_BACK] clicked returnTo=', returnTo, 'historyLen=', historyLen, 'mode=', sessionMode);
     
     // Get click origin for transition animation
     const rect = event.currentTarget.getBoundingClientRect();
@@ -195,7 +199,7 @@ const Auth = () => {
     
     // Option 1: Use stored returnTo if it exists and is not /auth
     if (returnTo && returnTo !== '/auth') {
-      console.log('[AUTH_BACK] using returnTo');
+      console.log('[AUTH_BACK] using returnTo, mode=', sessionMode);
       // Clear it before navigating
       getAndClearAuthReturnTo();
       startTransition(returnTo, {

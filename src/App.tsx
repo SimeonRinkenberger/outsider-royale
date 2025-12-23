@@ -2,9 +2,9 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { ThemeProvider } from "next-themes";
-import { getStoredUserId } from './lib/gameUtils';
+import { hasValidSession } from './lib/gameUtils';
 import { AudioProvider } from './contexts/AudioContext';
 import { TransitionProvider } from './contexts/TransitionContext';
 import ThemeToggle from './components/ThemeToggle';
@@ -25,10 +25,24 @@ import NotFound from './pages/NotFound';
 
 const queryClient = new QueryClient();
 
+/**
+ * ProtectedRoute - allows access for both guest and authed users
+ * Only redirects to onboarding if there's no session at all (mode === 'none')
+ * Game flow routes (lobby, game, results) work for guests
+ */
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
-  // getStoredUserId is synchronous (localStorage), no need for loading state
-  const userId = getStoredUserId();
-  return userId ? <>{children}</> : <Navigate to="/onboarding" replace />;
+  const location = useLocation();
+  const hasSession = hasValidSession();
+  
+  console.log('[GUARD] route=', location.pathname, 'allowed=', hasSession, 'hasSession=', hasSession);
+  
+  // Allow access if user has any valid session (guest or authed)
+  if (hasSession) {
+    return <>{children}</>;
+  }
+  
+  // No session at all - redirect to onboarding
+  return <Navigate to="/onboarding" replace />;
 };
 
 const App = () => (

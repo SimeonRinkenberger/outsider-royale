@@ -3,7 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { supabase } from '@/integrations/supabase/client';
-import { getStoredDisplayName, clearStorage, setStoredDisplayName, setStoredAvatarId } from '@/lib/gameUtils';
+import { getStoredDisplayName, clearStorage, setStoredDisplayName, setStoredAvatarId, isAuthenticated, getSessionMode } from '@/lib/gameUtils';
 import { setAuthReturnTo } from '@/lib/authRedirect';
 import { toast } from 'sonner';
 import { ArrowLeft, Trophy, Target, Flame, MessageSquare, Vote, LogOut, TrendingUp } from 'lucide-react';
@@ -42,10 +42,14 @@ const Stats = () => {
 
   useEffect(() => {
     const fetchStats = async () => {
+      // Stats page requires authed session (not guest)
+      const sessionMode = getSessionMode();
+      console.log('[GUARD] route=/stats mode=', sessionMode);
+      
       const { data: { session } } = await supabase.auth.getSession();
       
-      if (!session) {
-        // Set returnTo so Auth can navigate back here
+      if (!session || !isAuthenticated()) {
+        // Guest or no session - redirect to auth to upgrade
         setAuthReturnTo('/stats');
         navigate('/auth', { replace: true });
         return;
