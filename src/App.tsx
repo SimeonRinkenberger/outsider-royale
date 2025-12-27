@@ -7,7 +7,6 @@ import { ThemeProvider } from "next-themes";
 import { hasValidSession } from './lib/gameUtils';
 import { AudioProvider } from './contexts/AudioContext';
 import { TransitionProvider } from './contexts/TransitionContext';
-import { SettingsDropdown } from './components/SettingsDropdown';
 import ErrorBoundary from './components/ErrorBoundary';
 import Menu from './pages/Menu';
 import Onboarding from './pages/Onboarding';
@@ -53,7 +52,6 @@ const App = () => (
           <Sonner />
           <BrowserRouter>
             <TransitionProvider>
-              <SettingsDropdown className="fixed top-3 left-4 z-50" />
               
               <Routes>
               <Route path="/" element={<Menu />} />

@@ -23,7 +23,7 @@ interface SettingsDropdownProps {
 export const SettingsDropdown = ({ className }: SettingsDropdownProps) => {
   const { volume, setVolume, isMuted, toggleMute } = useAudio();
   const { theme, setTheme, resolvedTheme } = useTheme();
-  const [isOpen, setIsOpen] = useState(false);
+  const [isSpinning, setIsSpinning] = useState(false);
 
   const forceUpdate = async () => {
     toast.info('Clearing cache and reloading...');
@@ -43,16 +43,22 @@ export const SettingsDropdown = ({ className }: SettingsDropdownProps) => {
 
   const currentTheme = resolvedTheme || theme;
 
+  const handleOpenChange = (open: boolean) => {
+    if (open) {
+      setIsSpinning(true);
+      setTimeout(() => setIsSpinning(false), 500);
+    }
+  };
+
   return (
-    <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
+    <DropdownMenu onOpenChange={handleOpenChange}>
       <DropdownMenuTrigger asChild>
         <Button variant="ghost" size="icon" className={className}>
           <Settings 
             className={cn(
               "h-5 w-5 transition-transform duration-500",
-              isOpen && "animate-spin"
+              isSpinning && "rotate-180"
             )} 
-            style={{ animationDuration: isOpen ? '0.5s' : undefined }}
           />
         </Button>
       </DropdownMenuTrigger>
