@@ -42,7 +42,7 @@ const Onboarding = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-primary flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gradient-primary flex items-center justify-center p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] overflow-x-hidden">
       <div className="w-full max-w-md space-y-8">
         <div className="text-center space-y-4">
           <div className="mx-auto w-20 h-20 rounded-full bg-white/20 flex items-center justify-center">

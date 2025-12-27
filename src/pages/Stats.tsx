@@ -315,7 +315,7 @@ const Stats = () => {
   // Guest view - show create account form
   if (isGuest) {
     return (
-      <div className="min-h-screen bg-background flex flex-col">
+      <div className="min-h-screen bg-background flex flex-col overflow-x-hidden pb-[env(safe-area-inset-bottom)]">
         <header className="bg-card border-b border-border p-4">
           <div className="max-w-md mx-auto flex items-center gap-4">
             <Button variant="ghost" size="icon" onClick={() => navigate(-1)}>
@@ -443,7 +443,7 @@ const Stats = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background overflow-x-hidden pb-[env(safe-area-inset-bottom)]">
       <header className="bg-card border-b border-border p-4">
         <div className="max-w-md mx-auto flex items-center justify-between">
           <div className="flex items-center gap-4">

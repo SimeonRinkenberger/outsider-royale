@@ -110,7 +110,7 @@ const InPersonSetup = () => {
   const recommendedOutsiders = validPlayerCount <= 4 ? 1 : validPlayerCount <= 7 ? 2 : validPlayerCount <= 12 ? 3 : 4;
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background overflow-x-hidden pb-[env(safe-area-inset-bottom)]">
       <GameHeader title="In Person Setup" showBack={true} backPath="/menu" />
 
       <main className="p-4 max-w-md mx-auto space-y-6">

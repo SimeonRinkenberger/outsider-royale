@@ -146,7 +146,7 @@ const Home = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background overflow-x-hidden">
       <GameHeader title="Outsider Royale" showBack={true} backPath="/menu" />
 
       <main className="p-4 max-w-md mx-auto space-y-6 py-8">

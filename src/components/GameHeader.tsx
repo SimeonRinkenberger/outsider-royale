@@ -75,17 +75,17 @@ const GameHeader = ({ title, showBack = true, backPath, onBack, rightContent }: 
   };
 
   return (
-    <header className="bg-card border-b border-border p-4">
-      <div className="max-w-md mx-auto flex items-center justify-between">
-        <div className="flex items-center gap-4">
+    <header className="bg-card border-b border-border p-4 sticky top-0 z-20">
+      <div className="max-w-md mx-auto flex items-center justify-between gap-2">
+        <div className="flex items-center gap-3 min-w-0 flex-1">
           {showBack && (
-            <Button variant="ghost" size="icon" onClick={handleBack} disabled={isNavigating}>
+            <Button variant="ghost" size="icon" onClick={handleBack} disabled={isNavigating} className="shrink-0">
               <ArrowLeft className="h-5 w-5" />
             </Button>
           )}
-          <h1 className="text-xl font-bold truncate">{title}</h1>
+          <h1 className="text-lg sm:text-xl font-bold truncate">{title}</h1>
         </div>
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-1 shrink-0">
           {rightContent}
           <SettingsDropdown />
           <Button variant="ghost" size="icon" onClick={handleProfileClick} className="relative">
