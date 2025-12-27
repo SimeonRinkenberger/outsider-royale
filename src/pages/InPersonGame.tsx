@@ -238,7 +238,7 @@ const InPersonGame = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background flex flex-col overflow-hidden">
+    <div className="min-h-screen bg-background flex flex-col overflow-hidden pb-[env(safe-area-inset-bottom)]">
       <GameHeader 
         title={
           config.phase === 'word-reveal' ? 'Pass the Device' :

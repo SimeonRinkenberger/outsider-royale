@@ -775,7 +775,7 @@ const Game = () => {
   if (showSkeleton) {
     // Render inline skeleton within page shell - NOT a separate loading screen
     return (
-      <div className="min-h-screen bg-background">
+      <div className="min-h-screen bg-background overflow-x-hidden pb-[env(safe-area-inset-bottom)]">
         {/* Header skeleton */}
         <header className="bg-card border-b border-border p-4 sticky top-0 z-10">
           <div className="max-w-md mx-auto flex items-center justify-between">
@@ -821,7 +821,7 @@ const Game = () => {
   if (displayedStatus === 'clue_round') {
     return (
       <>
-        <div className="min-h-screen bg-background pb-24">
+        <div className="min-h-screen bg-background pb-[calc(6rem+env(safe-area-inset-bottom))] overflow-x-hidden">
         <header className="bg-card border-b border-border p-4 sticky top-0 z-10">
           <div className="max-w-md mx-auto flex items-center justify-between">
             <div className="text-center flex-1">
@@ -1224,7 +1224,7 @@ const Game = () => {
     
     return (
       <>
-        <div className="min-h-screen bg-background pb-24">
+        <div className="min-h-screen bg-background pb-[calc(6rem+env(safe-area-inset-bottom))] overflow-x-hidden">
         <header className="bg-card border-b border-border p-4 sticky top-0 z-10">
           <div className="max-w-md mx-auto flex items-center justify-between">
             <div className="text-center flex-1">

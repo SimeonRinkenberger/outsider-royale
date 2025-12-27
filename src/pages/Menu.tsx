@@ -160,7 +160,7 @@ const Menu = () => {
     );
   }
 
-  return <div className="min-h-screen bg-background flex flex-col">
+  return <div className="min-h-screen bg-background flex flex-col overflow-x-hidden">
       {/* Header */}
       <header className="bg-card border-b border-border p-4">
         <div className="max-w-md mx-auto flex items-center justify-between">

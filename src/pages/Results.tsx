@@ -653,7 +653,7 @@ const Results = () => {
 
   return (
     <>
-      <div className="min-h-screen bg-background pb-24">
+      <div className="min-h-screen bg-background pb-[calc(6rem+env(safe-area-inset-bottom))] overflow-x-hidden">
       
       <GameHeader 
         title="Game Results"

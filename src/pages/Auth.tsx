@@ -226,7 +226,7 @@ const Auth = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background flex flex-col">
+    <div className="min-h-screen bg-background flex flex-col overflow-x-hidden pb-[env(safe-area-inset-bottom)]">
       <header className="bg-card border-b border-border p-4">
         <div className="max-w-md mx-auto flex items-center gap-4">
           <Button variant="ghost" size="icon" onClick={handleBack}>

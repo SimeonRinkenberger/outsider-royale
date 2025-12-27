@@ -489,7 +489,7 @@ const Lobby = () => {
 
   return (
     <>
-      <div className="min-h-screen bg-background pb-48" style={{ scrollbarGutter: 'stable' }}>
+      <div className="min-h-screen bg-background pb-48 overflow-x-hidden" style={{ scrollbarGutter: 'stable' }}>
       <GameHeader title="Lobby" showBack={true} onBack={leaveLobby} />
 
       <main className="p-4 max-w-md mx-auto space-y-6 py-6">
@@ -668,7 +668,7 @@ const Lobby = () => {
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.3, ease: [0.25, 0.46, 0.45, 0.94] }}
-            className="fixed bottom-6 left-0 right-0 px-4 max-w-md mx-auto space-y-3"
+            className="fixed bottom-0 left-0 right-0 px-4 pb-[calc(1.5rem+env(safe-area-inset-bottom))] pt-3 max-w-md mx-auto space-y-3 bg-gradient-to-t from-background via-background to-transparent"
           >
             <AnimatePresence>
               {gameConfig.selectedModifiers.length > 0 && (
