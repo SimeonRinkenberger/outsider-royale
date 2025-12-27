@@ -11,7 +11,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
 import { useTransition } from '@/contexts/TransitionContext';
 import { useAudio } from '@/contexts/AudioContext';
-import { MusicControls } from '@/components/MusicControls';
+import { SettingsDropdown } from '@/components/SettingsDropdown';
 import welcomeFox from '@/assets/welcome_fox.png';
 
 const Menu = () => {
@@ -168,7 +168,7 @@ const Menu = () => {
             Outsider Royale
           </h1>
           <div className="flex items-center gap-2">
-            <MusicControls />
+            <SettingsDropdown />
             {isAuthenticated ? <Button variant="ghost" size="icon" onClick={handleStats}>
                 <BarChart3 className="h-5 w-5" />
               </Button> : <Button variant="ghost" size="sm" onClick={handleAuth}>
