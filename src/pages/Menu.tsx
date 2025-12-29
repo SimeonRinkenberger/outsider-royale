@@ -13,10 +13,11 @@ import { useTransition } from '@/contexts/TransitionContext';
 import { useAudio } from '@/contexts/AudioContext';
 import { SettingsDropdown } from '@/components/SettingsDropdown';
 import welcomeFox from '@/assets/welcome_fox.png';
-
 const Menu = () => {
   const navigate = useNavigate();
-  const { startTransition } = useTransition();
+  const {
+    startTransition
+  } = useTransition();
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [displayName, setDisplayName] = useState<string | null>(null);
@@ -24,12 +25,12 @@ const Menu = () => {
   const [guestName, setGuestName] = useState('');
   const [hasAnimated, setHasAnimated] = useState(false);
   const [isCreatingGuest, setIsCreatingGuest] = useState(false);
-  
-  const { setMusicState } = useAudio();
+  const {
+    setMusicState
+  } = useAudio();
   useEffect(() => {
     setMusicState('menu');
   }, [setMusicState]);
-
   useEffect(() => {
     const checkAuth = async () => {
       const {
@@ -65,15 +66,16 @@ const Menu = () => {
     checkAuth();
     return () => subscription.unsubscribe();
   }, []);
-
   const handleInPerson = (event: React.MouseEvent) => {
     const target = event.currentTarget as HTMLElement;
     const rect = target.getBoundingClientRect();
     startTransition('/in-person', {
-      origin: { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 }
+      origin: {
+        x: rect.left + rect.width / 2,
+        y: rect.top + rect.height / 2
+      }
     });
   };
-
   const handleOnline = (event: React.MouseEvent) => {
     // Check if user has a profile (guest or authenticated)
     const userId = getStoredUserId();
@@ -81,20 +83,22 @@ const Menu = () => {
       const target = event.currentTarget as HTMLElement;
       const rect = target.getBoundingClientRect();
       startTransition('/home', {
-        origin: { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 }
+        origin: {
+          x: rect.left + rect.width / 2,
+          y: rect.top + rect.height / 2
+        }
       });
     } else {
       // Show the guest input instead of navigating
       setShowGuestInput(true);
     }
   };
-
   const handleGuestContinue = async (event?: React.MouseEvent<HTMLButtonElement>) => {
     if (!guestName.trim() || guestName.length > 50) {
       toast.error('Please enter a name (1-50 characters)');
       return;
     }
-    
+
     // Capture button position before async operation
     let buttonX = window.innerWidth / 2;
     let buttonY = window.innerHeight / 2;
@@ -103,19 +107,21 @@ const Menu = () => {
       buttonX = rect.left + rect.width / 2;
       buttonY = rect.top + rect.height / 2;
     }
-    
     setIsCreatingGuest(true);
-    
     startTransition('/home', {
-      origin: { x: buttonX, y: buttonY },
+      origin: {
+        x: buttonX,
+        y: buttonY
+      },
       loadingText: 'Creating profile',
       prepare: async () => {
-        const { data, error } = await supabase.from('profiles').insert({
+        const {
+          data,
+          error
+        } = await supabase.from('profiles').insert({
           display_name: guestName.trim()
         }).select().single();
-        
         if (error) throw error;
-        
         setStoredUserId(data.id);
         setStoredDisplayName(data.display_name);
         setStoredIsGuest(true); // Mark as guest session
@@ -124,25 +130,24 @@ const Menu = () => {
       }
     });
   };
-
   const handleAuth = () => {
     // Set returnTo before navigating to auth
     setAuthReturnTo('/menu');
     navigate('/auth');
   };
-
   const handleStats = (event: React.MouseEvent) => {
     const target = event.currentTarget as HTMLElement;
     const rect = target.getBoundingClientRect();
     startTransition('/stats', {
-      origin: { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 }
+      origin: {
+        x: rect.left + rect.width / 2,
+        y: rect.top + rect.height / 2
+      }
     });
   };
-
   if (isLoading) {
     // Inline skeleton - TransitionOverlay is the only full-screen loader
-    return (
-      <div className="min-h-screen bg-background flex flex-col">
+    return <div className="min-h-screen bg-background flex flex-col">
         <header className="bg-card border-b border-border p-4">
           <div className="max-w-md mx-auto flex items-center justify-between">
             <div className="h-8 w-40 bg-muted rounded animate-pulse"></div>
@@ -156,10 +161,8 @@ const Menu = () => {
             <div className="h-12 bg-muted rounded animate-pulse"></div>
           </div>
         </main>
-      </div>
-    );
+      </div>;
   }
-
   return <div className="min-h-screen bg-background flex flex-col overflow-x-hidden">
       {/* Header */}
       <header className="bg-card border-b border-border p-4">
@@ -206,13 +209,13 @@ const Menu = () => {
           duration: 0.5,
           delay: 0.1
         }}>
-            <Card className="p-6 cursor-pointer hover:scale-[1.02] transition-all duration-300 border-2 hover:border-primary/50" onClick={(e) => handleInPerson(e)}>
+            <Card className="p-6 cursor-pointer hover:scale-[1.02] transition-all duration-300 border-2 hover:border-primary/50" onClick={e => handleInPerson(e)}>
               <div className="flex items-center gap-4">
                 <div className="p-3 rounded-xl bg-gradient-primary">
                   <Users className="h-8 w-8 text-white" />
                 </div>
                 <div className="flex-1">
-                  <h3 className="text-xl font-bold">In Person</h3>
+                  <h3 className="text-xl font-bold">In Person (One Phone)</h3>
                   <p className="text-muted-foreground text-sm">
                     Pass & Play - One device, take turns
                   </p>
@@ -266,31 +269,13 @@ const Menu = () => {
                         <label className="text-sm font-medium" htmlFor="guest-name-input">Choose a display name</label>
                         <div className="relative rounded-md focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2 focus-within:ring-offset-background">
                           <div className="relative overflow-hidden rounded-md">
-                            <Input 
-                              id="guest-name-input"
-                              placeholder="" 
-                              value={guestName} 
-                              onChange={e => setGuestName(e.target.value)} 
-                              maxLength={50} 
-                              onKeyDown={e => e.key === 'Enter' && handleGuestContinue()} 
-                              autoFocus 
-                              onClick={e => e.stopPropagation()} 
-                              onFocus={() => setHasAnimated(true)}
-                              className="h-12 text-base pl-3 focus-visible:ring-0 focus-visible:ring-offset-0" 
-                            />
-                            {guestName.length === 0 && (
-                              <span 
-                                aria-hidden="true" 
-                                className="absolute inset-y-0 left-0 flex items-center pl-3 pr-3 pointer-events-none max-w-full z-10"
-                              >
+                            <Input id="guest-name-input" placeholder="" value={guestName} onChange={e => setGuestName(e.target.value)} maxLength={50} onKeyDown={e => e.key === 'Enter' && handleGuestContinue()} autoFocus onClick={e => e.stopPropagation()} onFocus={() => setHasAnimated(true)} className="h-12 text-base pl-3 focus-visible:ring-0 focus-visible:ring-offset-0" />
+                            {guestName.length === 0 && <span aria-hidden="true" className="absolute inset-y-0 left-0 flex items-center pl-3 pr-3 pointer-events-none max-w-full z-10">
                                 <span className="relative text-base truncate">
                                   <span className="placeholder-base">Enter your name</span>
-                                  {hasAnimated && (
-                                    <span className="placeholder-highlight" aria-hidden="true">Enter your name</span>
-                                  )}
+                                  {hasAnimated && <span className="placeholder-highlight" aria-hidden="true">Enter your name</span>}
                                 </span>
-                              </span>
-                            )}
+                              </span>}
                           </div>
                         </div>
                         <p className="text-xs text-muted-foreground">
@@ -347,5 +332,4 @@ const Menu = () => {
       </main>
     </div>;
 };
-
 export default Menu;
