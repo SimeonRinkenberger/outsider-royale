@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { ArrowRight, RotateCcw, Users, Settings, ChevronDown, ChevronUp } from 'lucide-react';
+import { ArrowRight, RotateCcw, Users, Settings, ChevronDown, ChevronUp, DoorOpen } from 'lucide-react';
 import { motion, AnimatePresence, useMotionValue, useTransform, useAnimation } from 'framer-motion';
 
 import GameHeader from '@/components/GameHeader';
@@ -450,6 +450,12 @@ const InPersonGame = () => {
           config.phase === 'voting' ? 'Voting' : 'Results'
         }
         showBack={false}
+        rightContent={
+          <Button variant="ghost" size="sm" onClick={exitGame} className="gap-1 text-muted-foreground">
+            <DoorOpen className="h-4 w-4" />
+            <span className="hidden sm:inline">Exit</span>
+          </Button>
+        }
       />
 
       <main className="flex-1 p-4 max-w-md mx-auto w-full flex flex-col justify-center">
