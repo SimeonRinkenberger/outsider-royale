@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { supabase } from '@/integrations/supabase/client';
 import { getStoredUserId, getStoredDisplayName, clearStorage, setStoredUserId, setStoredDisplayName, setStoredIsGuest } from '@/lib/gameUtils';
 import { setAuthReturnTo } from '@/lib/authRedirect';
-import { Users, Wifi, User, LogIn, BarChart3 } from 'lucide-react';
+import { Users, Wifi, User, LogIn, BarChart3, ExternalLink } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
 import { useTransition } from '@/contexts/TransitionContext';
@@ -327,6 +327,24 @@ const Menu = () => {
               </div>
             </Card>
           </motion.div>}
+
+        {/* Privacy Policy Link */}
+        <motion.div 
+          initial={{ opacity: 0 }} 
+          animate={{ opacity: 1 }} 
+          transition={{ duration: 0.5, delay: 0.4 }}
+          className="pt-4 pb-2 text-center"
+        >
+          <a 
+            href="https://www.notion.so/Privacy-Policy-Outsider-Royale-2da1f594451b80d4a04bd700a4c35418" 
+            target="_blank" 
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+          >
+            Privacy Policy
+            <ExternalLink className="h-3 w-3" />
+          </a>
+        </motion.div>
       </main>
     </div>;
 };
