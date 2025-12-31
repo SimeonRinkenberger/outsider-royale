@@ -575,6 +575,7 @@ const InPersonGame = () => {
                   customModifiers={config.customModifiers || []}
                   gameMode={(config.gameMode as 'classic' | 'elimination' | 'hidden_imposter') || 'classic'}
                   compact
+                  allHonorSystem
                 />
               </motion.div>
               
@@ -682,6 +683,7 @@ const InPersonGame = () => {
                   customModifiers={config.customModifiers || []}
                   gameMode={(config.gameMode as 'classic' | 'elimination' | 'hidden_imposter') || 'classic'}
                   compact
+                  allHonorSystem
                 />
               </motion.div>
               
@@ -790,6 +792,7 @@ const InPersonGame = () => {
                   customModifiers={config.customModifiers || []}
                   gameMode={(config.gameMode as 'classic' | 'elimination' | 'hidden_imposter') || 'classic'}
                   compact
+                  allHonorSystem
                 />
               </motion.div>
             </motion.div>
