@@ -4,8 +4,8 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { Eye, EyeOff, ArrowRight, RotateCcw, Users, Settings, ChevronDown } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { ArrowRight, RotateCcw, Users, Settings, ChevronDown, ChevronUp } from 'lucide-react';
+import { motion, AnimatePresence, useMotionValue, useTransform, useAnimation } from 'framer-motion';
 
 import GameHeader from '@/components/GameHeader';
 import { useAudio } from '@/contexts/AudioContext';
@@ -83,9 +83,16 @@ const InPersonGame = () => {
   const navigate = useNavigate();
   const [config, setConfig] = useState<InPersonGameConfig | null>(null);
   const [isWordVisible, setIsWordVisible] = useState(false);
+  const [hasViewedWord, setHasViewedWord] = useState(false);
   const [selectedVote, setSelectedVote] = useState<string | null>(null);
   const [direction, setDirection] = useState(1); // 1 for forward, -1 for backward
   const [showSettings, setShowSettings] = useState(false);
+  
+  // Swipe card controls
+  const dragY = useMotionValue(0);
+  const cardControls = useAnimation();
+  const coverOpacity = useTransform(dragY, [-150, 0], [0, 1]);
+  const revealOpacity = useTransform(dragY, [-150, -50], [1, 0]);
   
   const { setMusicState } = useAudio();
   const {
@@ -196,6 +203,8 @@ const InPersonGame = () => {
       updateConfig({ currentPlayerIndex: nextIndex });
     }
     setIsWordVisible(false);
+    setHasViewedWord(false);
+    cardControls.set({ y: 0 });
   };
 
   const startVoting = () => {
@@ -291,7 +300,9 @@ const InPersonGame = () => {
     setConfig(newGameConfig);
     setSelectedVote(null);
     setIsWordVisible(false);
+    setHasViewedWord(false);
     setShowSettings(false);
+    cardControls.set({ y: 0 });
     toast.success('New game started!');
   };
 
@@ -410,83 +421,68 @@ const InPersonGame = () => {
                   {config.players[config.currentPlayerIndex]}
                 </motion.h2>
                 
-                <AnimatePresence mode="wait">
-                  {!isWordVisible ? (
+                {/* Swipe Card Container */}
+                <div className="relative h-40 mb-4">
+                  {/* Role content underneath */}
+                  <motion.div 
+                    className={`absolute inset-0 p-6 rounded-xl flex items-center justify-center ${isCurrentPlayerOutsider ? 'bg-destructive/10 border-2 border-destructive' : 'bg-primary/10 border-2 border-primary'}`}
+                    style={{ opacity: revealOpacity }}
+                  >
+                    {isCurrentPlayerOutsider ? (
+                      <div>
+                        <p className="text-lg font-bold text-destructive mb-1">You are the OUTSIDER!</p>
+                        <p className="text-sm text-muted-foreground">You don't know the word. Try to blend in!</p>
+                      </div>
+                    ) : (
+                      <div>
+                        <p className="text-sm text-muted-foreground mb-1">The secret word is:</p>
+                        <p className="text-3xl font-bold text-primary">
+                          {config.secretWord}
+                        </p>
+                      </div>
+                    )}
+                  </motion.div>
+                  
+                  {/* Draggable cover card */}
+                  <motion.div
+                    drag="y"
+                    dragConstraints={{ top: -150, bottom: 0 }}
+                    dragElastic={0.1}
+                    style={{ y: dragY, opacity: coverOpacity }}
+                    animate={cardControls}
+                    onDrag={(_, info) => {
+                      if (info.offset.y < -100 && !hasViewedWord) {
+                        setHasViewedWord(true);
+                      }
+                    }}
+                    onDragEnd={(_, info) => {
+                      // Always spring back
+                      cardControls.start({ 
+                        y: 0, 
+                        transition: { type: "spring", stiffness: 400, damping: 30 }
+                      });
+                    }}
+                    className="absolute inset-0 bg-card border-2 border-border rounded-xl cursor-grab active:cursor-grabbing flex flex-col items-center justify-center shadow-lg touch-none"
+                  >
+                    <ChevronUp className="h-8 w-8 text-muted-foreground mb-2 animate-bounce" />
+                    <p className="text-lg font-semibold">Swipe up to reveal</p>
+                    <p className="text-sm text-muted-foreground">Release to hide</p>
+                  </motion.div>
+                </div>
+                
+                {/* Next button - only appears after viewing */}
+                <AnimatePresence>
+                  {hasViewedWord && (
                     <motion.div
-                      key="reveal-button"
-                      initial={{ opacity: 0, y: 20 }}
+                      initial={{ opacity: 0, y: 10 }}
                       animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -20, scale: 0.95 }}
+                      exit={{ opacity: 0, y: -10 }}
                       transition={{ type: "spring", stiffness: 400, damping: 30 }}
                     >
-                      <Button
-                        className="w-full h-16 text-lg"
-                        onClick={() => setIsWordVisible(true)}
-                      >
-                        <Eye className="h-6 w-6 mr-2" />
-                        Tap to See Your Word
+                      <Button className="w-full h-12" onClick={nextPlayer}>
+                        <ArrowRight className="h-5 w-5 mr-2" />
+                        {config.currentPlayerIndex + 1 >= config.players.length ? 'Start Discussion' : 'Next Player'}
                       </Button>
-                    </motion.div>
-                  ) : (
-                    <motion.div
-                      key="word-display"
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -20 }}
-                      transition={{ type: "spring", stiffness: 400, damping: 30 }}
-                      className="space-y-4"
-                    >
-                      <motion.div 
-                        initial={{ opacity: 0, scale: 0.9 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        transition={{ delay: 0.1, type: "spring", stiffness: 300, damping: 25 }}
-                        className={`p-6 rounded-xl ${isCurrentPlayerOutsider ? 'bg-destructive/10 border-2 border-destructive' : 'bg-primary/10 border-2 border-primary'}`}
-                      >
-                        {isCurrentPlayerOutsider ? (
-                          <div>
-                            <p className="text-lg font-bold text-destructive mb-1">You are the OUTSIDER!</p>
-                            <p className="text-sm text-muted-foreground">You don't know the word. Try to blend in!</p>
-                          </div>
-                        ) : (
-                          <div>
-                            <p className="text-sm text-muted-foreground mb-1">The secret word is:</p>
-                            <motion.p 
-                              initial={{ opacity: 0, scale: 1.2 }}
-                              animate={{ opacity: 1, scale: 1 }}
-                              transition={{ delay: 0.2, type: "spring", stiffness: 300 }}
-                              className="text-3xl font-bold text-primary"
-                            >
-                              {config.secretWord}
-                            </motion.p>
-                          </div>
-                        )}
-                      </motion.div>
-                      
-                      <motion.div
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: 0.2 }}
-                      >
-                        <Button
-                          variant="outline"
-                          className="w-full"
-                          onClick={() => setIsWordVisible(false)}
-                        >
-                          <EyeOff className="h-4 w-4 mr-2" />
-                          Hide Word
-                        </Button>
-                      </motion.div>
-                      
-                      <motion.div
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: 0.25 }}
-                      >
-                        <Button className="w-full h-12" onClick={nextPlayer}>
-                          <ArrowRight className="h-5 w-5 mr-2" />
-                          {config.currentPlayerIndex + 1 >= config.players.length ? 'Start Discussion' : 'Next Player'}
-                        </Button>
-                      </motion.div>
                     </motion.div>
                   )}
                 </AnimatePresence>
