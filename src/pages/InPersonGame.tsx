@@ -23,6 +23,8 @@ interface InPersonGameConfig {
   currentVoterIndex: number;
   phase: 'word-reveal' | 'discussion' | 'voting' | 'results';
   secretWord?: string;
+  outsiderWord?: string; // For hidden_imposter mode
+  wordCategory?: string; // Category of the secret word
   outsiderIndices?: number[];
   votes?: Record<string, string>;
   // Game settings for play again
@@ -153,26 +155,70 @@ const InPersonGame = () => {
       
       // Initialize game if needed
       if (!gameConfig.secretWord) {
-        // Fetch a random word
-        const { data: words, error } = await supabase
-          .from('words')
-          .select('text')
-          .limit(100);
+        // Get selected categories
+        const selectedCats = gameConfig.selectedCategories || ['animal', 'food', 'movie'];
+        const selectedCustomCats = gameConfig.selectedCustomCategories || [];
+        const storedCustomCategories = gameConfig.customCategories || [];
+        
+        // Fetch words from selected categories
+        let allWords: { text: string; category: string }[] = [];
+        
+        if (selectedCats.length > 0) {
+          const { data: words, error } = await supabase
+            .from('words')
+            .select('text, category')
+            .in('category', selectedCats as ('animal' | 'brand' | 'degenerate' | 'food' | 'movie' | 'person' | 'place' | 'thing')[]);
 
-        if (error || !words?.length) {
-          toast.error('Failed to load words');
+          if (error || !words?.length) {
+            toast.error('Failed to load words');
+            navigate('/in-person');
+            return;
+          }
+          
+          allWords = words.map(w => ({ text: w.text, category: w.category }));
+        }
+        
+        // Add words from custom categories
+        const selectedCustomCatData = storedCustomCategories.filter(c => selectedCustomCats.includes(c.id));
+        for (const customCat of selectedCustomCatData) {
+          for (const word of customCat.words) {
+            allWords.push({ text: word, category: customCat.name });
+          }
+        }
+        
+        if (allWords.length === 0) {
+          toast.error('No words available for selected categories');
           navigate('/in-person');
           return;
         }
 
-        const randomWord = words[Math.floor(Math.random() * words.length)].text;
+        // Select random word
+        const randomWordData = allWords[Math.floor(Math.random() * allWords.length)];
+        
+        // For hidden_imposter mode, select a different word for outsiders
+        let outsiderWord: string | undefined;
+        if (gameConfig.gameMode === 'hidden_imposter') {
+          // Get a different word from the same category if possible
+          const sameCategory = allWords.filter(w => w.category === randomWordData.category && w.text !== randomWordData.text);
+          if (sameCategory.length > 0) {
+            outsiderWord = sameCategory[Math.floor(Math.random() * sameCategory.length)].text;
+          } else {
+            // Fallback to any different word
+            const differentWords = allWords.filter(w => w.text !== randomWordData.text);
+            if (differentWords.length > 0) {
+              outsiderWord = differentWords[Math.floor(Math.random() * differentWords.length)].text;
+            }
+          }
+        }
         
         // Randomly select outsiders
         const playerIndices = gameConfig.players.map((_, i) => i);
         const shuffled = playerIndices.sort(() => Math.random() - 0.5);
         const outsiderIndices = shuffled.slice(0, gameConfig.numOutsiders);
 
-        gameConfig.secretWord = randomWord;
+        gameConfig.secretWord = randomWordData.text;
+        gameConfig.wordCategory = randomWordData.category;
+        gameConfig.outsiderWord = outsiderWord;
         gameConfig.outsiderIndices = outsiderIndices;
         gameConfig.votes = {};
         
@@ -239,17 +285,17 @@ const InPersonGame = () => {
       ? Math.floor(Math.random() * Math.min(gameConfig.imposterCount, validPlayers.length - 1)) + 1
       : gameConfig.imposterCount;
 
-    // Fetch a new random word from selected categories
-    let allWords: { text: string }[] = [];
+    // Fetch words from selected categories
+    let allWords: { text: string; category: string }[] = [];
     
     if (gameConfig.selectedCategories.length > 0) {
       const { data: words } = await supabase
         .from('words')
-        .select('text')
+        .select('text, category')
         .in('category', gameConfig.selectedCategories as ('animal' | 'brand' | 'degenerate' | 'food' | 'movie' | 'person' | 'place' | 'thing')[]);
       
       if (words) {
-        allWords = words;
+        allWords = words.map(w => ({ text: w.text, category: w.category }));
       }
     }
     
@@ -258,7 +304,7 @@ const InPersonGame = () => {
     const selectedCustomCats = storedCustomCategories.filter(c => gameConfig.selectedCustomCategories.includes(c.id));
     for (const customCat of selectedCustomCats) {
       for (const word of customCat.words) {
-        allWords.push({ text: word });
+        allWords.push({ text: word, category: customCat.name });
       }
     }
     
@@ -267,7 +313,22 @@ const InPersonGame = () => {
       return;
     }
 
-    const randomWord = allWords[Math.floor(Math.random() * allWords.length)].text;
+    // Select random word
+    const randomWordData = allWords[Math.floor(Math.random() * allWords.length)];
+    
+    // For hidden_imposter mode, select a different word for outsiders
+    let outsiderWord: string | undefined;
+    if (gameConfig.gameMode === 'hidden_imposter') {
+      const sameCategory = allWords.filter(w => w.category === randomWordData.category && w.text !== randomWordData.text);
+      if (sameCategory.length > 0) {
+        outsiderWord = sameCategory[Math.floor(Math.random() * sameCategory.length)].text;
+      } else {
+        const differentWords = allWords.filter(w => w.text !== randomWordData.text);
+        if (differentWords.length > 0) {
+          outsiderWord = differentWords[Math.floor(Math.random() * differentWords.length)].text;
+        }
+      }
+    }
     
     // Randomly select outsiders
     const playerIndices = validPlayers.map((_, i) => i);
@@ -281,7 +342,9 @@ const InPersonGame = () => {
       currentPlayerIndex: 0,
       currentVoterIndex: 0,
       phase: 'word-reveal',
-      secretWord: randomWord,
+      secretWord: randomWordData.text,
+      wordCategory: randomWordData.category,
+      outsiderWord,
       outsiderIndices,
       votes: {},
       // Preserve game settings
@@ -422,22 +485,35 @@ const InPersonGame = () => {
                 </motion.h2>
                 
                 {/* Swipe Card Container */}
-                <div className="relative h-40 mb-4">
+                <div className="relative h-44 mb-4">
                   {/* Role content underneath */}
                   <motion.div 
-                    className={`absolute inset-0 p-6 rounded-xl flex items-center justify-center ${isCurrentPlayerOutsider ? 'bg-destructive/10 border-2 border-destructive' : 'bg-primary/10 border-2 border-primary'}`}
+                    className={`absolute inset-0 p-6 rounded-xl flex items-center justify-center ${
+                      isCurrentPlayerOutsider && config.gameMode !== 'hidden_imposter' 
+                        ? 'bg-destructive/10 border-2 border-destructive' 
+                        : 'bg-primary/10 border-2 border-primary'
+                    }`}
                     style={{ opacity: revealOpacity }}
                   >
-                    {isCurrentPlayerOutsider ? (
+                    {isCurrentPlayerOutsider && config.gameMode !== 'hidden_imposter' ? (
                       <div>
                         <p className="text-lg font-bold text-destructive mb-1">You are the OUTSIDER!</p>
                         <p className="text-sm text-muted-foreground">You don't know the word. Try to blend in!</p>
+                        {config.wordCategory && (
+                          <p className="text-xs text-muted-foreground mt-2">Category: <span className="font-semibold capitalize">{config.wordCategory}</span></p>
+                        )}
                       </div>
                     ) : (
                       <div>
+                        {config.wordCategory && (
+                          <p className="text-xs text-muted-foreground mb-1">Category: <span className="font-semibold capitalize">{config.wordCategory}</span></p>
+                        )}
                         <p className="text-sm text-muted-foreground mb-1">The secret word is:</p>
                         <p className="text-3xl font-bold text-primary">
-                          {config.secretWord}
+                          {/* In hidden_imposter mode, outsiders get a different word but don't know they're outsider */}
+                          {isCurrentPlayerOutsider && config.gameMode === 'hidden_imposter' && config.outsiderWord
+                            ? config.outsiderWord
+                            : config.secretWord}
                         </p>
                       </div>
                     )}
@@ -541,6 +617,16 @@ const InPersonGame = () => {
                 >
                   Discussion Time!
                 </motion.h2>
+                {config.wordCategory && (
+                  <motion.p 
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.22 }}
+                    className="text-sm text-primary font-semibold mb-2 capitalize"
+                  >
+                    Category: {config.wordCategory}
+                  </motion.p>
+                )}
                 <motion.p 
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
@@ -548,7 +634,9 @@ const InPersonGame = () => {
                   className="text-muted-foreground mb-4"
                 >
                   Take turns giving one-word clues about the secret word.
-                  Try to identify who doesn't know the word!
+                  {config.gameMode === 'hidden_imposter' 
+                    ? ' Someone has a different word!' 
+                    : ' Try to identify who doesn\'t know the word!'}
                 </motion.p>
                 <motion.p 
                   initial={{ opacity: 0 }}
