@@ -180,6 +180,7 @@ const InPersonSetup = () => {
               onAddModifier={addModifier}
               onUpdateModifier={updateModifier}
               onDeleteModifier={deleteModifier}
+              hideRounds
             />
           </CollapsibleContent>
         </Collapsible>

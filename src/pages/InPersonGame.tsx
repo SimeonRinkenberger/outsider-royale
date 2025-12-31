@@ -638,14 +638,16 @@ const InPersonGame = () => {
                     ? ' Someone has a different word!' 
                     : ' Try to identify who doesn\'t know the word!'}
                 </motion.p>
-                <motion.p 
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  transition={{ delay: 0.3 }}
-                  className="text-sm text-muted-foreground"
-                >
-                  {config.numOutsiders} outsider{config.numOutsiders > 1 ? 's' : ''} among {config.players.length} players
-                </motion.p>
+                {config.showOutsiderCount !== false && (
+                  <motion.p 
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ delay: 0.3 }}
+                    className="text-sm text-muted-foreground"
+                  >
+                    {config.numOutsiders} outsider{config.numOutsiders > 1 ? 's' : ''} among {config.players.length} players
+                  </motion.p>
+                )}
               </Card>
               
               {/* Turn Order */}
@@ -913,6 +915,7 @@ const InPersonGame = () => {
                             onAddModifier={addModifier}
                             onUpdateModifier={updateModifier}
                             onDeleteModifier={deleteModifier}
+                            hideRounds
                           />
                         </CollapsibleContent>
                       </Collapsible>
