@@ -26,10 +26,14 @@ interface ActiveModifiersDisplayProps {
   customModifiers?: ModifierData[];
   gameMode?: GameMode;
   compact?: boolean;
+  allHonorSystem?: boolean; // For in-person mode where nothing is enforced
 }
 
-export const ActiveModifiersDisplay = ({ modifiers, customModifiers = [], gameMode, compact = false }: ActiveModifiersDisplayProps) => {
+export const ActiveModifiersDisplay = ({ modifiers, customModifiers = [], gameMode, compact = false, allHonorSystem = false }: ActiveModifiersDisplayProps) => {
   const [isOpen, setIsOpen] = useState(false);
+  
+  // In honor system mode, no modifiers are enforced
+  const effectiveEnforcedModifiers = allHonorSystem ? [] : ENFORCED_MODIFIERS;
   
   // Combine built-in and custom modifiers
   const allModifierDefs = [
@@ -43,7 +47,7 @@ export const ActiveModifiersDisplay = ({ modifiers, customModifiers = [], gameMo
   const hasContent = modifiers.length > 0 || gameMode;
   if (!hasContent) return null;
 
-  const enforcedCount = activeModifiers.filter(m => ENFORCED_MODIFIERS.includes(m.id)).length;
+  const enforcedCount = activeModifiers.filter(m => effectiveEnforcedModifiers.includes(m.id)).length;
 
   if (compact) {
     return (
@@ -76,7 +80,7 @@ export const ActiveModifiersDisplay = ({ modifiers, customModifiers = [], gameMo
               {activeModifiers.length > 0 ? (
                 <div className="space-y-2">
                   {activeModifiers.map(mod => {
-                    const isEnforced = ENFORCED_MODIFIERS.includes(mod.id);
+                    const isEnforced = effectiveEnforcedModifiers.includes(mod.id);
                     return (
                       <div key={mod.id} className={`rounded-md p-2 ${isEnforced ? 'bg-green-500/10 border border-green-500/20' : 'bg-muted/50'}`}>
                         <div className="flex items-center gap-2 mb-0.5">
@@ -146,7 +150,7 @@ export const ActiveModifiersDisplay = ({ modifiers, customModifiers = [], gameMo
           </div>
           <div className="space-y-2">
             {activeModifiers.map(mod => {
-              const isEnforced = ENFORCED_MODIFIERS.includes(mod.id);
+              const isEnforced = effectiveEnforcedModifiers.includes(mod.id);
               return (
                 <div key={mod.id} className={`rounded p-2 ${isEnforced ? 'bg-green-500/10 border border-green-500/20' : 'bg-background/50'}`}>
                   <div className="flex items-center gap-2 mb-1">
