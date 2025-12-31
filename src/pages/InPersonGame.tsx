@@ -4,11 +4,17 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { Eye, EyeOff, ArrowRight, RotateCcw, Trophy, Users } from 'lucide-react';
+import { Eye, EyeOff, ArrowRight, RotateCcw, Users, Settings, ChevronDown } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 import GameHeader from '@/components/GameHeader';
 import { useAudio } from '@/contexts/AudioContext';
+import { ActiveModifiersDisplay } from '@/components/ActiveModifiersDisplay';
+import { GameConfigPanel, GameConfig } from '@/components/GameConfigPanel';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { useCustomContent } from '@/hooks/useCustomContent';
+import cryingFoxImg from '@/assets/crying_fox.png';
+import happyFoxImg from '@/assets/happy_fox.png';
 
 interface InPersonGameConfig {
   players: string[];
@@ -19,6 +25,16 @@ interface InPersonGameConfig {
   secretWord?: string;
   outsiderIndices?: number[];
   votes?: Record<string, string>;
+  // Game settings for play again
+  gameMode?: string;
+  roundCount?: number;
+  selectedCategories?: string[];
+  selectedCustomCategories?: string[];
+  selectedModifiers?: string[];
+  showOutsiderCount?: boolean;
+  votesPerPlayer?: number;
+  customCategories?: { id: string; name: string; words: string[] }[];
+  customModifiers?: { id: string; label: string; description: string }[];
 }
 
 // Animation variants for smooth transitions
@@ -69,12 +85,54 @@ const InPersonGame = () => {
   const [isWordVisible, setIsWordVisible] = useState(false);
   const [selectedVote, setSelectedVote] = useState<string | null>(null);
   const [direction, setDirection] = useState(1); // 1 for forward, -1 for backward
+  const [showSettings, setShowSettings] = useState(false);
   
   const { setMusicState } = useAudio();
+  const {
+    customCategories,
+    customModifiers,
+    addCategory,
+    updateCategory,
+    deleteCategory,
+    addModifier,
+    updateModifier,
+    deleteModifier,
+  } = useCustomContent();
+  
+  // Game config for play again with settings
+  const [gameConfig, setGameConfig] = useState<GameConfig>({
+    selectedCategories: ['animal', 'food', 'movie'],
+    selectedCustomCategories: [],
+    selectedModifiers: [],
+    imposterCount: 1,
+    randomImposters: false,
+    roundCount: 3,
+    gameMode: 'classic',
+    showOutsiderCount: true,
+    votesPerPlayer: 1,
+    timedRoundDuration: 30,
+  });
   
   useEffect(() => {
     setMusicState('game_standard');
   }, [setMusicState]);
+  
+  // Load game config from stored config when it loads
+  useEffect(() => {
+    if (config) {
+      setGameConfig(prev => ({
+        ...prev,
+        gameMode: (config.gameMode as GameConfig['gameMode']) || 'classic',
+        roundCount: config.roundCount || 3,
+        selectedCategories: config.selectedCategories || ['animal', 'food', 'movie'],
+        selectedCustomCategories: config.selectedCustomCategories || [],
+        selectedModifiers: config.selectedModifiers || [],
+        showOutsiderCount: config.showOutsiderCount ?? true,
+        votesPerPlayer: config.votesPerPlayer || 1,
+        imposterCount: config.numOutsiders || 1,
+      }));
+    }
+  }, [config]);
 
   useEffect(() => {
     const loadGame = async () => {
@@ -162,15 +220,87 @@ const InPersonGame = () => {
     }
   };
 
-  const playAgain = () => {
-    localStorage.removeItem('inPersonGame');
-    navigate('/in-person');
+  const playAgain = async () => {
+    if (!config) return;
+    
+    // Keep the same player list but reset game state
+    const validPlayers = config.players;
+    
+    const numOutsiders = gameConfig.randomImposters 
+      ? Math.floor(Math.random() * Math.min(gameConfig.imposterCount, validPlayers.length - 1)) + 1
+      : gameConfig.imposterCount;
+
+    // Fetch a new random word from selected categories
+    let allWords: { text: string }[] = [];
+    
+    if (gameConfig.selectedCategories.length > 0) {
+      const { data: words } = await supabase
+        .from('words')
+        .select('text')
+        .in('category', gameConfig.selectedCategories as ('animal' | 'brand' | 'degenerate' | 'food' | 'movie' | 'person' | 'place' | 'thing')[]);
+      
+      if (words) {
+        allWords = words;
+      }
+    }
+    
+    // Add words from custom categories
+    const storedCustomCategories = config.customCategories || [];
+    const selectedCustomCats = storedCustomCategories.filter(c => gameConfig.selectedCustomCategories.includes(c.id));
+    for (const customCat of selectedCustomCats) {
+      for (const word of customCat.words) {
+        allWords.push({ text: word });
+      }
+    }
+    
+    if (allWords.length === 0) {
+      toast.error('No words available for selected categories');
+      return;
+    }
+
+    const randomWord = allWords[Math.floor(Math.random() * allWords.length)].text;
+    
+    // Randomly select outsiders
+    const playerIndices = validPlayers.map((_, i) => i);
+    const shuffled = playerIndices.sort(() => Math.random() - 0.5);
+    const outsiderIndices = shuffled.slice(0, numOutsiders);
+
+    // Create new game config preserving settings
+    const newGameConfig: InPersonGameConfig = {
+      players: validPlayers,
+      numOutsiders,
+      currentPlayerIndex: 0,
+      currentVoterIndex: 0,
+      phase: 'word-reveal',
+      secretWord: randomWord,
+      outsiderIndices,
+      votes: {},
+      // Preserve game settings
+      gameMode: gameConfig.gameMode,
+      roundCount: gameConfig.roundCount,
+      selectedCategories: gameConfig.selectedCategories,
+      selectedCustomCategories: gameConfig.selectedCustomCategories,
+      selectedModifiers: gameConfig.selectedModifiers,
+      showOutsiderCount: gameConfig.showOutsiderCount,
+      votesPerPlayer: gameConfig.votesPerPlayer,
+      customCategories: storedCustomCategories,
+      customModifiers: config.customModifiers,
+    };
+    
+    localStorage.setItem('inPersonGame', JSON.stringify(newGameConfig));
+    setConfig(newGameConfig);
+    setSelectedVote(null);
+    setIsWordVisible(false);
+    setShowSettings(false);
+    toast.success('New game started!');
   };
 
   const exitGame = () => {
     localStorage.removeItem('inPersonGame');
     navigate('/menu');
   };
+  
+  const maxImposters = config ? Math.max(1, config.players.length - 1) : 1;
 
   if (!config) {
     // Inline skeleton - TransitionOverlay is the only full-screen loader
@@ -513,6 +643,20 @@ const InPersonGame = () => {
                   Submit Vote
                 </Button>
               </motion.div>
+              
+              {/* Rules summary */}
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.4 + config.players.length * 0.08 }}
+              >
+                <ActiveModifiersDisplay 
+                  modifiers={config.selectedModifiers || []} 
+                  customModifiers={config.customModifiers || []}
+                  gameMode={(config.gameMode as 'classic' | 'elimination' | 'hidden_imposter') || 'classic'}
+                  compact
+                />
+              </motion.div>
             </motion.div>
           )}
 
@@ -545,8 +689,13 @@ const InPersonGame = () => {
                           initial={{ scale: 0, rotate: -180 }}
                           animate={{ scale: 1, rotate: 0 }}
                           transition={{ type: "spring", stiffness: 200, damping: 12, delay: 0.2 }}
+                          className="flex justify-center mb-4"
                         >
-                          <Trophy className={`h-12 w-12 mx-auto mb-4 ${results.wasOutsiderCaught ? 'text-green-500' : 'text-destructive'}`} />
+                          <img 
+                            src={results.wasOutsiderCaught ? cryingFoxImg : happyFoxImg} 
+                            alt={results.wasOutsiderCaught ? 'Group wins' : 'Outsider wins'} 
+                            className="h-20 w-20 object-contain"
+                          />
                         </motion.div>
                         <motion.h2 
                           initial={{ opacity: 0, y: 20 }}
@@ -604,6 +753,36 @@ const InPersonGame = () => {
                           ))}
                         </div>
                       </Card>
+                    </motion.div>
+
+                    {/* Game Settings for Play Again */}
+                    <motion.div variants={childVariant} transition={springTransition}>
+                      <Collapsible open={showSettings} onOpenChange={setShowSettings}>
+                        <CollapsibleTrigger asChild>
+                          <Button variant="outline" className="w-full justify-between">
+                            <span className="flex items-center gap-2">
+                              <Settings className="h-4 w-4" />
+                              Game Settings
+                            </span>
+                            <ChevronDown className={`h-4 w-4 transition-transform ${showSettings ? 'rotate-180' : ''}`} />
+                          </Button>
+                        </CollapsibleTrigger>
+                        <CollapsibleContent className="pt-4">
+                          <GameConfigPanel
+                            playerCount={config.players.length}
+                            customCategories={customCategories}
+                            customModifiers={customModifiers}
+                            config={gameConfig}
+                            onConfigChange={setGameConfig}
+                            onAddCategory={addCategory}
+                            onUpdateCategory={updateCategory}
+                            onDeleteCategory={deleteCategory}
+                            onAddModifier={addModifier}
+                            onUpdateModifier={updateModifier}
+                            onDeleteModifier={deleteModifier}
+                          />
+                        </CollapsibleContent>
+                      </Collapsible>
                     </motion.div>
 
                     <motion.div 
