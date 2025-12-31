@@ -51,6 +51,7 @@ interface GameConfigPanelProps {
   onAddModifier?: (label: string, description: string) => void;
   onUpdateModifier?: (id: string, label: string, description: string) => void;
   onDeleteModifier?: (id: string) => void;
+  hideRounds?: boolean; // For in-person mode where rounds aren't used
 }
 
 export const GameConfigPanel = ({
@@ -65,6 +66,7 @@ export const GameConfigPanel = ({
   onAddModifier,
   onUpdateModifier,
   onDeleteModifier,
+  hideRounds = false,
 }: GameConfigPanelProps) => {
   const [gameModeOpen, setGameModeOpen] = useState(false);
   const [gameSettingsOpen, setGameSettingsOpen] = useState(false);
@@ -251,8 +253,8 @@ export const GameConfigPanel = ({
           </div>
         </div>
 
-        {/* Round Count - hide for elimination mode */}
-        {config.gameMode !== 'elimination' && (
+        {/* Round Count - hide for elimination mode and in-person mode */}
+        {config.gameMode !== 'elimination' && !hideRounds && (
           <div className="space-y-3">
             <div className="flex items-center justify-between">
               <Label className="text-sm">Rounds</Label>
