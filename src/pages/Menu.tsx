@@ -333,7 +333,7 @@ const Menu = () => {
           initial={{ opacity: 0 }} 
           animate={{ opacity: 1 }} 
           transition={{ duration: 0.5, delay: 0.4 }}
-          className="pt-4 pb-2 text-center"
+          className="pt-4 pb-2 text-center flex items-center justify-center gap-3"
         >
           <a 
             href="https://www.notion.so/Privacy-Policy-Outsider-Royale-2da1f594451b80d4a04bd700a4c35418" 
@@ -344,6 +344,7 @@ const Menu = () => {
             Privacy Policy
             <ExternalLink className="h-3 w-3" />
           </a>
+          <span className="text-xs text-muted-foreground">v1.0.0</span>
         </motion.div>
       </main>
     </div>;
