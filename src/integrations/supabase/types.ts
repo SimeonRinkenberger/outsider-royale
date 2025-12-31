@@ -240,6 +240,51 @@ export type Database = {
           },
         ]
       }
+      products: {
+        Row: {
+          android_product_id: string | null
+          created_at: string
+          description: string | null
+          id: string
+          ios_product_id: string | null
+          is_active: boolean
+          name: string
+          price_tier: number
+          product_key: string
+          product_type: Database["public"]["Enums"]["product_type"]
+          stripe_price_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          android_product_id?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          ios_product_id?: string | null
+          is_active?: boolean
+          name: string
+          price_tier?: number
+          product_key: string
+          product_type: Database["public"]["Enums"]["product_type"]
+          stripe_price_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          android_product_id?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          ios_product_id?: string | null
+          is_active?: boolean
+          name?: string
+          price_tier?: number
+          product_key?: string
+          product_type?: Database["public"]["Enums"]["product_type"]
+          stripe_price_id?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           auth_user_id: string | null
@@ -266,6 +311,63 @@ export type Database = {
           is_guest?: boolean
         }
         Relationships: []
+      }
+      purchase_history: {
+        Row: {
+          amount_cents: number | null
+          created_at: string
+          currency: string | null
+          id: string
+          platform: Database["public"]["Enums"]["purchase_platform"]
+          product_id: string
+          purchased_at: string
+          receipt_data: string | null
+          status: string
+          transaction_id: string | null
+          user_id: string
+        }
+        Insert: {
+          amount_cents?: number | null
+          created_at?: string
+          currency?: string | null
+          id?: string
+          platform: Database["public"]["Enums"]["purchase_platform"]
+          product_id: string
+          purchased_at?: string
+          receipt_data?: string | null
+          status?: string
+          transaction_id?: string | null
+          user_id: string
+        }
+        Update: {
+          amount_cents?: number | null
+          created_at?: string
+          currency?: string | null
+          id?: string
+          platform?: Database["public"]["Enums"]["purchase_platform"]
+          product_id?: string
+          purchased_at?: string
+          receipt_data?: string | null
+          status?: string
+          transaction_id?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "purchase_history_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "purchase_history_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       rounds: {
         Row: {
@@ -295,6 +397,54 @@ export type Database = {
             columns: ["game_id"]
             isOneToOne: false
             referencedRelation: "games"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_entitlements: {
+        Row: {
+          created_at: string
+          expires_at: string | null
+          granted_at: string
+          id: string
+          is_active: boolean
+          product_id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          expires_at?: string | null
+          granted_at?: string
+          id?: string
+          is_active?: boolean
+          product_id: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          expires_at?: string | null
+          granted_at?: string
+          id?: string
+          is_active?: boolean
+          product_id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_entitlements_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_entitlements_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]
@@ -422,12 +572,25 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      check_user_entitlement: {
+        Args: { p_product_key: string; p_user_id: string }
+        Returns: boolean
+      }
+      grant_entitlement: {
+        Args: {
+          p_duration_days?: number
+          p_product_id: string
+          p_user_id: string
+        }
+        Returns: string
+      }
     }
     Enums: {
       game_mode: "classic" | "elimination" | "hidden_imposter"
       game_status: "clue_round" | "voting" | "results" | "finished"
       lobby_status: "waiting" | "in_progress" | "voting" | "results"
+      product_type: "consumable" | "non_consumable" | "subscription"
+      purchase_platform: "ios" | "android" | "web"
       word_category:
         | "brand"
         | "food"
@@ -567,6 +730,8 @@ export const Constants = {
       game_mode: ["classic", "elimination", "hidden_imposter"],
       game_status: ["clue_round", "voting", "results", "finished"],
       lobby_status: ["waiting", "in_progress", "voting", "results"],
+      product_type: ["consumable", "non_consumable", "subscription"],
+      purchase_platform: ["ios", "android", "web"],
       word_category: [
         "brand",
         "food",
