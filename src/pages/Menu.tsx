@@ -193,7 +193,7 @@ const Menu = () => {
       }} transition={{
         duration: 0.5
       }} className="text-center space-y-2">
-          <img src={welcomeFox} alt="Welcome" className="w-64 h-auto mx-auto" />
+          <img alt="Welcome" className="w-64 h-auto mx-auto" src="/lovable-uploads/1a901309-bb69-41d7-a4df-3c6535b39c5e.png" />
           {displayName && <p className="text-muted-foreground">Playing as <span className="font-semibold text-foreground">{displayName}</span></p>}
           <p className="text-muted-foreground">Choose how you want to play</p>
         </motion.div>
@@ -329,18 +329,15 @@ const Menu = () => {
           </motion.div>}
 
         {/* Privacy Policy Link */}
-        <motion.div 
-          initial={{ opacity: 0 }} 
-          animate={{ opacity: 1 }} 
-          transition={{ duration: 0.5, delay: 0.4 }}
-          className="pt-4 pb-2 text-center flex items-center justify-center gap-3"
-        >
-          <a 
-            href="https://www.notion.so/Privacy-Policy-Outsider-Royale-2da1f594451b80d4a04bd700a4c35418" 
-            target="_blank" 
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
-          >
+        <motion.div initial={{
+        opacity: 0
+      }} animate={{
+        opacity: 1
+      }} transition={{
+        duration: 0.5,
+        delay: 0.4
+      }} className="pt-4 pb-2 text-center flex items-center justify-center gap-3">
+          <a href="https://www.notion.so/Privacy-Policy-Outsider-Royale-2da1f594451b80d4a04bd700a4c35418" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors">
             Privacy Policy
             <ExternalLink className="h-3 w-3" />
           </a>
