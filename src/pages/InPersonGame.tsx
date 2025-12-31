@@ -492,6 +492,20 @@ const InPersonGame = () => {
                 </AnimatePresence>
               </Card>
               
+              {/* Rules summary */}
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.35 }}
+              >
+                <ActiveModifiersDisplay 
+                  modifiers={config.selectedModifiers || []} 
+                  customModifiers={config.customModifiers || []}
+                  gameMode={(config.gameMode as 'classic' | 'elimination' | 'hidden_imposter') || 'classic'}
+                  compact
+                />
+              </motion.div>
+              
               <motion.p 
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
@@ -550,10 +564,45 @@ const InPersonGame = () => {
                 </motion.p>
               </Card>
               
+              {/* Turn Order */}
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.35 }}
+              >
+                <Card className="p-4">
+                  <h3 className="text-sm font-semibold text-muted-foreground mb-2">Turn Order</h3>
+                  <div className="flex flex-wrap gap-2">
+                    {config.players.map((player, index) => (
+                      <span 
+                        key={index} 
+                        className="px-3 py-1 bg-muted rounded-full text-sm"
+                      >
+                        {index + 1}. {player}
+                      </span>
+                    ))}
+                  </div>
+                </Card>
+              </motion.div>
+              
+              {/* Rules summary */}
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.4 }}
+              >
+                <ActiveModifiersDisplay 
+                  modifiers={config.selectedModifiers || []} 
+                  customModifiers={config.customModifiers || []}
+                  gameMode={(config.gameMode as 'classic' | 'elimination' | 'hidden_imposter') || 'classic'}
+                  compact
+                />
+              </motion.div>
+              
               <motion.div
                 initial={{ opacity: 0, y: 30 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.35, type: "spring", stiffness: 300, damping: 25 }}
+                transition={{ delay: 0.45, type: "spring", stiffness: 300, damping: 25 }}
               >
                 <Button className="w-full h-14 text-lg" onClick={startVoting}>
                   Start Voting
