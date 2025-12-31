@@ -9,6 +9,7 @@ import { motion, AnimatePresence, useMotionValue, useTransform, useAnimation } f
 
 import GameHeader from '@/components/GameHeader';
 import { useAudio } from '@/contexts/AudioContext';
+import { useTransition } from '@/contexts/TransitionContext';
 import { ActiveModifiersDisplay } from '@/components/ActiveModifiersDisplay';
 import { GameConfigPanel, GameConfig } from '@/components/GameConfigPanel';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
@@ -369,9 +370,18 @@ const InPersonGame = () => {
     toast.success('New game started!');
   };
 
-  const exitGame = () => {
+  const { startTransition } = useTransition();
+  
+  const exitGame = (event?: React.MouseEvent) => {
     localStorage.removeItem('inPersonGame');
-    navigate('/menu');
+    if (event) {
+      const rect = event.currentTarget.getBoundingClientRect();
+      startTransition('/menu', {
+        origin: { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 }
+      });
+    } else {
+      startTransition('/menu');
+    }
   };
   
   const maxImposters = config ? Math.max(1, config.players.length - 1) : 1;
