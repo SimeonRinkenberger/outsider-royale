@@ -2,10 +2,28 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { ArrowRight, RotateCcw, Users, Settings, ChevronDown, ChevronUp, DoorOpen } from 'lucide-react';
+import { ArrowRight, RotateCcw, Users, Settings, ChevronDown, ChevronUp, DoorOpen, GripVertical, Trash2, Plus } from 'lucide-react';
 import { motion, AnimatePresence, useMotionValue, useTransform, useAnimation } from 'framer-motion';
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 
 import GameHeader from '@/components/GameHeader';
 import { useAudio } from '@/contexts/AudioContext';
@@ -16,6 +34,59 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import { useCustomContent } from '@/hooks/useCustomContent';
 import cryingFoxImg from '@/assets/crying_fox.png';
 import happyFoxImg from '@/assets/happy_fox.png';
+
+interface SortablePlayerProps {
+  id: string;
+  index: number;
+  name: string;
+  onUpdate: (value: string) => void;
+  onRemove: () => void;
+  canRemove: boolean;
+}
+
+const SortablePlayerResult = ({ id, index, name, onUpdate, onRemove, canRemove }: SortablePlayerProps) => {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+
+  return (
+    <div ref={setNodeRef} style={style} className="flex gap-2 items-center">
+      <button
+        {...attributes}
+        {...listeners}
+        className="shrink-0 p-1 cursor-grab active:cursor-grabbing touch-none text-muted-foreground hover:text-foreground"
+      >
+        <GripVertical className="h-4 w-4" />
+      </button>
+      <Input
+        value={name}
+        onChange={(e) => onUpdate(e.target.value)}
+        maxLength={30}
+        className="flex-1 h-9"
+      />
+      <Button
+        variant="ghost"
+        size="icon"
+        onClick={onRemove}
+        disabled={!canRemove}
+        className="shrink-0 h-9 w-9"
+      >
+        <Trash2 className="h-4 w-4 text-destructive" />
+      </Button>
+    </div>
+  );
+};
 
 interface InPersonGameConfig {
   players: string[];
@@ -90,6 +161,14 @@ const InPersonGame = () => {
   const [selectedVote, setSelectedVote] = useState<string | null>(null);
   const [direction, setDirection] = useState(1); // 1 for forward, -1 for backward
   const [showSettings, setShowSettings] = useState(false);
+  const [showPlayerManager, setShowPlayerManager] = useState(false);
+  const [editablePlayers, setEditablePlayers] = useState<{ id: string; name: string }[]>([]);
+  const [nextPlayerId, setNextPlayerId] = useState(1);
+  
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+  );
   
   // Swipe card controls
   const dragY = useMotionValue(0);
@@ -141,6 +220,10 @@ const InPersonGame = () => {
         votesPerPlayer: config.votesPerPlayer || 1,
         imposterCount: config.numOutsiders || 1,
       }));
+      // Initialize editable players for results phase
+      const playerItems = config.players.map((name, i) => ({ id: String(i + 1), name }));
+      setEditablePlayers(playerItems);
+      setNextPlayerId(config.players.length + 1);
     }
   }, [config]);
 
@@ -276,15 +359,58 @@ const InPersonGame = () => {
     }
   };
 
+  // Player management functions for results phase
+  const handlePlayerDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (over && active.id !== over.id) {
+      setEditablePlayers((items) => {
+        const oldIndex = items.findIndex((item) => item.id === active.id);
+        const newIndex = items.findIndex((item) => item.id === over.id);
+        return arrayMove(items, oldIndex, newIndex);
+      });
+    }
+  };
+
+  const addEditablePlayer = () => {
+    if (editablePlayers.length >= 20) {
+      toast.error('Maximum 20 players allowed');
+      return;
+    }
+    setEditablePlayers([...editablePlayers, { id: String(nextPlayerId), name: '' }]);
+    setNextPlayerId(nextPlayerId + 1);
+  };
+
+  const removeEditablePlayer = (id: string) => {
+    if (editablePlayers.length <= 2) {
+      toast.error('Minimum 2 players required');
+      return;
+    }
+    setEditablePlayers(editablePlayers.filter((p) => p.id !== id));
+  };
+
+  const updateEditablePlayer = (id: string, name: string) => {
+    setEditablePlayers(editablePlayers.map((p) => (p.id === id ? { ...p, name } : p)));
+  };
+
   const playAgain = async () => {
     if (!config) return;
     
-    // Keep the same player list but reset game state
-    const validPlayers = config.players;
+    // Use editable players from results phase (filtered for valid names)
+    const validPlayers = editablePlayers.filter(p => p.name.trim().length > 0).map(p => p.name);
+    
+    if (validPlayers.length < 3) {
+      toast.error('Need at least 3 players to start');
+      return;
+    }
     
     const numOutsiders = gameConfig.randomImposters 
       ? Math.floor(Math.random() * Math.min(gameConfig.imposterCount, validPlayers.length - 1)) + 1
       : gameConfig.imposterCount;
+
+    if (numOutsiders >= validPlayers.length) {
+      toast.error('Too many outsiders for the number of players');
+      return;
+    }
 
     // Fetch words from selected categories
     let allWords: { text: string; category: string }[] = [];
@@ -366,6 +492,7 @@ const InPersonGame = () => {
     setIsWordVisible(false);
     setHasViewedWord(false);
     setShowSettings(false);
+    setShowPlayerManager(false);
     cardControls.set({ y: 0 });
     toast.success('New game started!');
   };
@@ -557,7 +684,7 @@ const InPersonGame = () => {
                     className="absolute inset-0 bg-card border-2 border-border rounded-xl cursor-grab active:cursor-grabbing flex flex-col items-center justify-center shadow-lg touch-none"
                   >
                     <ChevronUp className="h-8 w-8 text-muted-foreground mb-2 animate-bounce" />
-                    <p className="text-lg font-semibold">Swipe up to reveal</p>
+                    <p className="text-lg font-semibold">Drag up to reveal</p>
                     <p className="text-sm text-muted-foreground">Release to hide</p>
                   </motion.div>
                 </div>
@@ -707,9 +834,17 @@ const InPersonGame = () => {
                 initial={{ opacity: 0, y: 30 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.45, type: "spring", stiffness: 300, damping: 25 }}
+                className="space-y-3"
               >
                 <Button className="w-full h-14 text-lg" onClick={startVoting}>
                   Start Voting
+                </Button>
+                <Button 
+                  variant="outline" 
+                  className="w-full" 
+                  onClick={() => updateConfig({ phase: 'results', votes: {} })}
+                >
+                  Skip to Results
                 </Button>
               </motion.div>
             </motion.div>
@@ -909,6 +1044,51 @@ const InPersonGame = () => {
                       </Card>
                     </motion.div>
 
+                    {/* Player Management for Play Again */}
+                    <motion.div variants={childVariant} transition={springTransition}>
+                      <Collapsible open={showPlayerManager} onOpenChange={setShowPlayerManager}>
+                        <CollapsibleTrigger asChild>
+                          <Button variant="outline" className="w-full justify-between">
+                            <span className="flex items-center gap-2">
+                              <Users className="h-4 w-4" />
+                              Edit Players ({editablePlayers.filter(p => p.name.trim()).length})
+                            </span>
+                            <ChevronDown className={`h-4 w-4 transition-transform ${showPlayerManager ? 'rotate-180' : ''}`} />
+                          </Button>
+                        </CollapsibleTrigger>
+                        <CollapsibleContent className="pt-4">
+                          <Card className="p-4 space-y-3">
+                            <DndContext
+                              sensors={sensors}
+                              collisionDetection={closestCenter}
+                              onDragEnd={handlePlayerDragEnd}
+                            >
+                              <SortableContext
+                                items={editablePlayers.map((p) => p.id)}
+                                strategy={verticalListSortingStrategy}
+                              >
+                                {editablePlayers.map((player, index) => (
+                                  <SortablePlayerResult
+                                    key={player.id}
+                                    id={player.id}
+                                    index={index}
+                                    name={player.name}
+                                    onUpdate={(value) => updateEditablePlayer(player.id, value)}
+                                    onRemove={() => removeEditablePlayer(player.id)}
+                                    canRemove={editablePlayers.length > 2}
+                                  />
+                                ))}
+                              </SortableContext>
+                            </DndContext>
+                            <Button variant="outline" size="sm" onClick={addEditablePlayer} className="w-full">
+                              <Plus className="h-4 w-4 mr-1" />
+                              Add Player
+                            </Button>
+                          </Card>
+                        </CollapsibleContent>
+                      </Collapsible>
+                    </motion.div>
+
                     {/* Game Settings for Play Again */}
                     <motion.div variants={childVariant} transition={springTransition}>
                       <Collapsible open={showSettings} onOpenChange={setShowSettings}>
@@ -923,7 +1103,7 @@ const InPersonGame = () => {
                         </CollapsibleTrigger>
                         <CollapsibleContent className="pt-4">
                           <GameConfigPanel
-                            playerCount={config.players.length}
+                            playerCount={editablePlayers.filter(p => p.name.trim()).length || 3}
                             customCategories={customCategories}
                             customModifiers={customModifiers}
                             config={gameConfig}

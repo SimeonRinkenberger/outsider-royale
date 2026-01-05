@@ -215,7 +215,7 @@ const Menu = () => {
                   <Users className="h-8 w-8 text-white" />
                 </div>
                 <div className="flex-1">
-                  <h3 className="text-xl font-bold">In Person (One Phone)</h3>
+                  <h3 className="text-xl font-bold">One Phone</h3>
                   <p className="text-muted-foreground text-sm">
                     Pass & Play - One device, take turns
                   </p>
@@ -240,7 +240,7 @@ const Menu = () => {
                   <Wifi className="h-8 w-8 text-white" />
                 </div>
                 <div className="flex-1">
-                  <h3 className="text-xl font-bold">Create/Join Lobby</h3>
+                  <h3 className="text-xl font-bold">Multiple Phones</h3>
                   <p className="text-muted-foreground text-sm">
                     Everyone uses their own device
                   </p>
