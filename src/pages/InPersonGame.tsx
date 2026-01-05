@@ -5,7 +5,7 @@ import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { ArrowRight, RotateCcw, Users, Settings, ChevronDown, ChevronUp, DoorOpen, GripVertical, Trash2, Plus } from 'lucide-react';
+import { ArrowRight, RotateCcw, Users, Settings, ChevronDown, ChevronUp, DoorOpen, GripVertical, Trash2, Plus, Check } from 'lucide-react';
 import { motion, AnimatePresence, useMotionValue, useTransform, useAnimation } from 'framer-motion';
 import {
   DndContext,
@@ -98,7 +98,7 @@ interface InPersonGameConfig {
   outsiderWord?: string; // For hidden_imposter mode
   wordCategory?: string; // Category of the secret word
   outsiderIndices?: number[];
-  votes?: Record<string, string>;
+  votes?: Record<string, string[]>; // Array of votes per player for multi-vote support
   // Game settings for play again
   gameMode?: string;
   roundCount?: number;
@@ -158,7 +158,7 @@ const InPersonGame = () => {
   const [config, setConfig] = useState<InPersonGameConfig | null>(null);
   const [isWordVisible, setIsWordVisible] = useState(false);
   const [hasViewedWord, setHasViewedWord] = useState(false);
-  const [selectedVote, setSelectedVote] = useState<string | null>(null);
+  const [selectedVotes, setSelectedVotes] = useState<string[]>([]);
   const [direction, setDirection] = useState(1); // 1 for forward, -1 for backward
   const [showSettings, setShowSettings] = useState(false);
   const [showPlayerManager, setShowPlayerManager] = useState(false);
@@ -340,22 +340,32 @@ const InPersonGame = () => {
   const startVoting = () => {
     setDirection(1);
     updateConfig({ phase: 'voting', currentVoterIndex: 0 });
-    setSelectedVote(null);
+    setSelectedVotes([]);
+  };
+
+  const maxVotesPerPlayer = config?.votesPerPlayer ?? 1;
+  
+  const toggleVoteSelection = (player: string) => {
+    if (selectedVotes.includes(player)) {
+      setSelectedVotes(prev => prev.filter(p => p !== player));
+    } else if (selectedVotes.length < maxVotesPerPlayer) {
+      setSelectedVotes(prev => [...prev, player]);
+    }
   };
 
   const submitVote = () => {
-    if (!config || !selectedVote) return;
+    if (!config || selectedVotes.length === 0) return;
     setDirection(1);
     
     const currentVoterIndex = config.currentVoterIndex ?? 0;
-    const newVotes = { ...config.votes, [config.players[currentVoterIndex]]: selectedVote };
+    const newVotes = { ...config.votes, [config.players[currentVoterIndex]]: selectedVotes };
     
     if (currentVoterIndex + 1 >= config.players.length) {
       updateConfig({ phase: 'results', votes: newVotes });
       
     } else {
       updateConfig({ votes: newVotes, currentVoterIndex: currentVoterIndex + 1 });
-      setSelectedVote(null);
+      setSelectedVotes([]);
     }
   };
 
@@ -495,7 +505,7 @@ const InPersonGame = () => {
     
     localStorage.setItem('inPersonGame', JSON.stringify(newGameConfig));
     setConfig(newGameConfig);
-    setSelectedVote(null);
+    setSelectedVotes([]);
     setIsWordVisible(false);
     setHasViewedWord(false);
     setShowSettings(false);
@@ -544,12 +554,16 @@ const InPersonGame = () => {
     if (!config.votes || !config.outsiderIndices) return null;
     
     const voteCounts: Record<string, number> = {};
-    Object.values(config.votes).forEach(vote => {
-      voteCounts[vote] = (voteCounts[vote] || 0) + 1;
+    // Flatten all votes arrays and count each vote
+    Object.values(config.votes).forEach(votesArray => {
+      votesArray.forEach(vote => {
+        voteCounts[vote] = (voteCounts[vote] || 0) + 1;
+      });
     });
 
     const sortedVotes = Object.entries(voteCounts).sort((a, b) => b[1] - a[1]);
-    const totalVotes = Object.values(config.votes).length;
+    // Count total individual votes cast
+    const totalVotes = Object.values(config.votes).reduce((sum, votes) => sum + votes.length, 0);
     const majorityThreshold = Math.ceil(totalVotes / 2); // 50% or more
     
     // Check if any outsider received a majority of votes
@@ -910,20 +924,28 @@ const InPersonGame = () => {
                       transition={{ type: "spring", stiffness: 400, damping: 30 }}
                     >
                       <Button
-                        variant={selectedVote === player ? 'default' : 'outline'}
-                        className="w-full h-12 justify-start transition-all duration-200"
-                        onClick={() => setSelectedVote(player)}
-                        disabled={isCurrentVoter}
+                        variant={selectedVotes.includes(player) ? 'default' : 'outline'}
+                        className="w-full h-12 justify-between transition-all duration-200"
+                        onClick={() => toggleVoteSelection(player)}
+                        disabled={isCurrentVoter || (!selectedVotes.includes(player) && selectedVotes.length >= maxVotesPerPlayer)}
                       >
-                        {player}
-                        {isCurrentVoter && (
-                          <span className="ml-auto text-xs text-muted-foreground">(You)</span>
-                        )}
+                        <span>{player}</span>
+                        {isCurrentVoter ? (
+                          <span className="text-xs text-muted-foreground">(You)</span>
+                        ) : selectedVotes.includes(player) ? (
+                          <Check className="h-4 w-4" />
+                        ) : null}
                       </Button>
                     </motion.div>
                   );
                 })}
               </motion.div>
+
+              {maxVotesPerPlayer > 1 && (
+                <p className="text-center text-sm text-muted-foreground">
+                  Select {maxVotesPerPlayer} player{maxVotesPerPlayer > 1 ? 's' : ''} ({selectedVotes.length}/{maxVotesPerPlayer})
+                </p>
+              )}
               
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
@@ -933,9 +955,9 @@ const InPersonGame = () => {
                 <Button
                   className="w-full h-12"
                   onClick={submitVote}
-                  disabled={!selectedVote}
+                  disabled={selectedVotes.length === 0}
                 >
-                  Submit Vote
+                  Submit Vote{selectedVotes.length > 1 ? 's' : ''}
                 </Button>
               </motion.div>
               
