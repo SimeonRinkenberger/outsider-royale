@@ -183,7 +183,7 @@ const Menu = () => {
       </header>
 
       {/* Main Content */}
-      <main className="flex-1 p-4 pt-0 max-w-md mx-auto w-full flex flex-col justify-center space-y-6">
+      <main className="flex-1 p-4 pt-0 max-w-md mx-auto w-full flex flex-col justify-start space-y-6">
         <motion.div initial={{
         opacity: 0,
         y: 20
