@@ -396,10 +396,17 @@ const InPersonGame = () => {
     if (!config) return;
     
     // Use editable players from results phase (filtered for valid names)
-    const validPlayers = editablePlayers.filter(p => p.name.trim().length > 0).map(p => p.name);
+    const validPlayers = editablePlayers.filter(p => p.name.trim().length > 0).map(p => p.name.trim());
     
     if (validPlayers.length < 3) {
       toast.error('Need at least 3 players to start');
+      return;
+    }
+
+    // Check for duplicate names
+    const uniqueNames = new Set(validPlayers.map(n => n.toLowerCase()));
+    if (uniqueNames.size !== validPlayers.length) {
+      toast.error('All player names must be unique');
       return;
     }
     

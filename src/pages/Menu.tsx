@@ -12,7 +12,7 @@ import { toast } from 'sonner';
 import { useTransition } from '@/contexts/TransitionContext';
 import { useAudio } from '@/contexts/AudioContext';
 import { SettingsDropdown } from '@/components/SettingsDropdown';
-import welcomeFox from '@/assets/welcome_fox.png';
+import titleFox from '@/assets/title_fox.png';
 const Menu = () => {
   const navigate = useNavigate();
   const {
@@ -193,7 +193,7 @@ const Menu = () => {
       }} transition={{
         duration: 0.5
       }} className="text-center space-y-2">
-          <img alt="Welcome" className="w-64 h-auto mx-auto" src="/lovable-uploads/1a901309-bb69-41d7-a4df-3c6535b39c5e.png" />
+          <img alt="Outsider Royale" className="w-64 h-auto mx-auto" src={titleFox} />
           {displayName && <p className="text-muted-foreground">Playing as <span className="font-semibold text-foreground">{displayName}</span></p>}
           <p className="text-muted-foreground">Choose how you want to play</p>
         </motion.div>
