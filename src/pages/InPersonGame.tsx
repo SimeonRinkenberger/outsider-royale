@@ -32,6 +32,7 @@ import { ActiveModifiersDisplay } from '@/components/ActiveModifiersDisplay';
 import { GameConfigPanel, GameConfig } from '@/components/GameConfigPanel';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { useCustomContent } from '@/hooks/useCustomContent';
+import investigativeFoxImg from '@/assets/investigative_fox.png';
 
 interface SortablePlayerProps {
   id: string;
@@ -774,9 +775,9 @@ const InPersonGame = () => {
               animate="center"
               exit="exit"
               transition={springTransition}
-              className="space-y-6"
+              className="space-y-4"
             >
-              <Card className="p-6 text-center overflow-hidden relative">
+              <Card className="p-4 text-center overflow-hidden relative">
                 <Button
                   variant="ghost"
                   size="icon"
@@ -790,7 +791,7 @@ const InPersonGame = () => {
                   animate={{ scale: 1, rotate: 0 }}
                   transition={{ type: "spring", stiffness: 200, damping: 15, delay: 0.1 }}
                 >
-                  <Users className="h-12 w-12 mx-auto mb-4 text-primary" />
+                  <img src={investigativeFoxImg} alt="Discussion time" className="h-20 w-20 mx-auto mb-2 object-contain" />
                 </motion.div>
                 <motion.h2 
                   initial={{ opacity: 0, y: 20 }}
