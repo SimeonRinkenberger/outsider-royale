@@ -792,7 +792,7 @@ const InPersonGame = () => {
                     animate={{ scale: 1, rotate: 0 }}
                     transition={{ type: "spring", stiffness: 200, damping: 15, delay: 0.1 }}
                   >
-                    <img src={investigativeFoxImg} alt="Discussion time" className="h-12 w-12 object-contain" />
+                    <img src={investigativeFoxImg} alt="Discussion time" className="h-24 w-24 object-contain" />
                   </motion.div>
                   <div className="text-left">
                     <motion.h2 
