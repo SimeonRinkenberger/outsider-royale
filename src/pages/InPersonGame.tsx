@@ -32,8 +32,6 @@ import { ActiveModifiersDisplay } from '@/components/ActiveModifiersDisplay';
 import { GameConfigPanel, GameConfig } from '@/components/GameConfigPanel';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { useCustomContent } from '@/hooks/useCustomContent';
-import cryingFoxImg from '@/assets/crying_fox.png';
-import happyFoxImg from '@/assets/happy_fox.png';
 
 interface SortablePlayerProps {
   id: string;
@@ -554,10 +552,17 @@ const InPersonGame = () => {
     if (!config.votes || !config.outsiderIndices) return null;
     
     const voteCounts: Record<string, number> = {};
+    // Build a map of who voted for each player
+    const votersForPlayer: Record<string, string[]> = {};
+    
     // Flatten all votes arrays and count each vote
-    Object.values(config.votes).forEach(votesArray => {
+    Object.entries(config.votes).forEach(([voter, votesArray]) => {
       votesArray.forEach(vote => {
         voteCounts[vote] = (voteCounts[vote] || 0) + 1;
+        if (!votersForPlayer[vote]) {
+          votersForPlayer[vote] = [];
+        }
+        votersForPlayer[vote].push(voter);
       });
     });
 
@@ -582,6 +587,7 @@ const InPersonGame = () => {
     return {
       voteCounts,
       sortedVotes,
+      votersForPlayer,
       wasOutsiderCaught,
       caughtOutsider,
       majorityThreshold
@@ -1002,39 +1008,6 @@ const InPersonGame = () => {
                     className="space-y-4"
                   >
                     <motion.div variants={childVariant} transition={springTransition}>
-                      <Card className={`p-6 text-center ${results.wasOutsiderCaught ? 'bg-green-500/10 border-green-500' : 'bg-destructive/10 border-destructive'}`}>
-                        <motion.div
-                          initial={{ scale: 0, rotate: -180 }}
-                          animate={{ scale: 1, rotate: 0 }}
-                          transition={{ type: "spring", stiffness: 200, damping: 12, delay: 0.2 }}
-                          className="flex justify-center mb-4"
-                        >
-                          <img 
-                            src={results.wasOutsiderCaught ? cryingFoxImg : happyFoxImg} 
-                            alt={results.wasOutsiderCaught ? 'Group wins' : 'Outsider wins'} 
-                            className="h-20 w-20 object-contain"
-                          />
-                        </motion.div>
-                        <motion.h2 
-                          initial={{ opacity: 0, y: 20 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          transition={{ delay: 0.3 }}
-                          className="text-2xl font-bold mb-2"
-                        >
-                          {results.wasOutsiderCaught ? 'Outsider Caught!' : 'Outsider Wins!'}
-                        </motion.h2>
-                        <motion.p 
-                          initial={{ opacity: 0 }}
-                          animate={{ opacity: 1 }}
-                          transition={{ delay: 0.4 }}
-                          className="text-muted-foreground"
-                        >
-                          The secret word was: <span className="font-bold text-foreground">{config.secretWord}</span>
-                        </motion.p>
-                      </Card>
-                    </motion.div>
-
-                    <motion.div variants={childVariant} transition={springTransition}>
                       <Card className="p-4">
                         <h3 className="font-semibold mb-3">The Outsider{config.outsiderIndices!.length > 1 ? 's' : ''}:</h3>
                         <div className="space-y-2">
@@ -1043,13 +1016,16 @@ const InPersonGame = () => {
                               key={playerIndex} 
                               initial={{ opacity: 0, x: -20 }}
                               animate={{ opacity: 1, x: 0 }}
-                              transition={{ delay: 0.5 + i * 0.1 }}
+                              transition={{ delay: 0.2 + i * 0.1 }}
                               className="p-3 bg-destructive/10 rounded-lg"
                             >
                               <span className="font-medium">{config.players[playerIndex]}</span>
                             </motion.div>
                           ))}
                         </div>
+                        <p className="text-sm text-muted-foreground mt-3">
+                          The secret word was: <span className="font-bold text-foreground">{config.secretWord}</span>
+                        </p>
                       </Card>
                     </motion.div>
 
@@ -1057,18 +1033,43 @@ const InPersonGame = () => {
                       <Card className="p-4">
                         <h3 className="font-semibold mb-3">Vote Results:</h3>
                         <div className="space-y-2">
-                          {results.sortedVotes.map(([player, count], i) => (
-                            <motion.div 
-                              key={player} 
-                              initial={{ opacity: 0, x: -20 }}
-                              animate={{ opacity: 1, x: 0 }}
-                              transition={{ delay: 0.6 + i * 0.08 }}
-                              className="flex justify-between items-center p-2 bg-muted rounded"
-                            >
-                              <span>{player}</span>
-                              <span className="font-bold">{count} vote{count > 1 ? 's' : ''}</span>
-                            </motion.div>
-                          ))}
+                          {results.sortedVotes.map(([player, count], i) => {
+                            const voters = results.votersForPlayer[player] || [];
+                            return (
+                              <Collapsible key={player}>
+                                <motion.div 
+                                  initial={{ opacity: 0, x: -20 }}
+                                  animate={{ opacity: 1, x: 0 }}
+                                  transition={{ delay: 0.3 + i * 0.08 }}
+                                >
+                                  <CollapsibleTrigger className="w-full">
+                                    <div className="flex justify-between items-center p-2 bg-muted rounded hover:bg-muted/80 transition-colors">
+                                      <span>{player}</span>
+                                      <div className="flex items-center gap-2">
+                                        <span className="font-bold">{count} vote{count > 1 ? 's' : ''}</span>
+                                        <ChevronDown className="h-4 w-4 transition-transform [[data-state=open]>&]:rotate-180" />
+                                      </div>
+                                    </div>
+                                  </CollapsibleTrigger>
+                                  <CollapsibleContent>
+                                    <div className="pl-4 pt-2 pb-1 space-y-1">
+                                      {voters.map((voter, vi) => (
+                                        <motion.p 
+                                          key={vi}
+                                          initial={{ opacity: 0, x: -10 }}
+                                          animate={{ opacity: 1, x: 0 }}
+                                          transition={{ delay: vi * 0.05 }}
+                                          className="text-sm text-muted-foreground"
+                                        >
+                                          • {voter}
+                                        </motion.p>
+                                      ))}
+                                    </div>
+                                  </CollapsibleContent>
+                                </motion.div>
+                              </Collapsible>
+                            );
+                          })}
                         </div>
                       </Card>
                     </motion.div>
