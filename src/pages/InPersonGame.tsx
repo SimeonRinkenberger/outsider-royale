@@ -775,52 +775,56 @@ const InPersonGame = () => {
               animate="center"
               exit="exit"
               transition={springTransition}
-              className="space-y-4"
+              className="space-y-2"
             >
-              <Card className="p-4 text-center overflow-hidden relative">
+              <Card className="px-3 py-2 text-center overflow-hidden relative">
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="absolute top-2 right-2"
+                  className="absolute top-1 right-1 h-6 w-6"
                   onClick={() => setShowRulesInfo(true)}
                 >
-                  <HelpCircle className="h-5 w-5 text-muted-foreground" />
+                  <HelpCircle className="h-4 w-4 text-muted-foreground" />
                 </Button>
-                <motion.div
-                  initial={{ scale: 0, rotate: -180 }}
-                  animate={{ scale: 1, rotate: 0 }}
-                  transition={{ type: "spring", stiffness: 200, damping: 15, delay: 0.1 }}
-                >
-                  <img src={investigativeFoxImg} alt="Discussion time" className="h-20 w-20 mx-auto mb-2 object-contain" />
-                </motion.div>
-                <motion.h2 
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.2 }}
-                  className="text-2xl font-bold mb-2"
-                >
-                  Discussion Time!
-                </motion.h2>
-                {config.wordCategory && (
-                  <motion.p 
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.22 }}
-                    className="text-sm text-primary font-semibold capitalize"
+                <div className="flex items-center justify-center gap-3">
+                  <motion.div
+                    initial={{ scale: 0, rotate: -180 }}
+                    animate={{ scale: 1, rotate: 0 }}
+                    transition={{ type: "spring", stiffness: 200, damping: 15, delay: 0.1 }}
                   >
-                    Category: {config.wordCategory}
-                  </motion.p>
-                )}
-                {config.showOutsiderCount !== false && (
-                  <motion.p 
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    transition={{ delay: 0.25 }}
-                    className="text-sm text-muted-foreground mt-1"
-                  >
-                    {config.numOutsiders} outsider{config.numOutsiders > 1 ? 's' : ''} among {config.players.length} players
-                  </motion.p>
-                )}
+                    <img src={investigativeFoxImg} alt="Discussion time" className="h-12 w-12 object-contain" />
+                  </motion.div>
+                  <div className="text-left">
+                    <motion.h2 
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.2 }}
+                      className="text-xl font-bold"
+                    >
+                      Discussion Time!
+                    </motion.h2>
+                    {config.wordCategory && (
+                      <motion.p 
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        transition={{ delay: 0.22 }}
+                        className="text-xs text-primary font-semibold capitalize"
+                      >
+                        Category: {config.wordCategory}
+                      </motion.p>
+                    )}
+                    {config.showOutsiderCount !== false && (
+                      <motion.p 
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        transition={{ delay: 0.25 }}
+                        className="text-xs text-muted-foreground"
+                      >
+                        {config.numOutsiders} outsider{config.numOutsiders > 1 ? 's' : ''} among {config.players.length} players
+                      </motion.p>
+                    )}
+                  </div>
+                </div>
               </Card>
               
               {/* Turn Order */}
