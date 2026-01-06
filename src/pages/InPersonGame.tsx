@@ -5,7 +5,7 @@ import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { ArrowRight, RotateCcw, Users, Settings, ChevronDown, ChevronUp, DoorOpen, GripVertical, Trash2, Plus, Check } from 'lucide-react';
+import { ArrowRight, RotateCcw, Users, Settings, ChevronDown, ChevronUp, DoorOpen, GripVertical, Trash2, Plus, Check, HelpCircle, X } from 'lucide-react';
 import { motion, AnimatePresence, useMotionValue, useTransform, useAnimation } from 'framer-motion';
 import {
   DndContext,
@@ -158,6 +158,8 @@ const InPersonGame = () => {
   const [hasViewedWord, setHasViewedWord] = useState(false);
   const [selectedVotes, setSelectedVotes] = useState<string[]>([]);
   const [direction, setDirection] = useState(1); // 1 for forward, -1 for backward
+  const [showRulesInfo, setShowRulesInfo] = useState(false);
+  const [shuffledTurnOrder, setShuffledTurnOrder] = useState<string[]>([]);
   const [showSettings, setShowSettings] = useState(false);
   const [showPlayerManager, setShowPlayerManager] = useState(false);
   const [editablePlayers, setEditablePlayers] = useState<{ id: string; name: string }[]>([]);
@@ -326,6 +328,9 @@ const InPersonGame = () => {
     
     const nextIndex = config.currentPlayerIndex + 1;
     if (nextIndex >= config.players.length) {
+      // Shuffle turn order when entering discussion
+      const shuffled = [...config.players].sort(() => Math.random() - 0.5);
+      setShuffledTurnOrder(shuffled);
       updateConfig({ phase: 'discussion', currentPlayerIndex: 0 });
     } else {
       updateConfig({ currentPlayerIndex: nextIndex });
@@ -771,7 +776,15 @@ const InPersonGame = () => {
               transition={springTransition}
               className="space-y-6"
             >
-              <Card className="p-6 text-center overflow-hidden">
+              <Card className="p-6 text-center overflow-hidden relative">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="absolute top-2 right-2"
+                  onClick={() => setShowRulesInfo(true)}
+                >
+                  <HelpCircle className="h-5 w-5 text-muted-foreground" />
+                </Button>
                 <motion.div
                   initial={{ scale: 0, rotate: -180 }}
                   animate={{ scale: 1, rotate: 0 }}
@@ -792,28 +805,17 @@ const InPersonGame = () => {
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.22 }}
-                    className="text-sm text-primary font-semibold mb-2 capitalize"
+                    className="text-sm text-primary font-semibold capitalize"
                   >
                     Category: {config.wordCategory}
                   </motion.p>
                 )}
-                <motion.p 
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.25 }}
-                  className="text-muted-foreground mb-4"
-                >
-                  Take turns giving one-word clues about the secret word.
-                  {config.gameMode === 'hidden_imposter' 
-                    ? ' Someone has a different word!' 
-                    : ' Try to identify who doesn\'t know the word!'}
-                </motion.p>
                 {config.showOutsiderCount !== false && (
                   <motion.p 
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
-                    transition={{ delay: 0.3 }}
-                    className="text-sm text-muted-foreground"
+                    transition={{ delay: 0.25 }}
+                    className="text-sm text-muted-foreground mt-1"
                   >
                     {config.numOutsiders} outsider{config.numOutsiders > 1 ? 's' : ''} among {config.players.length} players
                   </motion.p>
@@ -824,12 +826,12 @@ const InPersonGame = () => {
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.35 }}
+                transition={{ delay: 0.3 }}
               >
                 <Card className="p-4">
-                  <h3 className="text-sm font-semibold text-muted-foreground mb-2">Turn Order</h3>
+                  <h3 className="text-sm font-semibold text-muted-foreground mb-2">Suggested Turn Order</h3>
                   <div className="flex flex-wrap gap-2">
-                    {config.players.map((player, index) => (
+                    {(shuffledTurnOrder.length > 0 ? shuffledTurnOrder : config.players).map((player, index) => (
                       <span 
                         key={index} 
                         className="px-3 py-1 bg-muted rounded-full text-sm"
@@ -840,6 +842,43 @@ const InPersonGame = () => {
                   </div>
                 </Card>
               </motion.div>
+
+              {/* Rules Info Modal */}
+              <AnimatePresence>
+                {showRulesInfo && (
+                  <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
+                    onClick={() => setShowRulesInfo(false)}
+                  >
+                    <motion.div
+                      initial={{ scale: 0.9, opacity: 0 }}
+                      animate={{ scale: 1, opacity: 1 }}
+                      exit={{ scale: 0.9, opacity: 0 }}
+                      className="bg-card border border-border rounded-xl p-6 max-w-sm w-full shadow-xl"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <div className="flex justify-between items-start mb-4">
+                        <h3 className="text-lg font-bold">How to Play</h3>
+                        <Button variant="ghost" size="icon" onClick={() => setShowRulesInfo(false)}>
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </div>
+                      <div className="space-y-3 text-sm text-muted-foreground">
+                        <p><strong className="text-foreground">Objective:</strong> Find the outsider who doesn't know the secret word!</p>
+                        <p><strong className="text-foreground">Discussion:</strong> Take turns giving one-word clues about the secret word. Be subtle - you don't want the outsider to guess it!</p>
+                        <p><strong className="text-foreground">Outsider's Goal:</strong> Blend in! Give clues that sound believable without knowing the word.</p>
+                        {config.gameMode === 'hidden_imposter' && (
+                          <p><strong className="text-foreground">Hidden Imposter:</strong> Someone has a different word and doesn't know they're the outsider!</p>
+                        )}
+                        <p><strong className="text-foreground">Voting:</strong> After discussion, vote for who you think is the outsider.</p>
+                      </div>
+                    </motion.div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
               
               {/* Rules summary */}
               <motion.div
