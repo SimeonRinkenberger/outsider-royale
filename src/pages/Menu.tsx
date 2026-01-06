@@ -166,10 +166,7 @@ const Menu = () => {
   return <div className="min-h-screen bg-background flex flex-col overflow-x-hidden">
       {/* Header */}
       <header className="bg-card border-b border-border p-4">
-        <div className="max-w-md mx-auto flex items-center justify-between">
-          <h1 className="text-xl sm:text-2xl font-bold bg-gradient-primary bg-clip-text text-transparent">
-            Outsider Royale
-          </h1>
+        <div className="max-w-md mx-auto flex items-center justify-end">
           <div className="flex items-center gap-2">
             <SettingsDropdown />
             {isAuthenticated ? <Button variant="ghost" size="icon" onClick={handleStats}>
