@@ -1008,6 +1008,18 @@ const InPersonGame = () => {
                     className="space-y-4"
                   >
                     <motion.div variants={childVariant} transition={springTransition}>
+                      <Card className="p-4 text-center">
+                        <p className="text-sm text-muted-foreground mb-1">The secret word was</p>
+                        <p className="text-2xl font-bold text-primary">{config.secretWord}</p>
+                        {config.outsiderWord && config.outsiderWord !== config.secretWord && (
+                          <p className="text-sm text-muted-foreground mt-2">
+                            Outsider's word: <span className="font-semibold text-destructive">{config.outsiderWord}</span>
+                          </p>
+                        )}
+                      </Card>
+                    </motion.div>
+
+                    <motion.div variants={childVariant} transition={springTransition}>
                       <Card className="p-4">
                         <h3 className="font-semibold mb-3">The Outsider{config.outsiderIndices!.length > 1 ? 's' : ''}:</h3>
                         <div className="space-y-2">
@@ -1023,9 +1035,6 @@ const InPersonGame = () => {
                             </motion.div>
                           ))}
                         </div>
-                        <p className="text-sm text-muted-foreground mt-3">
-                          The secret word was: <span className="font-bold text-foreground">{config.secretWord}</span>
-                        </p>
                       </Card>
                     </motion.div>
 
