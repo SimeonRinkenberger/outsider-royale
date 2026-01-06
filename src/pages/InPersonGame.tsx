@@ -717,21 +717,20 @@ const InPersonGame = () => {
                 </div>
                 
                 {/* Next button - only appears after viewing */}
-                <AnimatePresence>
-                  {hasViewedWord && (
-                    <motion.div
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -10 }}
-                      transition={{ type: "spring", stiffness: 400, damping: 30 }}
-                    >
-                      <Button className="w-full h-12" onClick={nextPlayer}>
-                        <ArrowRight className="h-5 w-5 mr-2" />
-                        {config.currentPlayerIndex + 1 >= config.players.length ? 'Start Discussion' : 'Next Player'}
-                      </Button>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.25, type: "spring", stiffness: 400, damping: 30 }}
+                >
+                  <Button 
+                    className="w-full h-12" 
+                    onClick={nextPlayer}
+                    disabled={!hasViewedWord}
+                  >
+                    <ArrowRight className="h-5 w-5 mr-2" />
+                    {config.currentPlayerIndex + 1 >= config.players.length ? 'Start Discussion' : 'Next Player'}
+                  </Button>
+                </motion.div>
               </Card>
               
               {/* Rules summary */}
@@ -1008,13 +1007,15 @@ const InPersonGame = () => {
                     className="space-y-4"
                   >
                     <motion.div variants={childVariant} transition={springTransition}>
-                      <Card className="p-4 text-center">
+                      <Card className="p-6 text-center border-2 border-primary/50 bg-gradient-to-br from-primary/5 to-primary/15">
                         <p className="text-sm text-muted-foreground mb-1">The secret word was</p>
-                        <p className="text-2xl font-bold text-primary">{config.secretWord}</p>
+                        <p className="text-3xl font-bold text-primary">{config.secretWord}</p>
                         {config.outsiderWord && config.outsiderWord !== config.secretWord && (
-                          <p className="text-sm text-muted-foreground mt-2">
-                            Outsider's word: <span className="font-semibold text-destructive">{config.outsiderWord}</span>
-                          </p>
+                          <div className="mt-3 pt-3 border-t border-border">
+                            <p className="text-sm text-muted-foreground">
+                              Outsider's word: <span className="font-bold text-destructive text-lg">{config.outsiderWord}</span>
+                            </p>
+                          </div>
                         )}
                       </Card>
                     </motion.div>
