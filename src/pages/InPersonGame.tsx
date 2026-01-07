@@ -33,7 +33,6 @@ import { GameConfigPanel, GameConfig } from '@/components/GameConfigPanel';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { useCustomContent } from '@/hooks/useCustomContent';
 import investigativeFoxImg from '@/assets/investigative_fox.png';
-import votingFoxImg from '@/assets/voting_fox.png';
 
 interface SortablePlayerProps {
   id: string;
@@ -778,62 +777,58 @@ const InPersonGame = () => {
               transition={springTransition}
               className="space-y-2"
             >
-              <Card className="p-4">
-                <div className="flex items-start gap-4">
-                  <motion.div
-                    initial={{ scale: 0, rotate: -180 }}
-                    animate={{ scale: 1, rotate: 0 }}
-                    transition={{ type: "spring", stiffness: 200, damping: 15, delay: 0.1 }}
-                    className="flex-shrink-0"
-                  >
-                    <img src={votingFoxImg} alt="Discussion time" className="h-24 w-24 object-contain" />
-                  </motion.div>
-                  <div className="text-left flex-1">
-                    <div className="flex items-start justify-between">
-                      <div>
-                        <motion.h2 
-                          initial={{ opacity: 0, y: 10 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          transition={{ delay: 0.2 }}
-                          className="text-xl font-bold leading-tight"
-                        >
-                          Discussion Time!
-                        </motion.h2>
-                        <div className="space-y-0.5 mt-1">
-                          {config.wordCategory && (
-                            <motion.p 
-                              initial={{ opacity: 0 }}
-                              animate={{ opacity: 1 }}
-                              transition={{ delay: 0.22 }}
-                              className="text-sm text-primary font-semibold capitalize"
-                            >
-                              Category: {config.wordCategory}
-                            </motion.p>
-                          )}
-                          {config.showOutsiderCount !== false && (
-                            <motion.p 
-                              initial={{ opacity: 0 }}
-                              animate={{ opacity: 1 }}
-                              transition={{ delay: 0.25 }}
-                              className="text-sm text-muted-foreground"
-                            >
-                              {config.numOutsiders} outsider{config.numOutsiders > 1 ? 's' : ''} among {config.players.length} players
-                            </motion.p>
-                          )}
-                        </div>
-                      </div>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8 -mt-1"
-                        onClick={() => setShowRulesInfo(true)}
+              <div className="flex items-start gap-4">
+                <motion.div
+                  initial={{ scale: 0, rotate: -180 }}
+                  animate={{ scale: 1, rotate: 0 }}
+                  transition={{ type: "spring", stiffness: 200, damping: 15, delay: 0.1 }}
+                  className="flex-shrink-0"
+                >
+                  <img src={investigativeFoxImg} alt="Discussion time" className="h-48 w-48 object-contain" />
+                </motion.div>
+                <div className="text-left pt-4 flex-1">
+                  <div className="flex items-start justify-between">
+                    <motion.h2 
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.2 }}
+                      className="text-2xl font-bold leading-tight"
+                    >
+                      Discussion Time!
+                    </motion.h2>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 -mt-1 -mr-2"
+                      onClick={() => setShowRulesInfo(true)}
+                    >
+                      <HelpCircle className="h-5 w-5 text-muted-foreground" />
+                    </Button>
+                  </div>
+                  <div className="space-y-1 mt-2">
+                    {config.wordCategory && (
+                      <motion.p 
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        transition={{ delay: 0.22 }}
+                        className="text-sm text-primary font-semibold capitalize"
                       >
-                        <HelpCircle className="h-5 w-5 text-muted-foreground" />
-                      </Button>
-                    </div>
+                        Category: {config.wordCategory}
+                      </motion.p>
+                    )}
+                    {config.showOutsiderCount !== false && (
+                      <motion.p 
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        transition={{ delay: 0.25 }}
+                        className="text-sm text-muted-foreground"
+                      >
+                        {config.numOutsiders} outsider{config.numOutsiders > 1 ? 's' : ''} among {config.players.length} players
+                      </motion.p>
+                    )}
                   </div>
                 </div>
-              </Card>
+              </div>
               
               {/* Turn Order */}
               <motion.div
