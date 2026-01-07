@@ -619,7 +619,7 @@ const InPersonGame = () => {
         title={
           config.phase === 'word-reveal' ? 'Pass the Device' :
           config.phase === 'discussion' ? 'Discussion Time' :
-          config.phase === 'voting' ? 'Voting' : 'Results'
+          config.phase === 'voting' ? '' : 'Results'
         }
         showBack={false}
         rightContent={
