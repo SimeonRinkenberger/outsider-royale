@@ -952,7 +952,7 @@ const InPersonGame = () => {
                       <motion.p 
                         initial={{ opacity: 0, y: -10 }}
                         animate={{ opacity: 1, y: 0 }}
-                        className="text-sm text-primary font-semibold"
+                        className="text-xl text-primary font-semibold"
                       >
                         Voting Time!
                       </motion.p>
