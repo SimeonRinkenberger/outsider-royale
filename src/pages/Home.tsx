@@ -159,46 +159,34 @@ const Home = () => {
       <GameHeader title="Outsider Royale" showBack={true} backPath="/menu" />
 
       <main className="p-4 max-w-md mx-auto space-y-6 py-8">
-        <Card className="p-5 bg-card/80 backdrop-blur-sm shadow-card border border-border/50 animate-fade-in-up">
-          <div className="flex items-start gap-4">
-            <motion.div
-              initial={{ scale: 0.8, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              transition={{ type: "spring", stiffness: 200, damping: 15, delay: 0.1 }}
-              className="flex-shrink-0"
+        <div className="flex flex-col items-center text-center animate-fade-in-up">
+          <motion.div
+            initial={{ scale: 0.8, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            transition={{ type: "spring", stiffness: 200, damping: 15, delay: 0.1 }}
+            className="w-full flex justify-center"
+          >
+            <img src={wifiFoxImg} alt="Online fox" className="h-48 w-auto object-contain" />
+          </motion.div>
+          <div className="flex items-center gap-2 mt-4">
+            <motion.h2 
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.2 }}
+              className="text-2xl font-bold"
             >
-              <img src={wifiFoxImg} alt="Online fox" className="h-32 w-32 object-contain" />
-            </motion.div>
-            <div className="text-left pt-2 flex-1">
-              <div className="flex items-start justify-between">
-                <motion.h2 
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.2 }}
-                  className="text-2xl font-bold leading-tight"
-                >
-                  Find the Outsider!
-                </motion.h2>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-8 w-8 -mt-1 -mr-2"
-                  onClick={() => setShowRulesInfo(true)}
-                >
-                  <HelpCircle className="h-5 w-5 text-muted-foreground" />
-                </Button>
-              </div>
-              <motion.p 
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: 0.3 }}
-                className="text-sm text-muted-foreground mt-2"
-              >
-                One player doesn't know the secret word. Can the group find them?
-              </motion.p>
-            </div>
+              Connect to your friends!
+            </motion.h2>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8"
+              onClick={() => setShowRulesInfo(true)}
+            >
+              <HelpCircle className="h-5 w-5 text-muted-foreground" />
+            </Button>
           </div>
-        </Card>
+        </div>
 
         <div className="space-y-4 animate-fade-in" style={{ animationDelay: '0.1s' }}>
           <Button
