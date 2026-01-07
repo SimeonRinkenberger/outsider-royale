@@ -938,14 +938,14 @@ const InPersonGame = () => {
               className="space-y-4"
             >
               <div className="flex items-start gap-4">
-                <motion.img 
-                  src={votingFoxImg} 
-                  alt="Voting fox" 
-                  className="h-48 w-48 object-contain flex-shrink-0"
-                  initial={{ opacity: 0, x: -20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: 0.1 }}
-                />
+                <motion.div
+                  initial={{ scale: 0, rotate: 180 }}
+                  animate={{ scale: 1, rotate: 0 }}
+                  transition={{ type: "spring", stiffness: 200, damping: 15, delay: 0.1 }}
+                  className="flex-shrink-0"
+                >
+                  <img src={votingFoxImg} alt="Voting fox" className="h-48 w-48 object-contain" />
+                </motion.div>
                 <div className="flex-1 pt-2">
                   <div className="flex items-start justify-between">
                     <div className="space-y-1">
