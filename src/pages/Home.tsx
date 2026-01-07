@@ -6,9 +6,17 @@ import { Card } from '@/components/ui/card';
 import { supabase } from '@/integrations/supabase/client';
 import { generateLobbyCode, getStoredUserId, getStoredDisplayName } from '@/lib/gameUtils';
 import { toast } from 'sonner';
-import { Plus, LogIn } from 'lucide-react';
+import { Plus, LogIn, HelpCircle } from 'lucide-react';
 import GameHeader from '@/components/GameHeader';
 import { useTransition } from '@/contexts/TransitionContext';
+import { motion } from 'framer-motion';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import wifiFoxImg from '@/assets/wifi_fox.png';
 
 console.log('Home mounted');
 
@@ -16,6 +24,7 @@ const Home = () => {
   const [joinCode, setJoinCode] = useState('');
   const [isCreating, setIsCreating] = useState(false);
   const [isJoining, setIsJoining] = useState(false);
+  const [showRulesInfo, setShowRulesInfo] = useState(false);
   const navigate = useNavigate();
   const { startTransition } = useTransition();
 
@@ -150,11 +159,45 @@ const Home = () => {
       <GameHeader title="Outsider Royale" showBack={true} backPath="/menu" />
 
       <main className="p-4 max-w-md mx-auto space-y-6 py-8">
-        <Card className="p-6 bg-gradient-primary text-white shadow-card border-0 animate-fade-in-up hover:scale-[1.02] transition-transform duration-300">
-          <h2 className="text-2xl font-bold mb-2">Find the Outsider!</h2>
-          <p className="text-white/90">
-            One player doesn't know the secret word. Can the group find them?
-          </p>
+        <Card className="p-5 bg-card/80 backdrop-blur-sm shadow-card border border-border/50 animate-fade-in-up">
+          <div className="flex items-start gap-4">
+            <motion.div
+              initial={{ scale: 0.8, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              transition={{ type: "spring", stiffness: 200, damping: 15, delay: 0.1 }}
+              className="flex-shrink-0"
+            >
+              <img src={wifiFoxImg} alt="Online fox" className="h-32 w-32 object-contain" />
+            </motion.div>
+            <div className="text-left pt-2 flex-1">
+              <div className="flex items-start justify-between">
+                <motion.h2 
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.2 }}
+                  className="text-2xl font-bold leading-tight"
+                >
+                  Find the Outsider!
+                </motion.h2>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8 -mt-1 -mr-2"
+                  onClick={() => setShowRulesInfo(true)}
+                >
+                  <HelpCircle className="h-5 w-5 text-muted-foreground" />
+                </Button>
+              </div>
+              <motion.p 
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.3 }}
+                className="text-sm text-muted-foreground mt-2"
+              >
+                One player doesn't know the secret word. Can the group find them?
+              </motion.p>
+            </div>
+          </div>
         </Card>
 
         <div className="space-y-4 animate-fade-in" style={{ animationDelay: '0.1s' }}>
@@ -199,6 +242,41 @@ const Home = () => {
           </div>
         </div>
       </main>
+
+      {/* Rules Info Dialog */}
+      <Dialog open={showRulesInfo} onOpenChange={setShowRulesInfo}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="text-xl">How to Play</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 text-sm">
+            <div>
+              <h4 className="font-semibold text-primary mb-1">🎯 Goal</h4>
+              <p className="text-muted-foreground">
+                Find the outsider who doesn't know the secret word, or if you're the outsider, blend in!
+              </p>
+            </div>
+            <div>
+              <h4 className="font-semibold text-primary mb-1">📝 Clue Round</h4>
+              <p className="text-muted-foreground">
+                Each player gives a one-word clue about the secret word. Be clever — too obvious and the outsider catches on, too vague and you look suspicious!
+              </p>
+            </div>
+            <div>
+              <h4 className="font-semibold text-primary mb-1">💬 Discussion</h4>
+              <p className="text-muted-foreground">
+                Discuss the clues and try to figure out who the outsider is.
+              </p>
+            </div>
+            <div>
+              <h4 className="font-semibold text-primary mb-1">🗳️ Voting</h4>
+              <p className="text-muted-foreground">
+                Vote for who you think is the outsider. Majority wins!
+              </p>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
