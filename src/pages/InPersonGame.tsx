@@ -1137,7 +1137,7 @@ const InPersonGame = () => {
                             initial={{ opacity: 0, scale: 0.9 }}
                             animate={{ opacity: 1, scale: 1 }}
                             transition={{ delay: 0.1, type: "spring", stiffness: 400, damping: 25 }}
-                            className="text-2xl font-bold"
+                            className="text-lg font-bold"
                           >
                             The secret word was
                           </motion.h2>
