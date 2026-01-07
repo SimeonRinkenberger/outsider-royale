@@ -775,7 +775,7 @@ const InPersonGame = () => {
               animate="center"
               exit="exit"
               transition={springTransition}
-              className="space-y-2 absolute top-0 left-0 right-0"
+              className="space-y-2"
             >
               <Card className="px-3 py-2 text-center overflow-hidden relative">
                 <Button
