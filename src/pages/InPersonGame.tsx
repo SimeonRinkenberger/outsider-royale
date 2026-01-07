@@ -34,6 +34,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import { useCustomContent } from '@/hooks/useCustomContent';
 import investigativeFoxImg from '@/assets/investigative_fox.png';
 import votingFoxImg from '@/assets/voting_fox.png';
+import judgeFoxImg from '@/assets/judge_fox.png';
 
 interface SortablePlayerProps {
   id: string;
@@ -619,7 +620,7 @@ const InPersonGame = () => {
         title={
           config.phase === 'word-reveal' ? 'Pass the Device' :
           config.phase === 'discussion' ? 'Discussion Time' :
-          config.phase === 'voting' ? '' : 'Results'
+          config.phase === 'voting' ? '' : ''
         }
         showBack={false}
         rightContent={
@@ -1113,19 +1114,54 @@ const InPersonGame = () => {
                     animate="animate"
                     className="space-y-4"
                   >
-                    <motion.div variants={childVariant} transition={springTransition}>
-                      <Card className="p-6 text-center border-2 border-primary/50 bg-gradient-to-br from-primary/5 to-primary/15">
-                        <p className="text-sm text-muted-foreground mb-1">The secret word was</p>
-                        <p className="text-3xl font-bold text-primary">{config.secretWord}</p>
-                        {config.outsiderWord && config.outsiderWord !== config.secretWord && (
-                          <div className="mt-3 pt-3 border-t border-border">
-                            <p className="text-sm text-muted-foreground">
-                              Outsider's word: <span className="font-bold text-destructive text-lg">{config.outsiderWord}</span>
-                            </p>
-                          </div>
-                        )}
-                      </Card>
-                    </motion.div>
+                    {/* Results Header with Fox */}
+                    <div className="flex items-start gap-4">
+                      <motion.div
+                        initial={{ scale: 0, rotate: -180 }}
+                        animate={{ scale: 1, rotate: 0 }}
+                        transition={{ type: "spring", stiffness: 200, damping: 15, delay: 0.1 }}
+                        className="flex-shrink-0"
+                      >
+                        <img src={judgeFoxImg} alt="Results" className="h-48 w-48 object-contain" />
+                      </motion.div>
+                      <div className="flex-1 pt-2">
+                        <div className="space-y-1">
+                          <motion.p 
+                            initial={{ opacity: 0, y: -10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            className="text-xl text-primary font-semibold"
+                          >
+                            Results!
+                          </motion.p>
+                          <motion.h2 
+                            initial={{ opacity: 0, scale: 0.9 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            transition={{ delay: 0.1, type: "spring", stiffness: 400, damping: 25 }}
+                            className="text-2xl font-bold"
+                          >
+                            The secret word was
+                          </motion.h2>
+                          <motion.p 
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            transition={{ delay: 0.15 }}
+                            className="text-3xl font-bold text-primary"
+                          >
+                            {config.secretWord}
+                          </motion.p>
+                          {config.outsiderWord && config.outsiderWord !== config.secretWord && (
+                            <motion.p 
+                              initial={{ opacity: 0 }}
+                              animate={{ opacity: 1 }}
+                              transition={{ delay: 0.2 }}
+                              className="text-sm text-muted-foreground"
+                            >
+                              Outsider's word: <span className="font-bold text-destructive">{config.outsiderWord}</span>
+                            </motion.p>
+                          )}
+                        </div>
+                      </div>
+                    </div>
 
                     <motion.div variants={childVariant} transition={springTransition}>
                       <Card className="p-4">
