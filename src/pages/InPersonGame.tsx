@@ -1175,7 +1175,7 @@ const InPersonGame = () => {
                               transition={{ delay: 0.2 + i * 0.1 }}
                               className="p-3 bg-destructive/20 border border-destructive/30 rounded-lg"
                             >
-                              <span className="font-medium text-destructive">{config.players[playerIndex]}</span>
+                              <span className="font-medium text-foreground">{config.players[playerIndex]}</span>
                             </motion.div>
                           ))}
                         </div>
