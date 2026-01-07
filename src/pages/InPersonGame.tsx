@@ -616,7 +616,7 @@ const InPersonGame = () => {
       <GameHeader 
         title={
           config.phase === 'word-reveal' ? 'Pass the Device' :
-          config.phase === 'discussion' ? '' :
+          config.phase === 'discussion' ? 'Discussion Time' :
           config.phase === 'voting' ? 'Voting' : 'Results'
         }
         showBack={false}
@@ -628,7 +628,7 @@ const InPersonGame = () => {
         }
       />
 
-      <main className={`flex-1 p-4 max-w-md mx-auto w-full flex flex-col ${config.phase === 'discussion' ? 'justify-start' : 'justify-center'}`}>
+      <main className="flex-1 p-4 max-w-md mx-auto w-full flex flex-col justify-center">
         <AnimatePresence mode="wait" custom={direction}>
           {/* Word Reveal Phase */}
           {config.phase === 'word-reveal' && (
