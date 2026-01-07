@@ -949,6 +949,13 @@ const InPersonGame = () => {
                 <div className="flex-1 pt-2">
                   <div className="flex items-start justify-between">
                     <div className="space-y-1">
+                      <motion.p 
+                        initial={{ opacity: 0, y: -10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="text-sm text-primary font-semibold"
+                      >
+                        Voting Time!
+                      </motion.p>
                       <motion.h2 
                         initial={{ opacity: 0, scale: 0.9 }}
                         animate={{ opacity: 1, scale: 1 }}
