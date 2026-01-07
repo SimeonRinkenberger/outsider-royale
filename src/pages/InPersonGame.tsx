@@ -949,20 +949,13 @@ const InPersonGame = () => {
                 <div className="flex-1 pt-2">
                   <div className="flex items-start justify-between">
                     <div className="space-y-1">
-                      <motion.p 
-                        initial={{ opacity: 0, y: -10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        className="text-muted-foreground"
-                      >
-                        Pass to
-                      </motion.p>
                       <motion.h2 
                         initial={{ opacity: 0, scale: 0.9 }}
                         animate={{ opacity: 1, scale: 1 }}
                         transition={{ delay: 0.1, type: "spring", stiffness: 400, damping: 25 }}
                         className="text-2xl font-bold"
                       >
-                        {config.players[config.currentVoterIndex ?? 0]}
+                        Pass to {config.players[config.currentVoterIndex ?? 0]}
                       </motion.h2>
                       <motion.p 
                         initial={{ opacity: 0 }}
