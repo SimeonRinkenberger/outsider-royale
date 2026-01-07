@@ -33,6 +33,7 @@ import { GameConfigPanel, GameConfig } from '@/components/GameConfigPanel';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { useCustomContent } from '@/hooks/useCustomContent';
 import investigativeFoxImg from '@/assets/investigative_fox.png';
+import votingFoxImg from '@/assets/voting_fox.png';
 
 interface SortablePlayerProps {
   id: string;
@@ -160,6 +161,7 @@ const InPersonGame = () => {
   const [selectedVotes, setSelectedVotes] = useState<string[]>([]);
   const [direction, setDirection] = useState(1); // 1 for forward, -1 for backward
   const [showRulesInfo, setShowRulesInfo] = useState(false);
+  const [showVotingInfo, setShowVotingInfo] = useState(false);
   const [shuffledTurnOrder, setShuffledTurnOrder] = useState<string[]>([]);
   const [showSettings, setShowSettings] = useState(false);
   const [showPlayerManager, setShowPlayerManager] = useState(false);
@@ -935,31 +937,53 @@ const InPersonGame = () => {
               transition={springTransition}
               className="space-y-4"
             >
-              <Card className="p-4 text-center overflow-hidden">
-                <motion.p 
-                  initial={{ opacity: 0, y: -10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="text-muted-foreground"
-                >
-                  Pass to
-                </motion.p>
-                <motion.h2 
-                  initial={{ opacity: 0, scale: 0.9 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  transition={{ delay: 0.1, type: "spring", stiffness: 400, damping: 25 }}
-                  className="text-2xl font-bold"
-                >
-                  {config.players[config.currentVoterIndex ?? 0]}
-                </motion.h2>
-                <motion.p 
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  transition={{ delay: 0.15 }}
-                  className="text-sm text-muted-foreground mt-2"
-                >
-                  Who do you think is the outsider?
-                </motion.p>
-              </Card>
+              <div className="flex items-start gap-4">
+                <motion.img 
+                  src={votingFoxImg} 
+                  alt="Voting fox" 
+                  className="h-48 w-48 object-contain flex-shrink-0"
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: 0.1 }}
+                />
+                <div className="flex-1 pt-2">
+                  <div className="flex items-start justify-between">
+                    <div className="space-y-1">
+                      <motion.p 
+                        initial={{ opacity: 0, y: -10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="text-muted-foreground"
+                      >
+                        Pass to
+                      </motion.p>
+                      <motion.h2 
+                        initial={{ opacity: 0, scale: 0.9 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        transition={{ delay: 0.1, type: "spring", stiffness: 400, damping: 25 }}
+                        className="text-2xl font-bold"
+                      >
+                        {config.players[config.currentVoterIndex ?? 0]}
+                      </motion.h2>
+                      <motion.p 
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        transition={{ delay: 0.15 }}
+                        className="text-sm text-muted-foreground"
+                      >
+                        Who do you think is the outsider?
+                      </motion.p>
+                    </div>
+                    <Button 
+                      variant="ghost" 
+                      size="icon" 
+                      className="h-8 w-8 -mt-1 -mr-2"
+                      onClick={() => setShowVotingInfo(true)}
+                    >
+                      <HelpCircle className="h-5 w-5 text-muted-foreground" />
+                    </Button>
+                  </div>
+                </div>
+              </div>
               
               <motion.div 
                 className="space-y-2"
@@ -1027,6 +1051,42 @@ const InPersonGame = () => {
                   allHonorSystem
                 />
               </motion.div>
+
+              {/* Voting Info Modal */}
+              <AnimatePresence>
+                {showVotingInfo && (
+                  <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
+                    onClick={() => setShowVotingInfo(false)}
+                  >
+                    <motion.div
+                      initial={{ scale: 0.9, opacity: 0 }}
+                      animate={{ scale: 1, opacity: 1 }}
+                      exit={{ scale: 0.9, opacity: 0 }}
+                      className="bg-card border border-border rounded-xl p-6 max-w-sm w-full shadow-xl"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <div className="flex justify-between items-start mb-4">
+                        <h3 className="text-lg font-bold">How Voting Works</h3>
+                        <Button variant="ghost" size="icon" onClick={() => setShowVotingInfo(false)}>
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </div>
+                      <div className="space-y-3 text-sm text-muted-foreground">
+                        <p><strong className="text-foreground">Goal:</strong> Vote for the player you think is the outsider!</p>
+                        <p><strong className="text-foreground">How:</strong> Each player takes turns voting privately. You cannot vote for yourself.</p>
+                        <p><strong className="text-foreground">Results:</strong> After everyone votes, the player with the most votes is revealed as the suspected outsider.</p>
+                        {config.numOutsiders > 1 && (
+                          <p><strong className="text-foreground">Multiple Outsiders:</strong> There are {config.numOutsiders} outsiders this game, so you can vote for {maxVotesPerPlayer} players!</p>
+                        )}
+                      </div>
+                    </motion.div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </motion.div>
           )}
 
