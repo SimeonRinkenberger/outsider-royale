@@ -777,38 +777,41 @@ const InPersonGame = () => {
               transition={springTransition}
               className="space-y-2"
             >
-              <Card className="px-3 py-2 text-center overflow-hidden relative">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="absolute top-1 right-1 h-6 w-6"
-                  onClick={() => setShowRulesInfo(true)}
+              <div className="flex items-start gap-4">
+                <motion.div
+                  initial={{ scale: 0, rotate: -180 }}
+                  animate={{ scale: 1, rotate: 0 }}
+                  transition={{ type: "spring", stiffness: 200, damping: 15, delay: 0.1 }}
+                  className="flex-shrink-0"
                 >
-                  <HelpCircle className="h-4 w-4 text-muted-foreground" />
-                </Button>
-                <div className="flex items-center justify-start gap-4">
-                  <motion.div
-                    initial={{ scale: 0, rotate: -180 }}
-                    animate={{ scale: 1, rotate: 0 }}
-                    transition={{ type: "spring", stiffness: 200, damping: 15, delay: 0.1 }}
-                  >
-                    <img src={investigativeFoxImg} alt="Discussion time" className="h-48 w-48 object-contain" />
-                  </motion.div>
-                  <div className="text-left">
+                  <img src={investigativeFoxImg} alt="Discussion time" className="h-48 w-48 object-contain" />
+                </motion.div>
+                <div className="text-left pt-4 flex-1">
+                  <div className="flex items-start justify-between">
                     <motion.h2 
                       initial={{ opacity: 0, y: 10 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: 0.2 }}
-                      className="text-xl font-bold"
+                      className="text-2xl font-bold leading-tight"
                     >
                       Discussion Time!
                     </motion.h2>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 -mt-1 -mr-2"
+                      onClick={() => setShowRulesInfo(true)}
+                    >
+                      <HelpCircle className="h-5 w-5 text-muted-foreground" />
+                    </Button>
+                  </div>
+                  <div className="space-y-1 mt-2">
                     {config.wordCategory && (
                       <motion.p 
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         transition={{ delay: 0.22 }}
-                        className="text-xs text-primary font-semibold capitalize"
+                        className="text-sm text-primary font-semibold capitalize"
                       >
                         Category: {config.wordCategory}
                       </motion.p>
@@ -818,14 +821,14 @@ const InPersonGame = () => {
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         transition={{ delay: 0.25 }}
-                        className="text-xs text-muted-foreground"
+                        className="text-sm text-muted-foreground"
                       >
                         {config.numOutsiders} outsider{config.numOutsiders > 1 ? 's' : ''} among {config.players.length} players
                       </motion.p>
                     )}
                   </div>
                 </div>
-              </Card>
+              </div>
               
               {/* Turn Order */}
               <motion.div
