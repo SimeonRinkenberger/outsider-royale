@@ -786,13 +786,13 @@ const InPersonGame = () => {
                 >
                   <HelpCircle className="h-4 w-4 text-muted-foreground" />
                 </Button>
-                <div className="flex items-center justify-center gap-3">
+                <div className="flex items-center justify-start gap-4">
                   <motion.div
                     initial={{ scale: 0, rotate: -180 }}
                     animate={{ scale: 1, rotate: 0 }}
                     transition={{ type: "spring", stiffness: 200, damping: 15, delay: 0.1 }}
                   >
-                    <img src={investigativeFoxImg} alt="Discussion time" className="h-24 w-24 object-contain" />
+                    <img src={investigativeFoxImg} alt="Discussion time" className="h-48 w-48 object-contain" />
                   </motion.div>
                   <div className="text-left">
                     <motion.h2 
