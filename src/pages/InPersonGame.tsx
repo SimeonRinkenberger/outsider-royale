@@ -953,7 +953,7 @@ const InPersonGame = () => {
                       <motion.p 
                         initial={{ opacity: 0, y: -10 }}
                         animate={{ opacity: 1, y: 0 }}
-                        className="text-xl text-primary font-semibold"
+                        className="text-2xl font-bold"
                       >
                         Voting Time!
                       </motion.p>
@@ -961,7 +961,7 @@ const InPersonGame = () => {
                         initial={{ opacity: 0, scale: 0.9 }}
                         animate={{ opacity: 1, scale: 1 }}
                         transition={{ delay: 0.1, type: "spring", stiffness: 400, damping: 25 }}
-                        className="text-2xl font-bold"
+                        className="text-xl text-primary font-semibold"
                       >
                         Pass to {config.players[config.currentVoterIndex ?? 0]}
                       </motion.h2>
