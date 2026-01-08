@@ -548,32 +548,28 @@ const Lobby = () => {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, ease: [0.25, 0.46, 0.45, 0.94] }}
         >
-          <Card className="p-6 bg-gradient-primary text-white shadow-card border-0">
-            <div className="text-center space-y-4">
-              <div>
-                <p className="text-white/80 text-sm mb-1">Lobby Code</p>
-                <div className="flex items-center justify-center gap-3">
-                  <h2 className="text-4xl font-bold font-mono tracking-wider">
-                    {lobby?.code}
-                  </h2>
-                  <motion.div
-                    animate={copyAnimating ? { scale: [1, 0.85, 1.1, 1] } : {}}
-                    transition={{ duration: 0.3, ease: 'easeInOut' }}
-                  >
-                    <Button
-                      variant="secondary"
-                      size="icon"
-                      onClick={copyCode}
-                      className="bg-white/20 hover:bg-white/30 text-white border-white/30"
-                    >
-                      <Copy className="h-4 w-4" />
-                    </Button>
-                  </motion.div>
-                </div>
+          <Card className="px-4 py-3 bg-gradient-primary text-white shadow-card border-0">
+            <div className="flex items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <span className="text-white/70 text-sm">Code:</span>
+                <h2 className="text-2xl font-bold font-mono tracking-wider">
+                  {lobby?.code}
+                </h2>
               </div>
-              <p className="text-white/90 text-sm">
-                Share this code with friends to join
-              </p>
+              <motion.div
+                animate={copyAnimating ? { scale: [1, 0.85, 1.1, 1] } : {}}
+                transition={{ duration: 0.3, ease: 'easeInOut' }}
+              >
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={copyCode}
+                  className="bg-white/20 hover:bg-white/30 text-white border-white/30 gap-1.5"
+                >
+                  <Copy className="h-3.5 w-3.5" />
+                  <span className="text-xs">Copy</span>
+                </Button>
+              </motion.div>
             </div>
           </Card>
         </motion.div>
