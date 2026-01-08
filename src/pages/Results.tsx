@@ -737,6 +737,11 @@ const Results = () => {
               .sort((a, b) => b.votesReceived - a.votesReceived)
               .map(({ player, votesReceived }) => {
                 const avatar = player.avatar_url ? getAvatarById(player.avatar_url) : null;
+                // Get who voted for this player
+                const votersForPlayer = effectiveVotes
+                  .filter(v => v.suspected_outsider_player_id === player.id)
+                  .map(v => effectivePlayers.find(p => p.id === v.voter_player_id))
+                  .filter(Boolean);
                 
                 return (
                   <Card key={player.id} className="p-4 bg-gradient-card border-border">
@@ -751,19 +756,35 @@ const Results = () => {
                             Outsider
                           </span>
                         )}
-                        {player.is_host && (
-                          <span className="text-xs bg-primary/20 text-primary px-2 py-1 rounded-full">
-                            Host
-                          </span>
-                        )}
                       </div>
-                      <div className="flex items-center gap-3">
-                        <div className="text-sm">
-                          <span className="font-bold text-primary">{votesReceived}</span>
-                          <span className="text-muted-foreground"> votes</span>
-                        </div>
+                      <div className="text-sm text-right">
+                        <span className="font-bold text-primary">{votesReceived}</span>
+                        <span className="text-muted-foreground"> vote{votesReceived !== 1 ? 's' : ''}</span>
                       </div>
                     </div>
+                    {votersForPlayer.length > 0 && (
+                      <div className="mt-2 pt-2 border-t border-border/50">
+                        <p className="text-xs text-muted-foreground mb-1">Voted by:</p>
+                        <div className="flex flex-wrap gap-1">
+                          {votersForPlayer.map(voter => {
+                            const voterAvatar = voter?.avatar_url ? getAvatarById(voter.avatar_url) : null;
+                            return (
+                              <span 
+                                key={voter?.id} 
+                                className="inline-flex items-center gap-1 text-xs bg-muted px-2 py-0.5 rounded-full"
+                              >
+                                {voterAvatar && (
+                                  <span className={`w-4 h-4 rounded-full flex items-center justify-center text-[10px] ${voterAvatar.color}`}>
+                                    {voterAvatar.emoji}
+                                  </span>
+                                )}
+                                {voter?.display_name}
+                              </span>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
                   </Card>
                 );
               })}
