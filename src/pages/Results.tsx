@@ -742,7 +742,7 @@ const Results = () => {
                           </div>
                           <span className="font-medium">{player.display_name}</span>
                           {outsiders.some(o => o.player_id === player.id) && (
-                            <span className="text-xs bg-destructive/20 text-destructive px-2 py-1 rounded-full">
+                            <span className="text-xs bg-destructive text-white px-2 py-1 rounded-full">
                               Outsider
                             </span>
                           )}
@@ -766,7 +766,7 @@ const Results = () => {
                             </div>
                             <span className="font-medium">{player.display_name}</span>
                             {outsiders.some(o => o.player_id === player.id) && (
-                              <span className="text-xs bg-destructive/20 text-destructive px-2 py-1 rounded-full">
+                              <span className="text-xs bg-destructive text-white px-2 py-1 rounded-full">
                                 Outsider
                               </span>
                             )}
