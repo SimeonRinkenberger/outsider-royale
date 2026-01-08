@@ -669,14 +669,14 @@ const Results = () => {
             hasAnimatedResultRef.current = gameId;
           }
           return (
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-4 bg-card/80 backdrop-blur-sm border border-border rounded-xl p-4 shadow-lg">
               <motion.div
                 initial={shouldAnimate ? { scale: 0, rotate: -180 } : false}
                 animate={{ scale: 1, rotate: 0 }}
                 transition={{ type: "spring", stiffness: 200, damping: 15, delay: 0.1 }}
                 className="flex-shrink-0"
               >
-                <img src={judgeFoxImg} alt="Results" className="h-28 w-28 object-contain" />
+                <img src={judgeFoxImg} alt="Results" className="h-32 w-32 object-contain" />
               </motion.div>
               <div className="flex-1">
                 <motion.p 
@@ -690,7 +690,7 @@ const Results = () => {
                   initial={shouldAnimate ? { opacity: 0 } : false}
                   animate={{ opacity: 1 }}
                   transition={{ delay: 0.1 }}
-                  className="text-2xl font-bold text-primary"
+                  className="text-3xl font-bold text-primary"
                 >
                   {effectiveSecretWord?.text ?? 'Unknown'}
                 </motion.p>
