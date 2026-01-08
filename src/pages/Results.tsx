@@ -241,11 +241,7 @@ const Results = () => {
   const resultsReady = outsiderGuessedCorrectly || effectiveVotes.length > 0;
 
 
-  useEffect(() => {
-    if (resultsReady) {
-      setMusicState(groupWins ? 'win_safe' : 'win_outsider');
-    }
-  }, [resultsReady, groupWins, setMusicState]);
+  // Music state is no longer changed on win/lose - stays on game music
 
   // Update user stats when results are ready
   useEffect(() => {
