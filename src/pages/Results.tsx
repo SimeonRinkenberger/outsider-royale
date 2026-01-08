@@ -678,34 +678,35 @@ const Results = () => {
               >
                 <img src={judgeFoxImg} alt="Results" className="h-32 w-32 object-contain" />
               </motion.div>
-              <div className="flex-1">
-                <motion.p 
+              <div className="flex-1 space-y-2">
+                <motion.div
                   initial={shouldAnimate ? { opacity: 0, y: -5 } : false}
                   animate={{ opacity: 1, y: 0 }}
-                  className="text-lg font-bold text-muted-foreground"
                 >
-                  Results!
-                </motion.p>
-                <motion.p 
-                  initial={shouldAnimate ? { opacity: 0 } : false}
-                  animate={{ opacity: 1 }}
-                  transition={{ delay: 0.1 }}
-                  className="text-3xl font-bold text-primary"
-                >
-                  {effectiveSecretWord?.text ?? 'Unknown'}
-                </motion.p>
+                  <p className="text-xs uppercase tracking-wide text-muted-foreground font-medium">
+                    The Secret Word Was
+                  </p>
+                  <p className="text-3xl font-bold text-primary">
+                    {effectiveSecretWord?.text ?? 'Unknown'}
+                  </p>
+                  {effectiveSecretWord?.category && (
+                    <p className="text-xs text-muted-foreground capitalize">
+                      Category: {effectiveSecretWord.category}
+                    </p>
+                  )}
+                </motion.div>
                 <motion.div
                   initial={shouldAnimate ? { opacity: 0, y: 5 } : false}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.15 }}
-                  className="flex items-center gap-1.5 mt-1"
+                  className="flex items-center gap-2 pt-1 border-t border-border/50"
                 >
-                  <span className="text-xs text-muted-foreground">
-                    {outsiderPlayers.length > 1 ? 'Outsiders:' : 'Outsider:'}
+                  <span className="text-xs font-medium text-muted-foreground">
+                    {outsiderPlayers.length > 1 ? 'Outsiders' : 'Outsider'}:
                   </span>
                   <div className="flex flex-wrap gap-1">
                     {outsiderPlayers.map(p => (
-                      <span key={p.id} className="text-xs font-semibold text-destructive bg-destructive/15 px-2 py-0.5 rounded-full">
+                      <span key={p.id} className="text-xs font-semibold text-white bg-destructive px-2 py-0.5 rounded-full">
                         {p.display_name}
                       </span>
                     ))}
