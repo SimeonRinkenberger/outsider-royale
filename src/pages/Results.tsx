@@ -744,48 +744,67 @@ const Results = () => {
                   .filter(Boolean);
                 
                 return (
-                  <Card key={player.id} className="p-4 bg-gradient-card border-border">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <div className={`w-8 h-8 rounded-full flex items-center justify-center text-lg ${avatar ? avatar.color : 'bg-muted'}`}>
-                          {avatar ? avatar.emoji : <User className="h-4 w-4 text-muted-foreground" />}
-                        </div>
-                        <span className="font-medium">{player.display_name}</span>
-                        {outsiders.some(o => o.player_id === player.id) && (
-                          <span className="text-xs bg-destructive/20 text-destructive px-2 py-1 rounded-full">
-                            Outsider
-                          </span>
-                        )}
-                      </div>
-                      <div className="text-sm text-right">
-                        <span className="font-bold text-primary">{votesReceived}</span>
-                        <span className="text-muted-foreground"> vote{votesReceived !== 1 ? 's' : ''}</span>
-                      </div>
-                    </div>
-                    {votersForPlayer.length > 0 && (
-                      <div className="mt-2 pt-2 border-t border-border/50">
-                        <p className="text-xs text-muted-foreground mb-1">Voted by:</p>
-                        <div className="flex flex-wrap gap-1">
-                          {votersForPlayer.map(voter => {
-                            const voterAvatar = voter?.avatar_url ? getAvatarById(voter.avatar_url) : null;
-                            return (
-                              <span 
-                                key={voter?.id} 
-                                className="inline-flex items-center gap-1 text-xs bg-muted px-2 py-0.5 rounded-full"
-                              >
-                                {voterAvatar && (
-                                  <span className={`w-4 h-4 rounded-full flex items-center justify-center text-[10px] ${voterAvatar.color}`}>
-                                    {voterAvatar.emoji}
-                                  </span>
-                                )}
-                                {voter?.display_name}
+                  <Collapsible key={player.id}>
+                    <Card className="bg-gradient-card border-border overflow-hidden">
+                      <CollapsibleTrigger asChild disabled={votersForPlayer.length === 0}>
+                        <div className={`p-4 flex items-center justify-between ${votersForPlayer.length > 0 ? 'cursor-pointer hover:bg-muted/30 transition-colors' : ''}`}>
+                          <div className="flex items-center gap-3">
+                            <div className={`w-8 h-8 rounded-full flex items-center justify-center text-lg ${avatar ? avatar.color : 'bg-muted'}`}>
+                              {avatar ? avatar.emoji : <User className="h-4 w-4 text-muted-foreground" />}
+                            </div>
+                            <span className="font-medium">{player.display_name}</span>
+                            {outsiders.some(o => o.player_id === player.id) && (
+                              <span className="text-xs bg-destructive/20 text-destructive px-2 py-1 rounded-full">
+                                Outsider
                               </span>
-                            );
-                          })}
+                            )}
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <div className="text-sm text-right">
+                              <span className="font-bold text-primary">{votesReceived}</span>
+                              <span className="text-muted-foreground"> vote{votesReceived !== 1 ? 's' : ''}</span>
+                            </div>
+                            {votersForPlayer.length > 0 && (
+                              <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform duration-200 [[data-state=open]_&]:rotate-180" />
+                            )}
+                          </div>
                         </div>
-                      </div>
-                    )}
-                  </Card>
+                      </CollapsibleTrigger>
+                      <CollapsibleContent>
+                        <motion.div
+                          initial={{ opacity: 0 }}
+                          animate={{ opacity: 1 }}
+                          transition={{ duration: 0.2 }}
+                          className="px-4 pb-4 pt-0"
+                        >
+                          <div className="pt-2 border-t border-border/50">
+                            <p className="text-xs text-muted-foreground mb-2">Voted by:</p>
+                            <div className="flex flex-wrap gap-1.5">
+                              {votersForPlayer.map((voter, i) => {
+                                const voterAvatar = voter?.avatar_url ? getAvatarById(voter.avatar_url) : null;
+                                return (
+                                  <motion.span 
+                                    key={voter?.id}
+                                    initial={{ opacity: 0, scale: 0.8, y: -5 }}
+                                    animate={{ opacity: 1, scale: 1, y: 0 }}
+                                    transition={{ delay: i * 0.05, duration: 0.2 }}
+                                    className="inline-flex items-center gap-1.5 text-xs bg-muted px-2.5 py-1 rounded-full"
+                                  >
+                                    {voterAvatar && (
+                                      <span className={`w-4 h-4 rounded-full flex items-center justify-center text-[10px] ${voterAvatar.color}`}>
+                                        {voterAvatar.emoji}
+                                      </span>
+                                    )}
+                                    {voter?.display_name}
+                                  </motion.span>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        </motion.div>
+                      </CollapsibleContent>
+                    </Card>
+                  </Collapsible>
                 );
               })}
           </div>
