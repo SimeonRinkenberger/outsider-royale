@@ -132,7 +132,7 @@ const Game = () => {
       const timer = setTimeout(() => {
         setDisplayedStatus(game.status);
         setIsExiting(false);
-      }, 400); // Match exit animation duration
+      }, 300); // Reduced for snappier transitions
       return () => clearTimeout(timer);
     }
   }, [game?.status]);
@@ -152,13 +152,13 @@ const Game = () => {
 
   // Listen for skip transition broadcast (non-hosts react to status change via realtime subscription)
 
-  // Detect round changes for fly-off/fly-on animations
+  // Detect round changes for smooth transitions
   useEffect(() => {
     if (game?.current_round_number && prevRoundRef.current !== null) {
       if (prevRoundRef.current !== game.current_round_number) {
         setIsRoundTransitioning(true);
-        // Reset transition state after animations complete
-        const timer = setTimeout(() => setIsRoundTransitioning(false), 100);
+        // Reset transition state after animations complete (match the animation duration)
+        const timer = setTimeout(() => setIsRoundTransitioning(false), 500);
         return () => clearTimeout(timer);
       }
     }
@@ -794,29 +794,31 @@ const Game = () => {
         </header>
 
         <main className="p-4 max-w-md mx-auto space-y-6 py-6 overflow-hidden">
-          <motion.div key={`round-content-${roundAnimationKey}`} initial={{
-            opacity: 0,
-            x: 100
-          }} animate={isExiting ? {
-            opacity: 0,
-            x: -100
-          } : {
-            opacity: 1,
-            x: 0
-          }} transition={{
-            duration: 0.4,
-            ease: [0.4, 0, 0.2, 1]
-          }} className="space-y-6">
+          <motion.div 
+            key={`round-content-${roundAnimationKey}`} 
+            initial={{ opacity: 0, y: 20 }}
+            animate={isExiting ? {
+              opacity: 0,
+              x: -100
+            } : {
+              opacity: 1,
+              y: 0,
+              x: 0
+            }} 
+            transition={{
+              duration: 0.35,
+              ease: [0.4, 0, 0.2, 1]
+            }} 
+            className="space-y-6">
           <motion.div initial={{
               opacity: 0,
-              y: 40
+              y: 15
             }} animate={{
               opacity: 1,
               y: 0
             }} transition={{
-              duration: 0.5,
-              ease: [0.4, 0, 0.2, 1],
-              delay: 0.1
+              duration: 0.3,
+              ease: [0.4, 0, 0.2, 1]
             }}>
             {isSpectator ? <Card className="p-6 bg-muted/50 border-border">
                 <div className="text-center space-y-2">
@@ -1040,15 +1042,16 @@ const Game = () => {
 
           <motion.div layout initial={{
               opacity: 0,
-              y: 30
+              y: 15
             }} animate={{
               opacity: 1,
               y: 0
             }} transition={{
-              duration: 0.4,
+              duration: 0.3,
               ease: [0.4, 0, 0.2, 1],
               layout: {
-                duration: 0.3
+                duration: 0.25,
+                ease: [0.4, 0, 0.2, 1]
               }
             }} className="space-y-3">
             <h3 className="text-sm font-semibold text-muted-foreground px-1 flex items-center gap-2">
@@ -1060,17 +1063,14 @@ const Game = () => {
                   const playerClue = clues.find(c => c.player_id === player.id);
                   const isCurrentTurn = index === currentTurnIndex && !playerClue;
                   const avatar = player.avatar_url ? getAvatarById(player.avatar_url) : null;
-                  return <motion.div key={player.id} layout initial={{
-                    opacity: 0,
-                    x: -20
-                  }} animate={{
+                  return <motion.div key={player.id} layout initial={false} animate={{
                     opacity: 1,
                     x: 0
                   }} transition={{
-                    duration: 0.3,
+                    duration: 0.25,
                     ease: [0.4, 0, 0.2, 1],
                     layout: {
-                      duration: 0.3
+                      duration: 0.25
                     }
                   }} className="relative">
                     {/* Spotlight glow effect */}
