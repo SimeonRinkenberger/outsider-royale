@@ -7,7 +7,9 @@ import { useGameState } from '@/hooks/useGameState';
 import { useCustomContent } from '@/hooks/useCustomContent';
 import { getStoredUserId } from '@/lib/gameUtils';
 import { toast } from 'sonner';
-import { Copy, Users, Crown, Play, X, Settings, ChevronDown } from 'lucide-react';
+import { Copy, Users, Crown, Play, X, Settings, ChevronDown, HelpCircle } from 'lucide-react';
+import lobbyFoxImg from '@/assets/lobby_fox.png';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { GameMode } from '@/types/game';
 import { GameConfigPanel, GameConfig, getActiveModifierLabels } from '@/components/GameConfigPanel';
 import GameHeader from '@/components/GameHeader';
@@ -493,6 +495,53 @@ const Lobby = () => {
       <GameHeader title="Lobby" showBack={true} onBack={leaveLobby} />
 
       <main className="p-4 max-w-md mx-auto space-y-6 py-6">
+        {/* Fox Image Header */}
+        <motion.div
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.5 }}
+          className="flex flex-col items-center"
+        >
+          <img 
+            src={lobbyFoxImg} 
+            alt="Lobby Fox" 
+            className="h-48 w-auto object-contain"
+          />
+          <div className="flex items-center justify-center gap-2 mt-2">
+            <h2 className="text-xl font-bold text-primary">Waiting for players...</h2>
+            <Dialog>
+              <DialogTrigger asChild>
+                <button className="p-1 hover:bg-muted rounded-full transition-colors">
+                  <HelpCircle className="h-5 w-5 text-muted-foreground hover:text-primary" />
+                </button>
+              </DialogTrigger>
+              <DialogContent className="max-w-sm">
+                <DialogHeader>
+                  <DialogTitle className="text-center text-xl">How to Play</DialogTitle>
+                </DialogHeader>
+                <div className="space-y-4 text-sm">
+                  <div className="space-y-2">
+                    <h4 className="font-semibold text-primary">🎯 Goal</h4>
+                    <p className="text-muted-foreground">Find the Outsider! One player doesn't know the secret word and must blend in.</p>
+                  </div>
+                  <div className="space-y-2">
+                    <h4 className="font-semibold text-primary">📝 Clue Rounds</h4>
+                    <p className="text-muted-foreground">Each round, give a one-word clue about the secret word. Be clever - don't be too obvious or too vague!</p>
+                  </div>
+                  <div className="space-y-2">
+                    <h4 className="font-semibold text-primary">🗳️ Voting</h4>
+                    <p className="text-muted-foreground">After all rounds, vote for who you think is the Outsider.</p>
+                  </div>
+                  <div className="space-y-2">
+                    <h4 className="font-semibold text-primary">🏆 Winning</h4>
+                    <p className="text-muted-foreground">Safe players win by catching the Outsider. The Outsider wins by avoiding detection or guessing the secret word!</p>
+                  </div>
+                </div>
+              </DialogContent>
+            </Dialog>
+          </div>
+        </motion.div>
+
         {/* Lobby Code Card */}
         <motion.div
           initial={{ opacity: 0, y: 30 }}
