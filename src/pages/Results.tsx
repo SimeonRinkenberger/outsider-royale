@@ -731,11 +731,35 @@ const Results = () => {
                   .map(v => effectivePlayers.find(p => p.id === v.voter_player_id))
                   .filter(Boolean);
                 
+                // If no votes, just render a simple card without collapsible
+                if (votersForPlayer.length === 0) {
+                  return (
+                    <Card key={player.id} className="bg-gradient-card border-border">
+                      <div className="p-4 flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className={`w-8 h-8 rounded-full flex items-center justify-center text-lg ${avatar ? avatar.color : 'bg-muted'}`}>
+                            {avatar ? avatar.emoji : <User className="h-4 w-4 text-muted-foreground" />}
+                          </div>
+                          <span className="font-medium">{player.display_name}</span>
+                          {outsiders.some(o => o.player_id === player.id) && (
+                            <span className="text-xs bg-destructive/20 text-destructive px-2 py-1 rounded-full">
+                              Outsider
+                            </span>
+                          )}
+                        </div>
+                        <div className="text-sm text-right text-muted-foreground">
+                          0 votes
+                        </div>
+                      </div>
+                    </Card>
+                  );
+                }
+
                 return (
                   <Collapsible key={player.id}>
                     <Card className="bg-gradient-card border-border overflow-hidden">
-                      <CollapsibleTrigger asChild disabled={votersForPlayer.length === 0}>
-                        <div className={`p-4 flex items-center justify-between ${votersForPlayer.length > 0 ? 'cursor-pointer hover:bg-muted/30 transition-colors' : ''}`}>
+                      <CollapsibleTrigger asChild>
+                        <div className="p-4 flex items-center justify-between cursor-pointer hover:bg-muted/30 transition-colors">
                           <div className="flex items-center gap-3">
                             <div className={`w-8 h-8 rounded-full flex items-center justify-center text-lg ${avatar ? avatar.color : 'bg-muted'}`}>
                               {avatar ? avatar.emoji : <User className="h-4 w-4 text-muted-foreground" />}
@@ -752,9 +776,7 @@ const Results = () => {
                               <span className="font-bold text-primary">{votesReceived}</span>
                               <span className="text-muted-foreground"> vote{votesReceived !== 1 ? 's' : ''}</span>
                             </div>
-                            {votersForPlayer.length > 0 && (
-                              <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform duration-200 [[data-state=open]_&]:rotate-180" />
-                            )}
+                            <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform duration-200 [[data-state=open]_&]:rotate-180" />
                           </div>
                         </div>
                       </CollapsibleTrigger>
