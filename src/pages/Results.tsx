@@ -669,64 +669,52 @@ const Results = () => {
             hasAnimatedResultRef.current = gameId;
           }
           return (
-            <div className="flex items-start gap-4">
+            <div className="flex items-center gap-3">
               <motion.div
                 initial={shouldAnimate ? { scale: 0, rotate: -180 } : false}
                 animate={{ scale: 1, rotate: 0 }}
                 transition={{ type: "spring", stiffness: 200, damping: 15, delay: 0.1 }}
                 className="flex-shrink-0"
               >
-                <img src={judgeFoxImg} alt="Results" className="h-48 w-48 object-contain" />
+                <img src={judgeFoxImg} alt="Results" className="h-28 w-28 object-contain" />
               </motion.div>
-              <div className="flex-1 pt-2">
-                <div className="space-y-1">
-                  <motion.p 
-                    initial={shouldAnimate ? { opacity: 0, y: -10 } : false}
-                    animate={{ opacity: 1, y: 0 }}
-                    className="text-2xl font-bold"
-                  >
-                    Results!
-                  </motion.p>
-                  <motion.h2 
-                    initial={shouldAnimate ? { opacity: 0, scale: 0.9 } : false}
-                    animate={{ opacity: 1, scale: 1 }}
-                    transition={{ delay: 0.1, type: "spring", stiffness: 400, damping: 25 }}
-                    className="text-lg text-primary font-semibold"
-                  >
-                    The secret word was
-                  </motion.h2>
-                  <motion.p 
-                    initial={shouldAnimate ? { opacity: 0 } : false}
-                    animate={{ opacity: 1 }}
-                    transition={{ delay: 0.15 }}
-                    className="text-3xl font-bold text-primary"
-                  >
-                    {effectiveSecretWord?.text ?? 'Unknown'}
-                  </motion.p>
-                </div>
+              <div className="flex-1">
+                <motion.p 
+                  initial={shouldAnimate ? { opacity: 0, y: -5 } : false}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="text-lg font-bold text-muted-foreground"
+                >
+                  Results!
+                </motion.p>
+                <motion.p 
+                  initial={shouldAnimate ? { opacity: 0 } : false}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: 0.1 }}
+                  className="text-2xl font-bold text-primary"
+                >
+                  {effectiveSecretWord?.text ?? 'Unknown'}
+                </motion.p>
+                <motion.div
+                  initial={shouldAnimate ? { opacity: 0, y: 5 } : false}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.15 }}
+                  className="flex items-center gap-1.5 mt-1"
+                >
+                  <span className="text-xs text-muted-foreground">
+                    {outsiderPlayers.length > 1 ? 'Outsiders:' : 'Outsider:'}
+                  </span>
+                  <div className="flex flex-wrap gap-1">
+                    {outsiderPlayers.map(p => (
+                      <span key={p.id} className="text-xs font-semibold text-destructive bg-destructive/15 px-2 py-0.5 rounded-full">
+                        {p.display_name}
+                      </span>
+                    ))}
+                  </div>
+                </motion.div>
               </div>
             </div>
           );
         })()}
-
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2 }}
-        >
-          <Card className="p-4 bg-destructive/10 border border-destructive/20">
-            <p className="text-sm text-muted-foreground mb-1 text-center">
-              {outsiderPlayers.length > 1 ? 'The outsiders were' : 'The outsider was'}
-            </p>
-            <div className="flex flex-wrap gap-2 justify-center">
-              {outsiderPlayers.map(p => (
-                <span key={p.id} className="font-bold text-foreground bg-destructive/20 px-3 py-1 rounded-lg">
-                  {p.display_name}
-                </span>
-              ))}
-            </div>
-          </Card>
-        </motion.div>
 
         <div className="space-y-3">
           <h3 className="text-sm font-semibold text-muted-foreground px-1">
