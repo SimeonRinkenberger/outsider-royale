@@ -7,9 +7,8 @@ import { useGameState } from '@/hooks/useGameState';
 import { useCustomContent } from '@/hooks/useCustomContent';
 import { getStoredUserId } from '@/lib/gameUtils';
 import { toast } from 'sonner';
-import { Trophy, XCircle, RotateCcw, DoorOpen, Settings, ChevronDown, User } from 'lucide-react';
-import cryingFoxImg from '@/assets/crying_fox.png';
-import happyFoxImg from '@/assets/happy_fox.png';
+import { RotateCcw, DoorOpen, Settings, ChevronDown, User } from 'lucide-react';
+import judgeFoxImg from '@/assets/judge_fox.png';
 
 import { GameConfigPanel, GameConfig, getActiveModifierLabels } from '@/components/GameConfigPanel';
 import { GameMode } from '@/types/game';
@@ -663,7 +662,6 @@ const Results = () => {
       />
 
       <main className="p-4 max-w-md mx-auto space-y-6 py-6">
-        {/* Only animate on first render for this game */}
         {(() => {
           const gameId = effectiveGame?.id ?? 'unknown';
           const shouldAnimate = hasAnimatedResultRef.current !== gameId;
@@ -671,57 +669,64 @@ const Results = () => {
             hasAnimatedResultRef.current = gameId;
           }
           return (
-            <Card 
-              key={gameId}
-              className={`p-6 shadow-card border-0 text-center ${shouldAnimate ? 'animate-bounce-in' : ''} ${
-                groupWins ? 'bg-primary/15 border border-primary/30' : 'bg-destructive/10 border-destructive/20'
-              }`}
-            >
-              {groupWins ? (
-                <>
-                  <img 
-                    src={cryingFoxImg} 
-                    alt="Fox mascot" 
-                    className={`h-36 w-36 mx-auto mb-3 object-contain ${shouldAnimate ? 'animate-float' : ''}`} 
-                  />
-                  <h2 className="text-2xl font-bold mb-2 text-primary">Group Wins!</h2>
-                  <p className="text-muted-foreground">
-                    You found the outsider! Great job detectives!
-                  </p>
-                </>
-              ) : (
-                <>
-                  <img 
-                    src={happyFoxImg} 
-                    alt="Happy fox mascot" 
-                    className={`h-36 w-36 mx-auto mb-3 object-contain ${shouldAnimate ? 'animate-float' : ''}`} 
-                  />
-                  <h2 className="text-2xl font-bold text-destructive mb-2">Outsider Wins!</h2>
-                  <p className="text-muted-foreground">
-                    {outsiderGuessedCorrectly 
-                      ? `${gameMetadata?.outsiderGuesser || 'The outsider'} guessed the word correctly!`
-                      : 'The outsider fooled everyone!'}
-                  </p>
-                </>
-              )}
-            </Card>
+            <div className="flex items-start gap-4">
+              <motion.div
+                initial={shouldAnimate ? { scale: 0, rotate: -180 } : false}
+                animate={{ scale: 1, rotate: 0 }}
+                transition={{ type: "spring", stiffness: 200, damping: 15, delay: 0.1 }}
+                className="flex-shrink-0"
+              >
+                <img src={judgeFoxImg} alt="Results" className="h-48 w-48 object-contain" />
+              </motion.div>
+              <div className="flex-1 pt-2">
+                <div className="space-y-1">
+                  <motion.p 
+                    initial={shouldAnimate ? { opacity: 0, y: -10 } : false}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="text-2xl font-bold"
+                  >
+                    Results!
+                  </motion.p>
+                  <motion.h2 
+                    initial={shouldAnimate ? { opacity: 0, scale: 0.9 } : false}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ delay: 0.1, type: "spring", stiffness: 400, damping: 25 }}
+                    className="text-lg text-primary font-semibold"
+                  >
+                    The secret word was
+                  </motion.h2>
+                  <motion.p 
+                    initial={shouldAnimate ? { opacity: 0 } : false}
+                    animate={{ opacity: 1 }}
+                    transition={{ delay: 0.15 }}
+                    className="text-3xl font-bold text-primary"
+                  >
+                    {effectiveSecretWord?.text ?? 'Unknown'}
+                  </motion.p>
+                </div>
+              </div>
+            </div>
           );
         })()}
 
-        <Card className="p-6 bg-gradient-card border-border">
-          <div className="text-center mb-4">
-            <p className="text-sm text-muted-foreground mb-1">The secret word was</p>
-            <h3 className="text-3xl font-bold text-primary">{effectiveSecretWord?.text ?? 'Unknown'}</h3>
-          </div>
-          <div className="border-t border-border pt-4">
-            <p className="text-sm text-muted-foreground mb-1">
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.2 }}
+        >
+          <Card className="p-4 bg-destructive/10 border border-destructive/20">
+            <p className="text-sm text-muted-foreground mb-1 text-center">
               {outsiderPlayers.length > 1 ? 'The outsiders were' : 'The outsider was'}
             </p>
-            <h4 className="text-xl font-bold">
-              {outsiderPlayers.map(p => p.display_name).join(', ')}
-            </h4>
-          </div>
-        </Card>
+            <div className="flex flex-wrap gap-2 justify-center">
+              {outsiderPlayers.map(p => (
+                <span key={p.id} className="font-bold text-foreground bg-destructive/20 px-3 py-1 rounded-lg">
+                  {p.display_name}
+                </span>
+              ))}
+            </div>
+          </Card>
+        </motion.div>
 
         <div className="space-y-3">
           <h3 className="text-sm font-semibold text-muted-foreground px-1">
