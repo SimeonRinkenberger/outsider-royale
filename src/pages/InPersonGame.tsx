@@ -615,7 +615,7 @@ const InPersonGame = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background flex flex-col overflow-hidden pb-[env(safe-area-inset-bottom)]">
+    <div className="min-h-screen bg-background flex flex-col overflow-x-hidden pb-[env(safe-area-inset-bottom)]">
       <GameHeader 
         title={
           config.phase === 'word-reveal' ? 'Pass the Device' :
@@ -945,7 +945,7 @@ const InPersonGame = () => {
                   transition={{ type: "spring", stiffness: 200, damping: 15, delay: 0.1 }}
                   className="flex-shrink-0"
                 >
-                  <img src={votingFoxImg} alt="Voting fox" className="h-48 w-48 object-contain" />
+                  <img src={votingFoxImg} alt="Voting fox" className="h-32 w-32 sm:h-48 sm:w-48 object-contain flex-shrink-0" />
                 </motion.div>
                 <div className="flex-1 pt-2">
                   <div className="flex items-start justify-between">
@@ -1002,7 +1002,7 @@ const InPersonGame = () => {
                     >
                       <Button
                         variant={selectedVotes.includes(player) ? 'default' : 'outline'}
-                        className="w-full h-12 justify-between transition-all duration-200"
+                        className="w-full min-h-[48px] h-auto py-3 justify-between transition-all duration-200"
                         onClick={() => toggleVoteSelection(player)}
                         disabled={isCurrentVoter || (!selectedVotes.includes(player) && selectedVotes.length >= maxVotesPerPlayer)}
                       >
@@ -1030,7 +1030,7 @@ const InPersonGame = () => {
                 transition={{ delay: 0.3 + config.players.length * 0.08 }}
               >
                 <Button
-                  className="w-full h-12"
+                  className="w-full min-h-[48px] h-auto py-3"
                   onClick={submitVote}
                   disabled={selectedVotes.length === 0}
                 >
@@ -1115,14 +1115,14 @@ const InPersonGame = () => {
                     className="space-y-4"
                   >
                     {/* Results Header with Fox */}
-                    <div className="flex items-start gap-4">
+                    <div className="flex items-start gap-3 sm:gap-4 overflow-hidden">
                       <motion.div
                         initial={{ scale: 0, rotate: -180 }}
                         animate={{ scale: 1, rotate: 0 }}
                         transition={{ type: "spring", stiffness: 200, damping: 15, delay: 0.1 }}
                         className="flex-shrink-0"
                       >
-                        <img src={judgeFoxImg} alt="Results" className="h-48 w-48 object-contain" />
+                        <img src={judgeFoxImg} alt="Results" className="h-32 w-32 sm:h-48 sm:w-48 object-contain" />
                       </motion.div>
                       <div className="flex-1 pt-2">
                         <div className="space-y-1">
@@ -1145,7 +1145,7 @@ const InPersonGame = () => {
                             initial={{ opacity: 0 }}
                             animate={{ opacity: 1 }}
                             transition={{ delay: 0.15 }}
-                            className="text-3xl font-bold text-primary"
+                            className="text-2xl sm:text-3xl font-bold text-primary break-words"
                           >
                             {config.secretWord}
                           </motion.p>

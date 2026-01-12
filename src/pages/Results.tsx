@@ -669,14 +669,14 @@ const Results = () => {
             hasAnimatedResultRef.current = gameId;
           }
           return (
-            <div className="flex items-center gap-4 bg-card/80 backdrop-blur-sm border border-border rounded-xl p-4 shadow-lg">
+            <div className="flex items-center gap-3 sm:gap-4 bg-card/80 backdrop-blur-sm border border-border rounded-xl p-3 sm:p-4 shadow-lg overflow-hidden">
               <motion.div
                 initial={shouldAnimate ? { scale: 0, rotate: -180 } : false}
                 animate={{ scale: 1, rotate: 0 }}
                 transition={{ type: "spring", stiffness: 200, damping: 15, delay: 0.1 }}
                 className="flex-shrink-0"
               >
-                <img src={judgeFoxImg} alt="Results" className="h-32 w-32 object-contain" />
+                <img src={judgeFoxImg} alt="Results" className="h-24 w-24 sm:h-32 sm:w-32 object-contain" />
               </motion.div>
               <div className="flex-1 space-y-2">
                 <motion.div
@@ -686,7 +686,7 @@ const Results = () => {
                   <p className="text-xs uppercase tracking-wide text-muted-foreground font-medium">
                     The Secret Word Was
                   </p>
-                  <p className="text-3xl font-bold text-primary">
+                  <p className="text-2xl sm:text-3xl font-bold text-primary break-words">
                     {effectiveSecretWord?.text ?? 'Unknown'}
                   </p>
                   {effectiveSecretWord?.category && (
@@ -704,9 +704,9 @@ const Results = () => {
                   <span className="text-xs font-medium text-muted-foreground">
                     {outsiderPlayers.length > 1 ? 'Outsiders' : 'Outsider'}:
                   </span>
-                  <div className="flex flex-wrap gap-1">
+                  <div className="flex flex-wrap gap-1 max-w-full">
                     {outsiderPlayers.map(p => (
-                      <span key={p.id} className="text-xs font-semibold text-white bg-destructive px-2 py-0.5 rounded-full">
+                      <span key={p.id} className="text-xs font-semibold text-white bg-destructive px-2 py-0.5 rounded-full truncate max-w-[120px] sm:max-w-none">
                         {p.display_name}
                       </span>
                     ))}

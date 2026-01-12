@@ -268,6 +268,8 @@ const TransitionOverlay: React.FC<TransitionOverlayProps> = ({
         pointerEvents: 'all',
         clipPath: `circle(${currentRadius}px at ${cx} ${cy})`,
         WebkitClipPath: `circle(${currentRadius}px at ${cx} ${cy})`,
+        willChange: 'clip-path',
+        transform: 'translateZ(0)', // Force GPU acceleration
       }}
     >
       <LoadingScreen text={loadingText} isTransitionOverlay={true} />
