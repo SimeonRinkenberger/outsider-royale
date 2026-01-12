@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -8,6 +9,7 @@ import { hasValidSession } from './lib/gameUtils';
 import { AudioProvider } from './contexts/AudioContext';
 import { TransitionProvider } from './contexts/TransitionContext';
 import { NetworkProvider } from './contexts/NetworkContext';
+import { preloadAllImages } from './lib/imagePreloader';
 import ErrorBoundary from './components/ErrorBoundary';
 import OfflineBanner from './components/OfflineBanner';
 import Menu from './pages/Menu';
@@ -24,6 +26,9 @@ import Results from './pages/Results';
 import NotFound from './pages/NotFound';
 
 const queryClient = new QueryClient();
+
+// Preload all images immediately on app load
+preloadAllImages();
 
 /**
  * ProtectedRoute - allows access for both guest and authed users
