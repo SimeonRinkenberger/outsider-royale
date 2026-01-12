@@ -864,7 +864,7 @@ const Game = () => {
                           <Lightbulb className="h-4 w-4" />
                           Guess the Word (Win Instantly!)
                         </Button> : <div className="space-y-2">
-                          <Input placeholder="Enter your guess..." value={guessInput} onChange={e => setGuessInput(e.target.value)} className="text-center" onKeyDown={e => e.key === 'Enter' && submitGuess()} autoFocus />
+                          <Input placeholder="Enter your guess..." value={guessInput} onChange={e => setGuessInput(e.target.value)} className="text-center w-full" onKeyDown={e => e.key === 'Enter' && submitGuess()} autoFocus />
                           <div className="flex gap-2">
                             <Button variant="ghost" size="sm" onClick={() => {
                           setShowGuessInput(false);
@@ -958,8 +958,8 @@ const Game = () => {
                   duration: 0.3
                 }}>
                   <label className="text-sm font-medium">Your Clue</label>
-                  <Input placeholder="Enter a one-word clue" value={clueInput} onChange={e => setClueInput(e.target.value)} maxLength={30} className={`h-12 text-base ${isTimedRound ? 'border-primary focus:ring-primary' : ''}`} onKeyDown={e => e.key === 'Enter' && submitClue()} autoFocus={isTimedRound} />
-                  <p className="text-xs text-muted-foreground">
+                  <Input placeholder="Enter a one-word clue" value={clueInput} onChange={e => setClueInput(e.target.value)} maxLength={30} className={`h-12 text-base w-full ${isTimedRound ? 'border-primary focus:ring-primary' : ''}`} onKeyDown={e => e.key === 'Enter' && submitClue()} autoFocus={isTimedRound} />
+                  <p className="text-xs text-muted-foreground pb-2">
                     {isTimedRound ? 'Quick! Submit before time runs out!' : 'Keep it short and relevant!'}
                   </p>
                 </motion.div>
@@ -1278,7 +1278,7 @@ const Game = () => {
                         duration: 0.3,
                         delay: 0.3 + index * 0.06
                       }}>
-                            <Button onClick={() => toggleVoteSelection(player.id)} disabled={isSubmitting || player.id === currentPlayer?.id || player.is_spectator || !isSelected && !canSelect} variant={isSelected ? 'default' : 'outline'} className="w-full h-14 text-base justify-between px-4">
+                            <Button onClick={() => toggleVoteSelection(player.id)} disabled={isSubmitting || player.id === currentPlayer?.id || player.is_spectator || !isSelected && !canSelect} variant={isSelected ? 'default' : 'outline'} className="w-full min-h-[56px] h-auto py-3 text-base justify-between px-4">
                               <div className="flex items-center gap-3">
                                 <div className={`w-8 h-8 rounded-full flex items-center justify-center text-lg ${avatar ? avatar.color : 'bg-muted'}`}>
                                   {avatar ? avatar.emoji : <User className="h-4 w-4 text-muted-foreground" />}
@@ -1320,7 +1320,7 @@ const Game = () => {
                       duration: 0.3,
                       delay: 0.3 + votablePlayers.length * 0.06
                     }}>
-                          <Button onClick={() => toggleVoteSelection('skip')} disabled={isSubmitting} variant={selectedVotes.includes('skip') ? 'default' : 'outline'} className="w-full h-14 text-base justify-between px-4 text-muted-foreground">
+                          <Button onClick={() => toggleVoteSelection('skip')} disabled={isSubmitting} variant={selectedVotes.includes('skip') ? 'default' : 'outline'} className="w-full min-h-[56px] h-auto py-3 text-base justify-between px-4 text-muted-foreground">
                             <span>Skip vote (no elimination)</span>
                             <AnimatePresence>
                               {selectedVotes.includes('skip') && <motion.div initial={{
