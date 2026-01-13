@@ -1,7 +1,7 @@
 # Database Usage Map - Outsider Royale
 
 > **Audit Date:** 2026-01-12  
-> **Last Updated:** 2026-01-12 (Cost Optimization Pass)
+> **Last Updated:** 2026-01-13 (Final Cost Optimization Pass)
 > **Purpose:** Complete inventory of all Supabase interactions in the application
 
 ---
@@ -10,21 +10,25 @@
 
 ### 1. Global Clues Listener → FIXED ✅
 - **Before:** `useGameState.ts` subscribed to ALL clues table changes globally with no filter
-- **After:** Subscription filtered to `filter: round_id=eq.${currentRound.id}` - only current round
-- **Payload Applied:** INSERT/UPDATE/DELETE events now update local state directly instead of refetching
+- **After:** Subscription filtered to `filter: round_id=eq.${currentRound.id}` - only current round (line 404)
+- **Payload Applied:** INSERT/UPDATE/DELETE events update local state directly, no refetch
+- **Location:** `src/hooks/useGameState.ts` lines 398-436
 
-### 2. Wide Words SELECT → FIXED ✅
-- **Before:** `Lobby.tsx`, `Results.tsx` fetched ALL words with `select('*').in('category', [...])` (potentially thousands)
-- **After:** New RPC functions `get_random_words_from_categories()` and `get_imposter_word()` return only 1-2 words server-side
-- **Queries Removed:** Unlimited word fetches replaced with single RPC calls
+### 2. Wide Words SELECT → FIXED ✅ (ALL FILES)
+- **Before:** `Lobby.tsx`, `Results.tsx`, `InPersonGame.tsx` fetched ALL words with `select('*').in('category', [...])` (potentially thousands)
+- **After:** All files now use RPC functions:
+  - `Lobby.tsx` - Uses `get_random_words_from_categories()` and `get_imposter_word()` RPCs
+  - `Results.tsx` - Uses `get_random_words_from_categories()` and `get_imposter_word()` RPCs (playAgain)
+  - `InPersonGame.tsx` - Uses `get_random_words_from_categories()` RPC (loadGame + playAgain)
+- **Queries Removed:** All unlimited word fetches replaced with RPC calls returning 1-2 rows
 
 ### 3. Refetch-on-Realtime → FIXED ✅
 - **Before:** `lobby_players`, `votes`, `clues` changes triggered full table refetch
 - **After:** Payload applied directly to local state:
-  - INSERT → append to array (debounced refetch only for player avatar joins)
-  - UPDATE → update matching item
-  - DELETE → filter out item
-- **Debouncing:** Player refetch debounced to 300ms for avatar resolution
+  - `clues`: INSERT → append, UPDATE → modify, DELETE → filter (lines 410-435)
+  - `votes`: INSERT → append, UPDATE → modify, DELETE → filter (lines 450-463)
+  - `lobby_players`: INSERT → debounced refetch for avatar, UPDATE → modify in place, DELETE → filter (lines 237-251)
+- **Debouncing:** Player refetch debounced to 300ms for avatar resolution only on INSERT
 
 ### 4. Duplicate Initial Fetch → FIXED ✅
 - **Before:** `useGameState.ts` and `gamePreloadCache.ts` both fetched same lobby/game/players data
@@ -32,7 +36,8 @@
 
 ### 5. Channel Leak → FIXED ✅
 - **Before:** `Game.tsx` outsider guess broadcast channel created but never removed
-- **After:** Channel wrapped in try/finally with `supabase.removeChannel(channel)` cleanup
+- **After:** Channel wrapped in try/finally with `supabase.removeChannel(channel)` cleanup (lines 609-622)
+- **Also Fixed:** `Results.tsx` playAgain channel now properly cleaned up in finally block (line 565)
 
 ### 6. Auth Centralized → ADDED ✅
 - **New:** `AuthProvider` context reads session once, provides to all components
@@ -40,13 +45,42 @@
 
 ### 7. SELECT(*) Reduced → FIXED ✅
 - **Before:** Most queries used `select('*')`
-- **After:** Explicit columns: `select('id, text, category')` for words, explicit columns for lobbies, games, players, etc.
+- **After:** Explicit columns throughout:
+  - Words: RPC functions, no direct table queries
+  - Lobbies: `select('id, code, host_user_id, status, current_game_id, created_at')`
+  - Games: `select('id, lobby_id, secret_word_id, outsider_player_id, total_rounds, current_round_number, status, created_at, game_mode, imposter_word_id')`
+  - Players: `select('id, lobby_id, user_id, is_host, is_connected, is_spectator, joined_at, display_name')`
 
-### New RPC Functions Added
-| Function | Purpose |
-|----------|---------|
-| `get_random_words_from_categories(p_categories, p_count, p_exclude_word_id)` | Server-side random word selection |
-| `get_imposter_word(p_secret_word_id, p_categories)` | Get different word for hidden_imposter mode |
+### RPC Functions Used
+| Function | Purpose | Called From |
+|----------|---------|-------------|
+| `get_random_words_from_categories(p_categories, p_count, p_exclude_word_id)` | Server-side random word selection (returns 1-2 rows) | Lobby.tsx, Results.tsx, InPersonGame.tsx |
+| `get_imposter_word(p_secret_word_id, p_categories)` | Get different word for hidden_imposter mode (returns 1 row) | Lobby.tsx, Results.tsx |
+
+---
+
+## DB Cost Impact Summary
+
+### Queries Removed
+| Query | Files | Est. Rows Before | Est. Rows After |
+|-------|-------|------------------|-----------------|
+| `words.select('*').in('category', [...])` | Lobby.tsx, Results.tsx, InPersonGame.tsx | 100-1000+ | 0 (replaced by RPC) |
+| Full votes refetch on each vote | useGameState.ts | N votes × M events | 0 (payload applied) |
+| Full lobby_players refetch on each change | useGameState.ts | N players × M events | 1 per INSERT (avatar fetch) |
+| Full clues refetch on each clue | useGameState.ts | N clues × M events | 0 (payload applied) |
+
+### Realtime Subscription Efficiency
+| Subscription | Before | After |
+|--------------|--------|-------|
+| Clues | Global (all games/rounds) | Filtered by `round_id=eq.X` |
+| Votes | Filtered by `game_id` | Filtered by `game_id` (payload applied) |
+| Lobby Players | Filtered by `lobby_id` | Filtered by `lobby_id` (payload applied) |
+
+### Channel Leaks Fixed
+| Component | Channel | Fix |
+|-----------|---------|-----|
+| Game.tsx | `outsider-guess-broadcast-${game.id}` | try/finally cleanup |
+| Results.tsx | `new-game-transition-${lobbyId}` | finally block cleanup |
 
 ---
 
