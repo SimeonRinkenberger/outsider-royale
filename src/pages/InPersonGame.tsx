@@ -248,53 +248,82 @@ const InPersonGame = () => {
         const selectedCustomCats = gameConfig.selectedCustomCategories || [];
         const storedCustomCategories = gameConfig.customCategories || [];
         
-        // Fetch words from selected categories
-        let allWords: { text: string; category: string }[] = [];
-        
-        if (selectedCats.length > 0) {
-          const { data: words, error } = await supabase
-            .from('words')
-            .select('text, category')
-            .in('category', selectedCats as ('animal' | 'brand' | 'degenerate' | 'food' | 'movie' | 'person' | 'place' | 'thing')[]);
-
-          if (error || !words?.length) {
-            toast.error('Failed to load words');
-            navigate('/in-person');
-            return;
-          }
-          
-          allWords = words.map(w => ({ text: w.text, category: w.category }));
-        }
+        // Build custom words first
+        let allCustomWords: { text: string; category: string }[] = [];
         
         // Add words from custom categories
         const selectedCustomCatData = storedCustomCategories.filter(c => selectedCustomCats.includes(c.id));
         for (const customCat of selectedCustomCatData) {
           for (const word of customCat.words) {
-            allWords.push({ text: word, category: customCat.name });
+            allCustomWords.push({ text: word, category: customCat.name });
           }
         }
         
-        if (allWords.length === 0) {
-          toast.error('No words available for selected categories');
-          navigate('/in-person');
-          return;
+        // Use RPC for server-side random word selection from built-in categories
+        let randomWordData: { text: string; category: string } | null = null;
+        
+        if (selectedCats.length > 0 && allCustomWords.length === 0) {
+          // Only built-in categories - use RPC
+          const { data: rpcWords, error } = await supabase
+            .rpc('get_random_words_from_categories', {
+              p_categories: selectedCats,
+              p_count: 1
+            });
+
+          if (error || !rpcWords?.length) {
+            toast.error('Failed to load words');
+            navigate('/in-person');
+            return;
+          }
+          
+          randomWordData = { text: rpcWords[0].text, category: rpcWords[0].category };
+        } else if (selectedCats.length > 0 && allCustomWords.length > 0) {
+          // Mix of built-in and custom - decide randomly
+          const useBuiltIn = Math.random() < 0.5;
+          if (useBuiltIn) {
+            const { data: rpcWords } = await supabase
+              .rpc('get_random_words_from_categories', {
+                p_categories: selectedCats,
+                p_count: 1
+              });
+            if (rpcWords?.length) {
+              randomWordData = { text: rpcWords[0].text, category: rpcWords[0].category };
+            }
+          }
+        }
+        
+        // If no word selected, use custom
+        if (!randomWordData) {
+          if (allCustomWords.length === 0) {
+            toast.error('No words available for selected categories');
+            navigate('/in-person');
+            return;
+          }
+          randomWordData = allCustomWords[Math.floor(Math.random() * allCustomWords.length)];
         }
 
-        // Select random word
-        const randomWordData = allWords[Math.floor(Math.random() * allWords.length)];
-        
         // For hidden_imposter mode, select a different word for outsiders
         let outsiderWord: string | undefined;
         if (gameConfig.gameMode === 'hidden_imposter') {
-          // Get a different word from the same category if possible
-          const sameCategory = allWords.filter(w => w.category === randomWordData.category && w.text !== randomWordData.text);
+          // Try to get from custom words first
+          const sameCategory = allCustomWords.filter(w => w.category === randomWordData.category && w.text !== randomWordData.text);
           if (sameCategory.length > 0) {
             outsiderWord = sameCategory[Math.floor(Math.random() * sameCategory.length)].text;
           } else {
-            // Fallback to any different word
-            const differentWords = allWords.filter(w => w.text !== randomWordData.text);
+            // Fallback to any different custom word
+            const differentWords = allCustomWords.filter(w => w.text !== randomWordData.text);
             if (differentWords.length > 0) {
               outsiderWord = differentWords[Math.floor(Math.random() * differentWords.length)].text;
+            } else if (selectedCats.length > 0) {
+              // Try RPC for imposter word from built-in
+              const { data: imposterWords } = await supabase
+                .rpc('get_random_words_from_categories', {
+                  p_categories: selectedCats,
+                  p_count: 1
+                });
+              if (imposterWords?.length && imposterWords[0].text !== randomWordData.text) {
+                outsiderWord = imposterWords[0].text;
+              }
             }
           }
         }
@@ -436,47 +465,78 @@ const InPersonGame = () => {
       return;
     }
 
-    // Fetch words from selected categories
-    let allWords: { text: string; category: string }[] = [];
-    
-    if (gameConfig.selectedCategories.length > 0) {
-      const { data: words } = await supabase
-        .from('words')
-        .select('text, category')
-        .in('category', gameConfig.selectedCategories as ('animal' | 'brand' | 'degenerate' | 'food' | 'movie' | 'person' | 'place' | 'thing')[]);
-      
-      if (words) {
-        allWords = words.map(w => ({ text: w.text, category: w.category }));
-      }
-    }
+    // Build custom words first
+    let allCustomWords: { text: string; category: string }[] = [];
     
     // Add words from custom categories
     const storedCustomCategories = config.customCategories || [];
     const selectedCustomCats = storedCustomCategories.filter(c => gameConfig.selectedCustomCategories.includes(c.id));
     for (const customCat of selectedCustomCats) {
       for (const word of customCat.words) {
-        allWords.push({ text: word, category: customCat.name });
+        allCustomWords.push({ text: word, category: customCat.name });
       }
     }
     
-    if (allWords.length === 0) {
-      toast.error('No words available for selected categories');
-      return;
+    // Use RPC for server-side random word selection from built-in categories
+    let randomWordData: { text: string; category: string } | null = null;
+    
+    if (gameConfig.selectedCategories.length > 0 && allCustomWords.length === 0) {
+      // Only built-in categories - use RPC
+      const { data: rpcWords, error } = await supabase
+        .rpc('get_random_words_from_categories', {
+          p_categories: gameConfig.selectedCategories,
+          p_count: 1
+        });
+      
+      if (error || !rpcWords?.length) {
+        toast.error('No words available for selected categories');
+        return;
+      }
+      randomWordData = { text: rpcWords[0].text, category: rpcWords[0].category };
+    } else if (gameConfig.selectedCategories.length > 0 && allCustomWords.length > 0) {
+      // Mix of built-in and custom - decide randomly
+      const useBuiltIn = Math.random() < 0.5;
+      if (useBuiltIn) {
+        const { data: rpcWords } = await supabase
+          .rpc('get_random_words_from_categories', {
+            p_categories: gameConfig.selectedCategories,
+            p_count: 1
+          });
+        if (rpcWords?.length) {
+          randomWordData = { text: rpcWords[0].text, category: rpcWords[0].category };
+        }
+      }
+    }
+    
+    // If no word selected, use custom
+    if (!randomWordData) {
+      if (allCustomWords.length === 0) {
+        toast.error('No words available for selected categories');
+        return;
+      }
+      randomWordData = allCustomWords[Math.floor(Math.random() * allCustomWords.length)];
     }
 
-    // Select random word
-    const randomWordData = allWords[Math.floor(Math.random() * allWords.length)];
-    
     // For hidden_imposter mode, select a different word for outsiders
     let outsiderWord: string | undefined;
     if (gameConfig.gameMode === 'hidden_imposter') {
-      const sameCategory = allWords.filter(w => w.category === randomWordData.category && w.text !== randomWordData.text);
+      const sameCategory = allCustomWords.filter(w => w.category === randomWordData.category && w.text !== randomWordData.text);
       if (sameCategory.length > 0) {
         outsiderWord = sameCategory[Math.floor(Math.random() * sameCategory.length)].text;
       } else {
-        const differentWords = allWords.filter(w => w.text !== randomWordData.text);
+        const differentWords = allCustomWords.filter(w => w.text !== randomWordData.text);
         if (differentWords.length > 0) {
           outsiderWord = differentWords[Math.floor(Math.random() * differentWords.length)].text;
+        } else if (gameConfig.selectedCategories.length > 0) {
+          // Try RPC for imposter word
+          const { data: imposterWords } = await supabase
+            .rpc('get_random_words_from_categories', {
+              p_categories: gameConfig.selectedCategories,
+              p_count: 1
+            });
+          if (imposterWords?.length && imposterWords[0].text !== randomWordData.text) {
+            outsiderWord = imposterWords[0].text;
+          }
         }
       }
     }
