@@ -1,6 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import type { Lobby, LobbyPlayer, Game, Round, Clue, Vote, Word } from '@/types/game';
+import { getCachedGameData, getCachedResultsData } from '@/lib/gamePreloadCache';
 
 export interface GameOutsider {
   id: string;
@@ -9,28 +10,87 @@ export interface GameOutsider {
   created_at: string;
 }
 
+// Debounce helper
+function useDebouncedCallback<T extends (...args: any[]) => void>(
+  callback: T,
+  delay: number
+): T {
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const callbackRef = useRef(callback);
+  callbackRef.current = callback;
+
+  return useCallback((...args: Parameters<T>) => {
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+    }
+    timeoutRef.current = setTimeout(() => {
+      callbackRef.current(...args);
+    }, delay);
+  }, [delay]) as T;
+}
+
 export const useGameState = (lobbyId: string | null) => {
-  const [lobby, setLobby] = useState<Lobby | null>(null);
-  const [players, setPlayers] = useState<LobbyPlayer[]>([]);
-  const [game, setGame] = useState<Game | null>(null);
-  const [currentRound, setCurrentRound] = useState<Round | null>(null);
-  const [clues, setClues] = useState<Clue[]>([]); // Current round clues
-  const [allClues, setAllClues] = useState<Clue[]>([]); // All clues for the game
-  const [votes, setVotes] = useState<Vote[]>([]);
-  const [secretWord, setSecretWord] = useState<Word | null>(null);
-  const [imposterWord, setImposterWord] = useState<Word | null>(null);
-  const [outsiders, setOutsiders] = useState<GameOutsider[]>([]);
+  // Try to use preloaded cache for instant render
+  const cachedGame = lobbyId ? getCachedGameData(lobbyId) : null;
+  const cachedResults = lobbyId ? getCachedResultsData(lobbyId) : null;
+  
+  const [lobby, setLobby] = useState<Lobby | null>(cachedGame?.lobby || cachedResults?.lobby || null);
+  const [players, setPlayers] = useState<LobbyPlayer[]>(cachedGame?.players || cachedResults?.players || []);
+  const [game, setGame] = useState<Game | null>(cachedGame?.game || cachedResults?.game || null);
+  const [currentRound, setCurrentRound] = useState<Round | null>(cachedGame?.currentRound || null);
+  const [clues, setClues] = useState<Clue[]>(cachedGame?.clues || []); // Current round clues
+  const [allClues, setAllClues] = useState<Clue[]>(cachedGame?.allClues || []); // All clues for the game
+  const [votes, setVotes] = useState<Vote[]>(cachedResults?.votes || []);
+  const [secretWord, setSecretWord] = useState<Word | null>(cachedGame?.secretWord || cachedResults?.secretWord || null);
+  const [imposterWord, setImposterWord] = useState<Word | null>(cachedGame?.imposterWord || cachedResults?.imposterWord || null);
+  const [outsiders, setOutsiders] = useState<GameOutsider[]>(cachedGame?.outsiders || cachedResults?.outsiders || []);
+  
+  // Track current round ID for filtered clues subscription
+  const currentRoundIdRef = useRef<string | null>(null);
+  
+  // Track if we already initialized from cache
+  const initializedFromCacheRef = useRef(!!cachedGame || !!cachedResults);
+
+  // Debounced refetch for players (only when needed for avatar join)
+  const debouncedRefetchPlayers = useDebouncedCallback(async () => {
+    if (!lobbyId) return;
+    const { data } = await supabase
+      .from('lobby_players')
+      .select('id, lobby_id, user_id, is_host, is_connected, is_spectator, joined_at, display_name, profiles:user_id(avatar_url)')
+      .eq('lobby_id', lobbyId)
+      .order('joined_at');
+    if (data) {
+      const playersWithAvatars = data.map((p: any) => ({
+        ...p,
+        avatar_url: p.profiles?.avatar_url || null,
+        profiles: undefined
+      }));
+      setPlayers(playersWithAvatars as LobbyPlayer[]);
+    }
+  }, 300);
 
   useEffect(() => {
     if (!lobbyId) return;
 
     console.log('useGameState: Setting up for lobby', lobbyId);
 
-    // Fetch initial data
+    // Fetch initial data only if not already from cache
     const fetchData = async () => {
+      // Skip initial fetch if we have valid cache data
+      if (initializedFromCacheRef.current) {
+        console.log('useGameState: Using cached data, skipping initial fetch');
+        initializedFromCacheRef.current = false; // Only skip once
+        
+        // But we still need to update currentRoundIdRef
+        if (cachedGame?.currentRound) {
+          currentRoundIdRef.current = cachedGame.currentRound.id;
+        }
+        return;
+      }
+      
       const { data: lobbyData } = await supabase
         .from('lobbies')
-        .select('*')
+        .select('id, code, host_user_id, status, current_game_id, created_at')
         .eq('id', lobbyId)
         .single();
       
@@ -40,7 +100,7 @@ export const useGameState = (lobbyId: string | null) => {
         // Fetch players with their avatars
         const { data: playersData } = await supabase
           .from('lobby_players')
-          .select('*, profiles:user_id(avatar_url)')
+          .select('id, lobby_id, user_id, is_host, is_connected, is_spectator, joined_at, display_name, profiles:user_id(avatar_url)')
           .eq('lobby_id', lobbyId)
           .order('joined_at');
         
@@ -57,7 +117,7 @@ export const useGameState = (lobbyId: string | null) => {
         if (lobbyData.current_game_id) {
           const { data: gameData } = await supabase
             .from('games')
-            .select('*')
+            .select('id, lobby_id, secret_word_id, outsider_player_id, total_rounds, current_round_number, status, created_at, game_mode, imposter_word_id')
             .eq('id', lobbyData.current_game_id)
             .single();
           
@@ -67,7 +127,7 @@ export const useGameState = (lobbyId: string | null) => {
             // Fetch secret word
             const { data: wordData } = await supabase
               .from('words')
-              .select('*')
+              .select('id, text, category')
               .eq('id', gameData.secret_word_id)
               .single();
             
@@ -77,7 +137,7 @@ export const useGameState = (lobbyId: string | null) => {
             if (gameData.imposter_word_id) {
               const { data: imposterWordData } = await supabase
                 .from('words')
-                .select('*')
+                .select('id, text, category')
                 .eq('id', gameData.imposter_word_id)
                 .single();
               
@@ -89,18 +149,19 @@ export const useGameState = (lobbyId: string | null) => {
             // Fetch current round
             const { data: roundData } = await supabase
               .from('rounds')
-              .select('*')
+              .select('id, game_id, round_number, is_complete, created_at')
               .eq('game_id', gameData.id)
               .eq('round_number', gameData.current_round_number)
               .single();
             
             if (roundData) {
               setCurrentRound(roundData as Round);
+              currentRoundIdRef.current = roundData.id;
 
               // Fetch clues for current round
               const { data: cluesData } = await supabase
                 .from('clues')
-                .select('*')
+                .select('id, round_id, player_id, clue_text, created_at')
                 .eq('round_id', roundData.id)
                 .order('created_at');
               
@@ -117,7 +178,7 @@ export const useGameState = (lobbyId: string | null) => {
               const roundIds = allRounds.map(r => r.id);
               const { data: allCluesData } = await supabase
                 .from('clues')
-                .select('*')
+                .select('id, round_id, player_id, clue_text, created_at')
                 .in('round_id', roundIds)
                 .order('created_at');
               
@@ -128,7 +189,7 @@ export const useGameState = (lobbyId: string | null) => {
             if (gameData.status === 'voting' || gameData.status === 'results') {
               const { data: votesData } = await supabase
                 .from('votes')
-                .select('*')
+                .select('id, game_id, voter_player_id, suspected_outsider_player_id, created_at')
                 .eq('game_id', gameData.id);
               
               if (votesData) setVotes(votesData as Vote[]);
@@ -169,21 +230,24 @@ export const useGameState = (lobbyId: string | null) => {
           table: 'lobby_players',
           filter: `lobby_id=eq.${lobbyId}`
         },
-        async (payload) => {
+        (payload) => {
           console.log('Lobby player change received:', payload.eventType);
-          const { data } = await supabase
-            .from('lobby_players')
-            .select('*, profiles:user_id(avatar_url)')
-            .eq('lobby_id', lobbyId)
-            .order('joined_at');
-          if (data) {
-            console.log('Updated players:', data.length);
-            const playersWithAvatars = data.map((p: any) => ({
-              ...p,
-              avatar_url: p.profiles?.avatar_url || null,
-              profiles: undefined
-            }));
-            setPlayers(playersWithAvatars as LobbyPlayer[]);
+          
+          // Apply payload directly instead of refetching
+          if (payload.eventType === 'INSERT') {
+            const newPlayer = payload.new as LobbyPlayer;
+            // We need to refetch once to get avatar, but debounced
+            debouncedRefetchPlayers();
+          } else if (payload.eventType === 'UPDATE') {
+            const updatedPlayer = payload.new as LobbyPlayer;
+            setPlayers(prev => prev.map(p => 
+              p.id === updatedPlayer.id 
+                ? { ...p, ...updatedPlayer }
+                : p
+            ));
+          } else if (payload.eventType === 'DELETE') {
+            const deletedPlayer = payload.old as LobbyPlayer;
+            setPlayers(prev => prev.filter(p => p.id !== deletedPlayer.id));
           }
         }
       )
@@ -194,18 +258,24 @@ export const useGameState = (lobbyId: string | null) => {
     return () => {
       supabase.removeChannel(lobbyChannel);
     };
-  }, [lobbyId]);
+  }, [lobbyId, debouncedRefetchPlayers]);
 
   // Watch for new game when lobby's current_game_id changes
   useEffect(() => {
     if (!lobby?.current_game_id) return;
 
     const fetchNewGame = async () => {
+      // Check if we already have this game in cache
+      if (game?.id === lobby.current_game_id) {
+        console.log('useGameState: Game already loaded, skipping refetch');
+        return;
+      }
+      
       console.log('useGameState: Fetching game for current_game_id', lobby.current_game_id);
       
       const { data: gameData } = await supabase
         .from('games')
-        .select('*')
+        .select('id, lobby_id, secret_word_id, outsider_player_id, total_rounds, current_round_number, status, created_at, game_mode, imposter_word_id')
         .eq('id', lobby.current_game_id)
         .single();
       
@@ -215,7 +285,7 @@ export const useGameState = (lobbyId: string | null) => {
         // Fetch secret word
         const { data: wordData } = await supabase
           .from('words')
-          .select('*')
+          .select('id, text, category')
           .eq('id', gameData.secret_word_id)
           .single();
         
@@ -225,7 +295,7 @@ export const useGameState = (lobbyId: string | null) => {
         if (gameData.imposter_word_id) {
           const { data: imposterWordData } = await supabase
             .from('words')
-            .select('*')
+            .select('id, text, category')
             .eq('id', gameData.imposter_word_id)
             .single();
           
@@ -237,18 +307,19 @@ export const useGameState = (lobbyId: string | null) => {
         // Fetch current round
         const { data: roundData } = await supabase
           .from('rounds')
-          .select('*')
+          .select('id, game_id, round_number, is_complete, created_at')
           .eq('game_id', gameData.id)
           .eq('round_number', gameData.current_round_number)
           .single();
         
         if (roundData) {
           setCurrentRound(roundData as Round);
+          currentRoundIdRef.current = roundData.id;
 
           // Fetch clues for current round
           const { data: cluesData } = await supabase
             .from('clues')
-            .select('*')
+            .select('id, round_id, player_id, clue_text, created_at')
             .eq('round_id', roundData.id)
             .order('created_at');
           
@@ -265,7 +336,7 @@ export const useGameState = (lobbyId: string | null) => {
           const roundIds = allRounds.map(r => r.id);
           const { data: allCluesData } = await supabase
             .from('clues')
-            .select('*')
+            .select('id, round_id, player_id, clue_text, created_at')
             .in('round_id', roundIds)
             .order('created_at');
           
@@ -278,15 +349,18 @@ export const useGameState = (lobbyId: string | null) => {
     };
 
     fetchNewGame();
-  }, [lobby?.current_game_id]);
+  }, [lobby?.current_game_id, game?.id]);
 
-  // Subscribe to game changes
+  // Subscribe to game changes - FILTERED clues subscription
   useEffect(() => {
-    if (!game?.id) return;
+    if (!game?.id || !currentRound?.id) return;
 
-    console.log('useGameState: Setting up game subscriptions for', game.id);
+    console.log('useGameState: Setting up game subscriptions for', game.id, 'round', currentRound.id);
     
-    const channelId = `game-${game.id}-${Math.random().toString(36).substr(2, 9)}`;
+    // Update the ref for filter comparison
+    currentRoundIdRef.current = currentRound.id;
+    
+    const channelId = `game-${game.id}-${currentRound.id}-${Math.random().toString(36).substr(2, 9)}`;
     const gameChannel = supabase
       .channel(channelId)
       .on(
@@ -307,13 +381,14 @@ export const useGameState = (lobbyId: string | null) => {
             if (updatedGame.current_round_number !== game.current_round_number) {
               const { data: roundData } = await supabase
                 .from('rounds')
-                .select('*')
+                .select('id, game_id, round_number, is_complete, created_at')
                 .eq('game_id', updatedGame.id)
                 .eq('round_number', updatedGame.current_round_number)
                 .single();
               
               if (roundData) {
                 setCurrentRound(roundData as Round);
+                currentRoundIdRef.current = roundData.id;
                 setClues([]); // Clear clues for new round
               }
             }
@@ -325,35 +400,38 @@ export const useGameState = (lobbyId: string | null) => {
         {
           event: '*',
           schema: 'public',
-          table: 'clues'
+          table: 'clues',
+          filter: `round_id=eq.${currentRound.id}` // FILTERED to current round only
         },
-        async (payload) => {
-          console.log('Clue change received:', payload.eventType);
-          if (currentRound) {
-            const { data } = await supabase
-              .from('clues')
-              .select('*')
-              .eq('round_id', currentRound.id)
-              .order('created_at');
-            if (data) setClues(data as Clue[]);
-          }
-          // Also fetch all clues for turn calculation
-          if (game?.id) {
-            const { data: allRounds } = await supabase
-              .from('rounds')
-              .select('id')
-              .eq('game_id', game.id);
-            
-            if (allRounds) {
-              const roundIds = allRounds.map(r => r.id);
-              const { data: allCluesData } = await supabase
-                .from('clues')
-                .select('*')
-                .in('round_id', roundIds)
-                .order('created_at');
-              
-              if (allCluesData) setAllClues(allCluesData as Clue[]);
-            }
+        (payload) => {
+          console.log('Clue change received for current round:', payload.eventType);
+          
+          // Apply payload directly instead of refetching
+          if (payload.eventType === 'INSERT') {
+            const newClue = payload.new as Clue;
+            // Update current round clues
+            setClues(prev => {
+              // Avoid duplicates
+              if (prev.some(c => c.id === newClue.id)) return prev;
+              return [...prev, newClue].sort((a, b) => 
+                new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+              );
+            });
+            // Update all clues
+            setAllClues(prev => {
+              if (prev.some(c => c.id === newClue.id)) return prev;
+              return [...prev, newClue].sort((a, b) => 
+                new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+              );
+            });
+          } else if (payload.eventType === 'UPDATE') {
+            const updatedClue = payload.new as Clue;
+            setClues(prev => prev.map(c => c.id === updatedClue.id ? updatedClue : c));
+            setAllClues(prev => prev.map(c => c.id === updatedClue.id ? updatedClue : c));
+          } else if (payload.eventType === 'DELETE') {
+            const deletedClue = payload.old as Clue;
+            setClues(prev => prev.filter(c => c.id !== deletedClue.id));
+            setAllClues(prev => prev.filter(c => c.id !== deletedClue.id));
           }
         }
       )
@@ -365,13 +443,24 @@ export const useGameState = (lobbyId: string | null) => {
           table: 'votes',
           filter: `game_id=eq.${game.id}`
         },
-        async (payload) => {
+        (payload) => {
           console.log('Vote change received:', payload.eventType);
-          const { data } = await supabase
-            .from('votes')
-            .select('*')
-            .eq('game_id', game.id);
-          if (data) setVotes(data as Vote[]);
+          
+          // Apply payload directly instead of refetching
+          if (payload.eventType === 'INSERT') {
+            const newVote = payload.new as Vote;
+            setVotes(prev => {
+              // Avoid duplicates
+              if (prev.some(v => v.id === newVote.id)) return prev;
+              return [...prev, newVote];
+            });
+          } else if (payload.eventType === 'UPDATE') {
+            const updatedVote = payload.new as Vote;
+            setVotes(prev => prev.map(v => v.id === updatedVote.id ? updatedVote : v));
+          } else if (payload.eventType === 'DELETE') {
+            const deletedVote = payload.old as Vote;
+            setVotes(prev => prev.filter(v => v.id !== deletedVote.id));
+          }
         }
       )
       .subscribe((status) => {
@@ -389,11 +478,16 @@ export const useGameState = (lobbyId: string | null) => {
       setOutsiders([]);
       return;
     }
+    
+    // Check if we already have outsiders from cache
+    if (outsiders.length > 0 && outsiders[0]?.game_id === game.id) {
+      return;
+    }
 
     const fetchOutsiders = async () => {
       const { data } = await supabase
         .from('game_outsiders')
-        .select('*')
+        .select('id, game_id, player_id, created_at')
         .eq('game_id', game.id);
       
       if (data) setOutsiders(data as GameOutsider[]);

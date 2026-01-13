@@ -1,11 +1,54 @@
 # Database Usage Map - Outsider Royale
 
 > **Audit Date:** 2026-01-12  
+> **Last Updated:** 2026-01-12 (Cost Optimization Pass)
 > **Purpose:** Complete inventory of all Supabase interactions in the application
 
 ---
 
-## Table of Contents
+## Before vs After Summary (Cost Optimization)
+
+### 1. Global Clues Listener → FIXED ✅
+- **Before:** `useGameState.ts` subscribed to ALL clues table changes globally with no filter
+- **After:** Subscription filtered to `filter: round_id=eq.${currentRound.id}` - only current round
+- **Payload Applied:** INSERT/UPDATE/DELETE events now update local state directly instead of refetching
+
+### 2. Wide Words SELECT → FIXED ✅
+- **Before:** `Lobby.tsx`, `Results.tsx` fetched ALL words with `select('*').in('category', [...])` (potentially thousands)
+- **After:** New RPC functions `get_random_words_from_categories()` and `get_imposter_word()` return only 1-2 words server-side
+- **Queries Removed:** Unlimited word fetches replaced with single RPC calls
+
+### 3. Refetch-on-Realtime → FIXED ✅
+- **Before:** `lobby_players`, `votes`, `clues` changes triggered full table refetch
+- **After:** Payload applied directly to local state:
+  - INSERT → append to array (debounced refetch only for player avatar joins)
+  - UPDATE → update matching item
+  - DELETE → filter out item
+- **Debouncing:** Player refetch debounced to 300ms for avatar resolution
+
+### 4. Duplicate Initial Fetch → FIXED ✅
+- **Before:** `useGameState.ts` and `gamePreloadCache.ts` both fetched same lobby/game/players data
+- **After:** `useGameState` checks cache first via `getCachedGameData()` and `getCachedResultsData()`, skips initial fetch if cache hit
+
+### 5. Channel Leak → FIXED ✅
+- **Before:** `Game.tsx` outsider guess broadcast channel created but never removed
+- **After:** Channel wrapped in try/finally with `supabase.removeChannel(channel)` cleanup
+
+### 6. Auth Centralized → ADDED ✅
+- **New:** `AuthProvider` context reads session once, provides to all components
+- **Location:** `src/contexts/AuthContext.tsx`
+
+### 7. SELECT(*) Reduced → FIXED ✅
+- **Before:** Most queries used `select('*')`
+- **After:** Explicit columns: `select('id, text, category')` for words, explicit columns for lobbies, games, players, etc.
+
+### New RPC Functions Added
+| Function | Purpose |
+|----------|---------|
+| `get_random_words_from_categories(p_categories, p_count, p_exclude_word_id)` | Server-side random word selection |
+| `get_imposter_word(p_secret_word_id, p_categories)` | Get different word for hidden_imposter mode |
+
+---
 
 1. [Authentication Operations](#authentication-operations)
 2. [Profile Operations](#profile-operations)
