@@ -606,15 +606,20 @@ const Game = () => {
         localStorage.setItem(`game-metadata-${game.id}`, JSON.stringify(updatedMetadata));
 
         // Broadcast the updated metadata to all players so they see the win reason
-        const channel = supabase.channel(`game-metadata-${game.id}`);
-        await channel.subscribe();
-        channel.send({
-          type: 'broadcast',
-          event: 'metadata',
-          payload: {
-            metadata: updatedMetadata
-          }
-        });
+        const channel = supabase.channel(`outsider-guess-broadcast-${game.id}`);
+        try {
+          await channel.subscribe();
+          await channel.send({
+            type: 'broadcast',
+            event: 'metadata',
+            payload: {
+              metadata: updatedMetadata
+            }
+          });
+        } finally {
+          // Always clean up broadcast channel after send
+          supabase.removeChannel(channel);
+        }
 
         // Update game status to results
         await supabase.from('games').update({

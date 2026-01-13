@@ -576,6 +576,26 @@ export type Database = {
         Args: { p_product_key: string; p_user_id: string }
         Returns: boolean
       }
+      get_imposter_word: {
+        Args: { p_categories: string[]; p_secret_word_id: string }
+        Returns: {
+          category: string
+          id: string
+          text: string
+        }[]
+      }
+      get_random_words_from_categories: {
+        Args: {
+          p_categories: string[]
+          p_count?: number
+          p_exclude_word_id?: string
+        }
+        Returns: {
+          category: string
+          id: string
+          text: string
+        }[]
+      }
       grant_entitlement: {
         Args: {
           p_duration_days?: number

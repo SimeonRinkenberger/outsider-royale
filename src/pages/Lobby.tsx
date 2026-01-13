@@ -290,21 +290,10 @@ const Lobby = () => {
       // Save game config to localStorage for persistence
       localStorage.setItem(`game-config-${lobbyId}`, JSON.stringify(gameConfig));
 
-      // Get words from built-in categories
+      // Build words from built-in categories using RPC (server-side random selection)
       let allWords: { id: string; text: string; category: string; isCustom?: boolean }[] = [];
       
-      if (gameConfig.selectedCategories.length > 0) {
-        const { data: words } = await supabase
-          .from('words')
-          .select('*')
-          .in('category', gameConfig.selectedCategories as ('animal' | 'brand' | 'degenerate' | 'food' | 'movie' | 'person' | 'place' | 'thing')[]);
-        
-        if (words) {
-          allWords = words.map(w => ({ ...w, isCustom: false }));
-        }
-      }
-      
-      // Add words from custom categories
+      // Add words from custom categories first (these are client-side)
       const selectedCustomCats = customCategories.filter(c => gameConfig.selectedCustomCategories.includes(c.id));
       for (const customCat of selectedCustomCats) {
         for (const word of customCat.words) {
@@ -317,13 +306,49 @@ const Lobby = () => {
         }
       }
       
-      if (allWords.length === 0) {
-        toast.error('No words available for selected categories');
-        setIsStarting(false);
-        return;
+      // If using built-in categories, use RPC for server-side random selection
+      let selectedWord: { id: string; text: string; category: string; isCustom?: boolean } | null = null;
+      
+      if (gameConfig.selectedCategories.length > 0 && allWords.length === 0) {
+        // Only built-in categories - use RPC to get one random word
+        const { data: rpcWords, error: rpcError } = await supabase
+          .rpc('get_random_words_from_categories', {
+            p_categories: gameConfig.selectedCategories,
+            p_count: 1
+          });
+        
+        if (rpcError || !rpcWords?.length) {
+          toast.error('No words available for selected categories');
+          setIsStarting(false);
+          return;
+        }
+        selectedWord = { ...rpcWords[0], isCustom: false };
+      } else if (gameConfig.selectedCategories.length > 0 && allWords.length > 0) {
+        // Mix of built-in and custom - decide randomly which pool to use
+        const useBuiltIn = Math.random() < 0.5;
+        if (useBuiltIn) {
+          const { data: rpcWords } = await supabase
+            .rpc('get_random_words_from_categories', {
+              p_categories: gameConfig.selectedCategories,
+              p_count: 1
+            });
+          if (rpcWords?.length) {
+            selectedWord = { ...rpcWords[0], isCustom: false };
+          }
+        }
+      }
+      
+      // If no word selected yet (custom only or mixed chose custom), pick from allWords
+      if (!selectedWord) {
+        if (allWords.length === 0) {
+          toast.error('No words available for selected categories');
+          setIsStarting(false);
+          return;
+        }
+        selectedWord = allWords[Math.floor(Math.random() * allWords.length)];
       }
 
-      const randomWord = allWords[Math.floor(Math.random() * allWords.length)];
+      const randomWord = selectedWord;
       
       // For custom words, we need to insert them into the database first or use an existing word
       let secretWordId = randomWord.id;
@@ -341,34 +366,50 @@ const Lobby = () => {
         }
       }
       
-      // For hidden_imposter mode, get a different word from the same category
+      // For hidden_imposter mode, get a different word using RPC
       let imposterWordText: string | null = null;
       if (gameConfig.gameMode === 'hidden_imposter') {
-        // Filter by both ID and text to ensure the imposter word is always different
-        const sameCategory = allWords.filter(w => 
-          w.category === randomWord.category && 
-          w.id !== randomWord.id && 
-          w.text.toLowerCase() !== randomWord.text.toLowerCase()
-        );
-        
-        if (sameCategory.length > 0) {
-          const imposterWord = sameCategory[Math.floor(Math.random() * sameCategory.length)];
-          imposterWordText = imposterWord.text;
-          if (!imposterWord.isCustom) {
-            imposterWordId = imposterWord.id;
+        // Use RPC to get imposter word if using built-in categories
+        if (!randomWord.isCustom) {
+          const { data: imposterRpcWords } = await supabase
+            .rpc('get_imposter_word', {
+              p_secret_word_id: randomWord.id,
+              p_categories: gameConfig.selectedCategories
+            });
+          
+          if (imposterRpcWords?.length) {
+            imposterWordId = imposterRpcWords[0].id;
+            imposterWordText = imposterRpcWords[0].text;
           }
-        } else {
-          // Fallback: pick from any different word (different text)
-          const differentWords = allWords.filter(w => 
+        }
+        
+        // If still no imposter word, try custom categories
+        if (!imposterWordText) {
+          const sameCategory = allWords.filter(w => 
+            w.category === randomWord.category && 
             w.id !== randomWord.id && 
             w.text.toLowerCase() !== randomWord.text.toLowerCase()
           );
           
-          if (differentWords.length > 0) {
-            const imposterWord = differentWords[Math.floor(Math.random() * differentWords.length)];
+          if (sameCategory.length > 0) {
+            const imposterWord = sameCategory[Math.floor(Math.random() * sameCategory.length)];
             imposterWordText = imposterWord.text;
             if (!imposterWord.isCustom) {
               imposterWordId = imposterWord.id;
+            }
+          } else {
+            // Fallback: pick from any different word
+            const differentWords = allWords.filter(w => 
+              w.id !== randomWord.id && 
+              w.text.toLowerCase() !== randomWord.text.toLowerCase()
+            );
+            
+            if (differentWords.length > 0) {
+              const imposterWord = differentWords[Math.floor(Math.random() * differentWords.length)];
+              imposterWordText = imposterWord.text;
+              if (!imposterWord.isCustom) {
+                imposterWordId = imposterWord.id;
+              }
             }
           }
         }

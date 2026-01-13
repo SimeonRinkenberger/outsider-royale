@@ -59,7 +59,7 @@ export async function preloadGameData(lobbyId: string): Promise<PreloadedGameDat
     while (attempts < maxAttempts) {
       const { data } = await supabase
         .from('lobbies')
-        .select('*')
+        .select('id, code, host_user_id, status, current_game_id, created_at')
         .eq('id', lobbyId)
         .single();
       
@@ -83,12 +83,12 @@ export async function preloadGameData(lobbyId: string): Promise<PreloadedGameDat
     ] = await Promise.all([
       supabase
         .from('lobby_players')
-        .select('*, profiles:user_id(avatar_url)')
+        .select('id, lobby_id, user_id, is_host, is_connected, is_spectator, joined_at, display_name, profiles:user_id(avatar_url)')
         .eq('lobby_id', lobbyId)
         .order('joined_at'),
       supabase
         .from('games')
-        .select('*')
+        .select('id, lobby_id, secret_word_id, outsider_player_id, total_rounds, current_round_number, status, created_at, game_mode, imposter_word_id')
         .eq('id', lobbyData.current_game_id)
         .single(),
     ]);
@@ -114,21 +114,21 @@ export async function preloadGameData(lobbyId: string): Promise<PreloadedGameDat
     ] = await Promise.all([
       supabase
         .from('words')
-        .select('*')
+        .select('id, text, category')
         .eq('id', game.secret_word_id)
         .single(),
       game.imposter_word_id
-        ? supabase.from('words').select('*').eq('id', game.imposter_word_id).single()
+        ? supabase.from('words').select('id, text, category').eq('id', game.imposter_word_id).single()
         : Promise.resolve({ data: null }),
       supabase
         .from('rounds')
-        .select('*')
+        .select('id, game_id, round_number, is_complete, created_at')
         .eq('game_id', game.id)
         .eq('round_number', game.current_round_number)
         .single(),
       supabase
         .from('game_outsiders')
-        .select('*')
+        .select('id, game_id, player_id, created_at')
         .eq('game_id', game.id),
     ]);
     
@@ -145,7 +145,7 @@ export async function preloadGameData(lobbyId: string): Promise<PreloadedGameDat
     const [cluesResult, allRoundsResult] = await Promise.all([
       supabase
         .from('clues')
-        .select('*')
+        .select('id, round_id, player_id, clue_text, created_at')
         .eq('round_id', currentRound.id)
         .order('created_at'),
       supabase
@@ -161,7 +161,7 @@ export async function preloadGameData(lobbyId: string): Promise<PreloadedGameDat
       const roundIds = allRoundsResult.data.map(r => r.id);
       const { data: allCluesData } = await supabase
         .from('clues')
-        .select('*')
+        .select('id, round_id, player_id, clue_text, created_at')
         .in('round_id', roundIds)
         .order('created_at');
       allClues = allCluesData as Clue[] || [];
@@ -202,15 +202,15 @@ export async function preloadResultsData(lobbyId: string, gameId: string): Promi
       votesResult,
       outsidersResult,
     ] = await Promise.all([
-      supabase.from('lobbies').select('*').eq('id', lobbyId).single(),
+      supabase.from('lobbies').select('id, code, host_user_id, status, current_game_id, created_at').eq('id', lobbyId).single(),
       supabase
         .from('lobby_players')
-        .select('*, profiles:user_id(avatar_url)')
+        .select('id, lobby_id, user_id, is_host, is_connected, is_spectator, joined_at, display_name, profiles:user_id(avatar_url)')
         .eq('lobby_id', lobbyId)
         .order('joined_at'),
-      supabase.from('games').select('*').eq('id', gameId).single(),
-      supabase.from('votes').select('*').eq('game_id', gameId),
-      supabase.from('game_outsiders').select('*').eq('game_id', gameId),
+      supabase.from('games').select('id, lobby_id, secret_word_id, outsider_player_id, total_rounds, current_round_number, status, created_at, game_mode, imposter_word_id').eq('id', gameId).single(),
+      supabase.from('votes').select('id, game_id, voter_player_id, suspected_outsider_player_id, created_at').eq('game_id', gameId),
+      supabase.from('game_outsiders').select('id, game_id, player_id, created_at').eq('game_id', gameId),
     ]);
     
     const lobby = lobbyResult.data as Lobby | null;
@@ -229,9 +229,9 @@ export async function preloadResultsData(lobbyId: string, gameId: string): Promi
     
     // Fetch words
     const [secretWordResult, imposterWordResult] = await Promise.all([
-      supabase.from('words').select('*').eq('id', game.secret_word_id).single(),
+      supabase.from('words').select('id, text, category').eq('id', game.secret_word_id).single(),
       game.imposter_word_id
-        ? supabase.from('words').select('*').eq('id', game.imposter_word_id).single()
+        ? supabase.from('words').select('id, text, category').eq('id', game.imposter_word_id).single()
         : Promise.resolve({ data: null }),
     ]);
     
