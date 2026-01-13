@@ -6,18 +6,19 @@ import { Input } from '@/components/ui/input';
 import { supabase } from '@/integrations/supabase/client';
 import { getStoredUserId, getStoredDisplayName, clearStorage, setStoredUserId, setStoredDisplayName, setStoredIsGuest } from '@/lib/gameUtils';
 import { setAuthReturnTo } from '@/lib/authRedirect';
-import { Users, Wifi, User, LogIn, BarChart3, ExternalLink } from 'lucide-react';
+import { Users, Wifi, User, LogIn, BarChart3, ExternalLink, Crown } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
 import { useTransition } from '@/contexts/TransitionContext';
 import { useAudio } from '@/contexts/AudioContext';
+import { useEntitlement } from '@/contexts/EntitlementContext';
 import { SettingsDropdown } from '@/components/SettingsDropdown';
+import { Paywall } from '@/components/Paywall';
 import titleFox from '@/assets/title_fox.png';
 const Menu = () => {
   const navigate = useNavigate();
-  const {
-    startTransition
-  } = useTransition();
+  const { startTransition } = useTransition();
+  const { isPro } = useEntitlement();
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [displayName, setDisplayName] = useState<string | null>(null);
@@ -25,9 +26,8 @@ const Menu = () => {
   const [guestName, setGuestName] = useState('');
   const [hasAnimated, setHasAnimated] = useState(false);
   const [isCreatingGuest, setIsCreatingGuest] = useState(false);
-  const {
-    setMusicState
-  } = useAudio();
+  const [showPaywall, setShowPaywall] = useState(false);
+  const { setMusicState } = useAudio();
   useEffect(() => {
     setMusicState('menu');
   }, [setMusicState]);
@@ -164,10 +164,19 @@ const Menu = () => {
       </div>;
   }
   return <div className="min-h-screen bg-background flex flex-col overflow-x-hidden">
+      {/* Paywall Modal */}
+      <Paywall isOpen={showPaywall} onClose={() => setShowPaywall(false)} trigger="menu" />
+      
       {/* Header */}
       <header className="bg-card border-b border-border p-4">
         <div className="max-w-md mx-auto flex items-center justify-end">
           <div className="flex items-center gap-2">
+            {!isPro && (
+              <Button variant="ghost" size="sm" onClick={() => setShowPaywall(true)} className="text-primary">
+                <Crown className="h-4 w-4 mr-1" />
+                Go Pro
+              </Button>
+            )}
             <SettingsDropdown />
             {isAuthenticated ? <Button variant="ghost" size="icon" onClick={handleStats}>
                 <BarChart3 className="h-5 w-5" />
