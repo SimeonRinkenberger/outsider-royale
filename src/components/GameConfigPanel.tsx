@@ -5,19 +5,24 @@ import { FluidSlider } from '@/components/ui/fluid-slider';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Button } from '@/components/ui/button';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { Settings, Gamepad2, Palette, Sparkles, ChevronDown } from 'lucide-react';
+import { Settings, Gamepad2, Palette, Sparkles, ChevronDown, Lock, Crown } from 'lucide-react';
 import { GameMode } from '@/types/game';
 import { CustomCategoryManager } from '@/components/CustomCategoryManager';
 import { GameModifiers } from '@/components/GameModifiers';
 import { CustomCategory, CustomModifier, AVAILABLE_MODIFIERS } from '@/hooks/useCustomContent';
+import { useEntitlement } from '@/contexts/EntitlementContext';
+import { canAccessCategory, isPaidCategory, CATEGORY_INFO } from '@/lib/entitlements';
+import { Paywall } from '@/components/Paywall';
+
 const CATEGORIES = [
-  { value: 'animal', label: 'Animals' },
-  { value: 'brand', label: 'Brands' },
-  { value: 'food', label: 'Food' },
-  { value: 'movie', label: 'Movies' },
-  { value: 'person', label: 'People' },
-  { value: 'place', label: 'Places' },
-  { value: 'thing', label: 'Things' },
+  { value: 'animal', label: 'Animals', isPaid: false },
+  { value: 'brand', label: 'Brands', isPaid: true },
+  { value: 'food', label: 'Food', isPaid: false },
+  { value: 'movie', label: 'Movies', isPaid: true },
+  { value: 'person', label: 'People', isPaid: true },
+  { value: 'place', label: 'Places', isPaid: false },
+  { value: 'thing', label: 'Things', isPaid: false },
+  { value: 'degenerate', label: 'Spicy 🌶️', isPaid: true },
 ];
 
 const GAME_MODES: { value: GameMode; label: string; description: string }[] = [
@@ -71,6 +76,9 @@ export const GameConfigPanel = ({
   const [gameModeOpen, setGameModeOpen] = useState(false);
   const [gameSettingsOpen, setGameSettingsOpen] = useState(false);
   const [customizeOpen, setCustomizeOpen] = useState(false);
+  const [showPaywall, setShowPaywall] = useState(false);
+  
+  const { entitlement, isPro } = useEntitlement();
 
   const maxImposters = Math.max(1, playerCount - 1);
   const recommendedImposters = playerCount <= 4 ? 1 
@@ -83,6 +91,12 @@ export const GameConfigPanel = ({
   };
 
   const toggleCategory = (category: string) => {
+    // Check if user can access this category
+    if (!canAccessCategory(category, entitlement)) {
+      setShowPaywall(true);
+      return;
+    }
+    
     const newCategories = config.selectedCategories.includes(category)
       ? config.selectedCategories.filter(c => c !== category)
       : [...config.selectedCategories, category];
@@ -90,8 +104,13 @@ export const GameConfigPanel = ({
   };
 
   const selectAllCategories = () => {
+    // Only select categories user has access to
+    const accessibleCategories = CATEGORIES
+      .filter(c => canAccessCategory(c.value, entitlement))
+      .map(c => c.value);
+    
     updateConfig({
-      selectedCategories: CATEGORIES.map(c => c.value),
+      selectedCategories: accessibleCategories,
       selectedCustomCategories: customCategories.map(c => c.id),
     });
   };
@@ -285,25 +304,48 @@ export const GameConfigPanel = ({
             </Button>
           </div>
           <div className="grid grid-cols-2 gap-2">
-            {CATEGORIES.map((cat) => (
-              <div 
-                key={cat.value} 
-                className="flex items-center space-x-2 p-2 rounded-md hover:bg-muted/50 cursor-pointer"
-                onClick={() => toggleCategory(cat.value)}
-              >
-                <Checkbox
-                  id={cat.value}
-                  checked={config.selectedCategories.includes(cat.value)}
-                  onCheckedChange={() => toggleCategory(cat.value)}
-                />
-                <label
-                  htmlFor={cat.value}
-                  className="text-sm font-medium cursor-pointer select-none"
+            {CATEGORIES.map((cat) => {
+              const isLocked = cat.isPaid && !isPro;
+              const isSelected = config.selectedCategories.includes(cat.value);
+              
+              return (
+                <div 
+                  key={cat.value} 
+                  className={`flex items-center justify-between p-2 rounded-md cursor-pointer transition-colors ${
+                    isLocked 
+                      ? 'hover:bg-primary/5 opacity-75' 
+                      : 'hover:bg-muted/50'
+                  }`}
+                  onClick={() => toggleCategory(cat.value)}
                 >
-                  {cat.label}
-                </label>
-              </div>
-            ))}
+                  <div className="flex items-center space-x-2">
+                    <Checkbox
+                      id={cat.value}
+                      checked={isSelected}
+                      disabled={isLocked}
+                      onCheckedChange={() => toggleCategory(cat.value)}
+                    />
+                    <label
+                      htmlFor={cat.value}
+                      className={`text-sm font-medium cursor-pointer select-none ${
+                        isLocked ? 'text-muted-foreground' : ''
+                      }`}
+                    >
+                      {cat.label}
+                    </label>
+                  </div>
+                  {isLocked && (
+                    <div className="flex items-center gap-1 text-xs text-primary">
+                      <Lock className="h-3 w-3" />
+                      <span className="hidden sm:inline">PRO</span>
+                    </div>
+                  )}
+                  {cat.isPaid && isPro && (
+                    <Crown className="h-3 w-3 text-primary" />
+                  )}
+                </div>
+              );
+            })}
           
             {/* Custom Categories in same grid */}
             {customCategories.length > 0 && (
@@ -397,6 +439,12 @@ export const GameConfigPanel = ({
           </CollapsibleContent>
         </Card>
       </Collapsible>
+      
+      {/* Paywall Dialog */}
+      <Paywall 
+        isOpen={showPaywall} 
+        onClose={() => setShowPaywall(false)} 
+      />
     </div>
   );
 };
