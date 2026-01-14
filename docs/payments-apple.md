@@ -62,11 +62,11 @@ src/
 
 ### Free Users
 - Access to 4 categories: Food, Animal, Place, Thing
-- Limited word pool (enforced via RPC `p_is_pro` parameter)
+- Category restrictions enforced in UI (locked categories show lock icon)
 
 ### Pro Users  
 - Access to all 8 categories (including Brand, Movie, Person, Spicy)
-- Full word pool (500+ words)
+- Full word pool
 
 ### Category Access Check
 
@@ -82,24 +82,26 @@ function CategorySelector() {
 }
 ```
 
-## RPC Updates
+### UI Gating in GameConfigPanel
 
-The `get_random_words_from_categories` and `get_imposter_word` RPCs accept a `p_is_pro` boolean parameter:
+The `GameConfigPanel` component enforces category access:
+- Paid categories show a lock icon for free users
+- Clicking a locked category opens the Paywall
+- "Select All" only selects accessible categories
+- Pro users see a crown icon on premium categories
 
-- `p_is_pro = false`: Returns words only from free categories and limited pool
-- `p_is_pro = true`: Returns words from all categories with full pool
+## RPC Functions
 
-**Client Usage:**
+The `get_random_words_from_categories` and `get_imposter_word` RPCs:
 
 ```typescript
-const { isPro } = useEntitlement();
-
 const { data } = await supabase.rpc('get_random_words_from_categories', {
   p_categories: selectedCategories,
   p_count: 1,
-  p_is_pro: isPro,
 });
 ```
+
+**Note:** Category restrictions are currently enforced client-side. The UI prevents free users from selecting paid categories before the RPC call is made.
 
 ## Testing with Sandbox Accounts
 
