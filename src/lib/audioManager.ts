@@ -50,7 +50,7 @@ class AudioManager {
     const storedVolume = localStorage.getItem('audioVolume');
     
     this.isMuted = storedMuted === 'true';
-    this.masterVolume = storedVolume ? parseFloat(storedVolume) : 1;
+    this.masterVolume = storedVolume ? parseFloat(storedVolume) : 0.5;
 
     // Handle app visibility changes
     if (typeof document !== 'undefined') {
