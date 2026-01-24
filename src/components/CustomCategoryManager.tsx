@@ -1,13 +1,22 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Card } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Plus, Edit2, Trash2, FolderPlus, Sparkles, Loader2 } from 'lucide-react';
+import { Plus, Edit2, Trash2, FolderPlus, Sparkles, Loader2, Lock, Crown } from 'lucide-react';
 import { CustomCategory } from '@/hooks/useCustomContent';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
+import { useEntitlement } from '@/contexts/EntitlementContext';
+import { 
+  loadAIGenerationState, 
+  getAIGenerationState, 
+  syncAIGenerationState,
+  AI_FREE_GENERATION_LIMIT,
+  onAIGenerationStateUpdate,
+} from '@/lib/aiGenerationEntitlement';
+import { AIGenerationPaywall } from '@/components/AIGenerationPaywall';
 
 interface CustomCategoryManagerProps {
   categories: CustomCategory[];
@@ -22,6 +31,8 @@ export const CustomCategoryManager = ({
   onUpdate,
   onDelete,
 }: CustomCategoryManagerProps) => {
+  const { isPro } = useEntitlement();
+  
   const [isOpen, setIsOpen] = useState(false);
   const [editingCategory, setEditingCategory] = useState<CustomCategory | null>(null);
   const [name, setName] = useState('');
@@ -32,6 +43,26 @@ export const CustomCategoryManager = ({
   const [aiDescription, setAiDescription] = useState('');
   const [aiExamples, setAiExamples] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
+  const [showAiPaywall, setShowAiPaywall] = useState(false);
+  const [aiGenerationsUsed, setAiGenerationsUsed] = useState(0);
+
+  // Load AI generation state on mount
+  useEffect(() => {
+    loadAIGenerationState().then(state => {
+      setAiGenerationsUsed(state.aiGenerationsUsed);
+    });
+
+    // Subscribe to updates
+    const unsubscribe = onAIGenerationStateUpdate(state => {
+      setAiGenerationsUsed(state.aiGenerationsUsed);
+    });
+
+    return unsubscribe;
+  }, []);
+
+  // Calculate remaining free generations
+  const freeGenerationsRemaining = Math.max(0, AI_FREE_GENERATION_LIMIT - aiGenerationsUsed);
+  const canGenerate = isPro || freeGenerationsRemaining > 0;
 
   const resetForm = () => {
     setName('');
@@ -55,7 +86,22 @@ export const CustomCategoryManager = ({
     setIsOpen(true);
   };
 
+  const handleToggleAiGenerator = () => {
+    if (!showAiGenerator && !canGenerate) {
+      // Show paywall when trying to open AI generator without entitlement
+      setShowAiPaywall(true);
+      return;
+    }
+    setShowAiGenerator(!showAiGenerator);
+  };
+
   const handleGenerateWithAi = async () => {
+    // Double-check entitlement before generating
+    if (!canGenerate) {
+      setShowAiPaywall(true);
+      return;
+    }
+
     const description = aiDescription.trim();
     const examples = aiExamples
       .split('\n')
@@ -80,6 +126,12 @@ export const CustomCategoryManager = ({
 
       if (error) throw error;
 
+      // Check for limit reached error
+      if (data?.code === 'LIMIT_REACHED') {
+        setShowAiPaywall(true);
+        return;
+      }
+
       if (data?.words && data.words.length > 0) {
         // Include user's examples + AI generated words
         const allWords = [...new Set([...examples, ...data.words])];
@@ -90,13 +142,25 @@ export const CustomCategoryManager = ({
           setName(description.slice(0, 30));
         }
         
+        // Sync usage from server
+        if (data.aiGenerationsUsed !== undefined) {
+          await syncAIGenerationState(data.aiGenerationsUsed);
+        }
+        
         setShowAiGenerator(false);
         toast.success(`Generated ${data.words.length} words!`);
       } else {
         throw new Error('No words generated');
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('AI generation error:', error);
+      
+      // Handle 403 (limit reached)
+      if (error?.status === 403 || error?.message?.includes('limit')) {
+        setShowAiPaywall(true);
+        return;
+      }
+      
       toast.error('Failed to generate words. Please try again.');
     } finally {
       setIsGenerating(false);
@@ -140,159 +204,187 @@ export const CustomCategoryManager = ({
   };
 
   return (
-    <div className="space-y-3">
-      <div className="flex items-center justify-between">
-        <h4 className="text-sm font-medium">Custom Categories</h4>
-        <Dialog open={isOpen} onOpenChange={setIsOpen}>
-          <DialogTrigger asChild>
-            <Button variant="outline" size="sm" onClick={openCreate} className="h-8">
-              <Plus className="h-3 w-3 mr-1" />
-              Create
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="max-w-md">
-            <DialogHeader>
-              <DialogTitle className="flex items-center gap-2">
-                <FolderPlus className="h-5 w-5" />
-                {editingCategory ? 'Edit Category' : 'Create Category'}
-              </DialogTitle>
-            </DialogHeader>
-            <div className="space-y-4 pt-2">
-              <div>
-                <label className="text-sm font-medium mb-1.5 block">Category Name</label>
-                <Input
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  placeholder="e.g., Inside Jokes, Work Terms"
-                  maxLength={30}
-                />
-              </div>
+    <>
+      <div className="space-y-3">
+        <div className="flex items-center justify-between">
+          <h4 className="text-sm font-medium">Custom Categories</h4>
+          <Dialog open={isOpen} onOpenChange={setIsOpen}>
+            <DialogTrigger asChild>
+              <Button variant="outline" size="sm" onClick={openCreate} className="h-8">
+                <Plus className="h-3 w-3 mr-1" />
+                Create
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-md">
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-2">
+                  <FolderPlus className="h-5 w-5" />
+                  {editingCategory ? 'Edit Category' : 'Create Category'}
+                </DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4 pt-2">
+                <div>
+                  <label className="text-sm font-medium mb-1.5 block">Category Name</label>
+                  <Input
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    placeholder="e.g., Inside Jokes, Work Terms"
+                    maxLength={30}
+                  />
+                </div>
 
-              {/* AI Generator Toggle */}
-              {!editingCategory && (
-                <Button
-                  type="button"
-                  variant={showAiGenerator ? "secondary" : "outline"}
-                  size="sm"
-                  onClick={() => setShowAiGenerator(!showAiGenerator)}
-                  className="w-full"
-                >
-                  <Sparkles className="h-4 w-4 mr-2" />
-                  {showAiGenerator ? 'Hide AI Generator' : 'Generate with AI'}
-                </Button>
-              )}
-
-              {/* AI Generator Form */}
-              {showAiGenerator && (
-                <Card className="p-4 space-y-3 bg-muted/50 border-dashed">
-                  <div>
-                    <label className="text-sm font-medium mb-1.5 block">
-                      Describe your category
-                    </label>
-                    <Input
-                      value={aiDescription}
-                      onChange={(e) => setAiDescription(e.target.value)}
-                      placeholder="e.g., 90s TV shows, Types of pasta, Famous scientists"
-                      maxLength={100}
-                    />
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium mb-1.5 block">
-                      Examples (one per line, min 2)
-                    </label>
-                    <Textarea
-                      value={aiExamples}
-                      onChange={(e) => setAiExamples(e.target.value)}
-                      placeholder="Friends&#10;Seinfeld&#10;Fresh Prince"
-                      rows={3}
-                      className="font-mono text-sm"
-                    />
-                  </div>
+                {/* AI Generator Toggle */}
+                {!editingCategory && (
                   <Button
-                    onClick={handleGenerateWithAi}
-                    disabled={isGenerating}
-                    className="w-full"
+                    type="button"
+                    variant={showAiGenerator ? "secondary" : "outline"}
                     size="sm"
+                    onClick={handleToggleAiGenerator}
+                    className="w-full relative"
                   >
-                    {isGenerating ? (
-                      <>
-                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                        Generating...
-                      </>
+                    {isPro ? (
+                      <Crown className="h-4 w-4 mr-2 text-amber-500" />
+                    ) : canGenerate ? (
+                      <Sparkles className="h-4 w-4 mr-2" />
                     ) : (
-                      <>
-                        <Sparkles className="h-4 w-4 mr-2" />
-                        Generate Words
-                      </>
+                      <Lock className="h-4 w-4 mr-2" />
+                    )}
+                    {showAiGenerator ? 'Hide AI Generator' : 'Generate with AI'}
+                    {!isPro && (
+                      <span className="ml-2 text-xs text-muted-foreground">
+                        ({freeGenerationsRemaining} free left)
+                      </span>
+                    )}
+                    {isPro && (
+                      <span className="ml-2 text-xs text-amber-500">
+                        Unlimited
+                      </span>
                     )}
                   </Button>
-                </Card>
-              )}
+                )}
 
-              <div>
-                <label className="text-sm font-medium mb-1.5 block">
-                  Words (one per line, minimum 5)
-                </label>
-                <Textarea
-                  value={wordsText}
-                  onChange={(e) => setWordsText(e.target.value)}
-                  placeholder="Enter words, one per line..."
-                  rows={8}
-                  className="font-mono text-sm"
-                />
-                <p className="text-xs text-muted-foreground mt-1">
-                  {wordsText.split('\n').filter(w => w.trim()).length} words
-                </p>
+                {/* AI Generator Form */}
+                {showAiGenerator && (
+                  <Card className="p-4 space-y-3 bg-muted/50 border-dashed">
+                    <div>
+                      <label className="text-sm font-medium mb-1.5 block">
+                        Describe your category
+                      </label>
+                      <Input
+                        value={aiDescription}
+                        onChange={(e) => setAiDescription(e.target.value)}
+                        placeholder="e.g., 90s TV shows, Types of pasta, Famous scientists"
+                        maxLength={100}
+                      />
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium mb-1.5 block">
+                        Examples (one per line, min 2)
+                      </label>
+                      <Textarea
+                        value={aiExamples}
+                        onChange={(e) => setAiExamples(e.target.value)}
+                        placeholder="Friends&#10;Seinfeld&#10;Fresh Prince"
+                        rows={3}
+                        className="font-mono text-sm"
+                      />
+                    </div>
+                    <Button
+                      onClick={handleGenerateWithAi}
+                      disabled={isGenerating}
+                      className="w-full"
+                      size="sm"
+                    >
+                      {isGenerating ? (
+                        <>
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                          Generating...
+                        </>
+                      ) : (
+                        <>
+                          <Sparkles className="h-4 w-4 mr-2" />
+                          Generate Words
+                        </>
+                      )}
+                    </Button>
+                  </Card>
+                )}
+
+                <div>
+                  <label className="text-sm font-medium mb-1.5 block">
+                    Words (one per line, minimum 5)
+                  </label>
+                  <Textarea
+                    value={wordsText}
+                    onChange={(e) => setWordsText(e.target.value)}
+                    placeholder="Enter words, one per line..."
+                    rows={8}
+                    className="font-mono text-sm"
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {wordsText.split('\n').filter(w => w.trim()).length} words
+                  </p>
+                </div>
+                <div className="flex gap-2 pt-2">
+                  <Button variant="outline" onClick={() => setIsOpen(false)} className="flex-1">
+                    Cancel
+                  </Button>
+                  <Button onClick={handleSave} className="flex-1">
+                    {editingCategory ? 'Save Changes' : 'Create Category'}
+                  </Button>
+                </div>
               </div>
-              <div className="flex gap-2 pt-2">
-                <Button variant="outline" onClick={() => setIsOpen(false)} className="flex-1">
-                  Cancel
-                </Button>
-                <Button onClick={handleSave} className="flex-1">
-                  {editingCategory ? 'Save Changes' : 'Create Category'}
-                </Button>
-              </div>
-            </div>
-          </DialogContent>
-        </Dialog>
+            </DialogContent>
+          </Dialog>
+        </div>
+
+        {categories.length === 0 ? (
+          <p className="text-xs text-muted-foreground py-2">
+            No custom categories yet. Create one to add your own words!
+          </p>
+        ) : (
+          <div className="space-y-2">
+            {categories.map((category) => (
+              <Card key={category.id} className="p-3 flex items-center justify-between">
+                <div>
+                  <p className="font-medium text-sm">{category.name}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {category.words.length} words
+                  </p>
+                </div>
+                <div className="flex gap-1">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8"
+                    onClick={() => openEdit(category)}
+                  >
+                    <Edit2 className="h-3.5 w-3.5" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8 text-destructive hover:text-destructive"
+                    onClick={() => handleDelete(category)}
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
+              </Card>
+            ))}
+          </div>
+        )}
       </div>
 
-      {categories.length === 0 ? (
-        <p className="text-xs text-muted-foreground py-2">
-          No custom categories yet. Create one to add your own words!
-        </p>
-      ) : (
-        <div className="space-y-2">
-          {categories.map((category) => (
-            <Card key={category.id} className="p-3 flex items-center justify-between">
-              <div>
-                <p className="font-medium text-sm">{category.name}</p>
-                <p className="text-xs text-muted-foreground">
-                  {category.words.length} words
-                </p>
-              </div>
-              <div className="flex gap-1">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-8 w-8"
-                  onClick={() => openEdit(category)}
-                >
-                  <Edit2 className="h-3.5 w-3.5" />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-8 w-8 text-destructive hover:text-destructive"
-                  onClick={() => handleDelete(category)}
-                >
-                  <Trash2 className="h-3.5 w-3.5" />
-                </Button>
-              </div>
-            </Card>
-          ))}
-        </div>
-      )}
-    </div>
+      {/* AI Generation Paywall */}
+      <AIGenerationPaywall 
+        isOpen={showAiPaywall} 
+        onClose={() => setShowAiPaywall(false)}
+        onPurchaseComplete={() => {
+          // Refresh state after purchase
+          loadAIGenerationState();
+        }}
+      />
+    </>
   );
 };

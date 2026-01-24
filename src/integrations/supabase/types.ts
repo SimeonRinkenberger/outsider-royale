@@ -403,6 +403,7 @@ export type Database = {
       }
       user_entitlements: {
         Row: {
+          ai_generations_used: number
           created_at: string
           expires_at: string | null
           granted_at: string
@@ -413,6 +414,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          ai_generations_used?: number
           created_at?: string
           expires_at?: string | null
           granted_at?: string
@@ -423,6 +425,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          ai_generations_used?: number
           created_at?: string
           expires_at?: string | null
           granted_at?: string
@@ -572,6 +575,15 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      check_ai_generation_entitlement: {
+        Args: { p_user_id: string }
+        Returns: {
+          ai_generations_used: number
+          can_generate: boolean
+          free_generations_remaining: number
+          is_pro: boolean
+        }[]
+      }
       check_user_entitlement: {
         Args: { p_product_key: string; p_user_id: string }
         Returns: boolean
@@ -603,6 +615,13 @@ export type Database = {
           p_user_id: string
         }
         Returns: string
+      }
+      increment_ai_generation_usage: {
+        Args: { p_user_id: string }
+        Returns: {
+          ai_generations_used: number
+          is_pro: boolean
+        }[]
       }
     }
     Enums: {
