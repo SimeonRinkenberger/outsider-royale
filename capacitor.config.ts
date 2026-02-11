@@ -1,7 +1,7 @@
 import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
-  appId: 'app.lovable.4b9de44f1c684ee88e08f7594c181759',
+  appId: 'com.wordoutsider.app',
   appName: 'Outsider Royale',
   webDir: 'dist',
   server: {
