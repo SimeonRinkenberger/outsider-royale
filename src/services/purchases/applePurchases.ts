@@ -167,8 +167,8 @@ export async function initPurchases(): Promise<void> {
 
   try {
     // Dynamically import the Capacitor plugin
-    const { CapacitorPurchases } = await import('@capgo/capacitor-purchases');
-    purchasesPlugin = CapacitorPurchases;
+    const { NativePurchases } = await import('@capgo/native-purchases');
+    purchasesPlugin = NativePurchases;
 
     // Configure the SDK (no API key needed for pure StoreKit)
     // For production, you'd configure with RevenueCat API key if using that service
