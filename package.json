@@ -13,10 +13,10 @@
   "dependencies": {
     "@capacitor/android": "^7.4.4",
     "@capacitor/cli": "^7.4.4",
-    "@capacitor/clipboard": "^8.0.0",
+    "@capacitor/clipboard": "^7.0.3",
     "@capacitor/core": "^7.4.4",
     "@capacitor/ios": "^7.4.4",
-    "@capacitor/preferences": "^8.0.0",
+    "@capacitor/preferences": "^7.0.3",
     "@capgo/capacitor-purchases": "^5.0.8",
     "@dnd-kit/core": "^6.3.1",
     "@dnd-kit/sortable": "^10.0.0",
