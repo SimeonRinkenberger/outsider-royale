@@ -1,7 +1,7 @@
 /**
  * Apple In-App Purchases Service
  * 
- * Uses StoreKit 2 patterns via Capacitor plugin for iOS.
+ * Uses @capgo/native-purchases with StoreKit 2 for iOS.
  * Provides clean API for purchasing subscriptions and checking entitlements.
  */
 
@@ -68,6 +68,7 @@ const DEFAULT_ENTITLEMENT: Entitlement = {
 // In-memory cache
 let cachedEntitlement: Entitlement = { ...DEFAULT_ENTITLEMENT };
 let purchasesPlugin: any = null;
+let PURCHASE_TYPE_ENUM: any = null;
 let isInitialized = false;
 let updateListeners: ((entitlement: Entitlement) => void)[] = [];
 
@@ -167,22 +168,23 @@ export async function initPurchases(): Promise<void> {
 
   try {
     // Dynamically import the Capacitor plugin
-    const { NativePurchases } = await import('@capgo/native-purchases');
-    purchasesPlugin = NativePurchases;
+    const mod = await import('@capgo/native-purchases');
+    purchasesPlugin = mod.NativePurchases;
+    PURCHASE_TYPE_ENUM = mod.PURCHASE_TYPE;
 
-    // Configure RevenueCat SDK with API key
-    await purchasesPlugin.configure({
-      apiKey: 'appl_eZXUQDKifpGINqKHlaEQAXTvrdX',
-    });
-    console.log('[ApplePurchases] RevenueCat configured');
+    console.log('[ApplePurchases] Plugin loaded');
 
-    // Listen for transaction updates
-    await purchasesPlugin.addListener('purchasesUpdate', async (info: any) => {
-      console.log('[ApplePurchases] Transaction update:', info);
-      await refreshEntitlementFromStore();
-    });
+    // Check billing support
+    const { isBillingSupported } = await purchasesPlugin.isBillingSupported();
+    console.log('[ApplePurchases] Billing supported:', isBillingSupported);
 
-    // Check current entitlements
+    if (!isBillingSupported) {
+      console.warn('[ApplePurchases] Billing not supported on this device');
+      isInitialized = true;
+      return;
+    }
+
+    // Check current purchase status
     if (needsRevalidation(cachedEntitlement)) {
       await refreshEntitlementFromStore();
     }
@@ -197,47 +199,30 @@ export async function initPurchases(): Promise<void> {
 }
 
 /**
- * Refresh entitlement state from Apple
+ * Refresh entitlement state from StoreKit
  */
 async function refreshEntitlementFromStore(): Promise<void> {
-  if (!isIOSNative() || !purchasesPlugin) {
+  if (!isIOSNative() || !purchasesPlugin || !PURCHASE_TYPE_ENUM) {
     console.log('[ApplePurchases] Cannot refresh - not on iOS or not initialized');
     return;
   }
 
   try {
-    const customerInfo = await purchasesPlugin.getCustomerInfo();
-    console.log('[ApplePurchases] Customer info:', customerInfo);
+    // Get active subscription purchases from StoreKit
+    const { purchases } = await purchasesPlugin.getPurchases({
+      productType: PURCHASE_TYPE_ENUM.SUBS,
+    });
+    console.log('[ApplePurchases] Active purchases:', purchases);
 
-    // Check for active subscription entitlement
-    const activeSubscriptions = customerInfo?.activeSubscriptions || [];
-    const hasActiveSubscription = activeSubscriptions.some((subId: string) => 
-      subId === PRODUCT_IDS.MONTHLY || subId === PRODUCT_IDS.YEARLY
+    const activeSub = purchases?.find((p: any) =>
+      (p.productIdentifier === PRODUCT_IDS.MONTHLY || p.productIdentifier === PRODUCT_IDS.YEARLY)
     );
 
-    // Get expiration date
-    let expiresAt: string | null = null;
-    let productId: ProductId | null = null;
-    
-    if (hasActiveSubscription) {
-      // Find the active subscription details
-      const entitlementInfo = customerInfo?.entitlements?.active?.pro;
-      if (entitlementInfo) {
-        expiresAt = entitlementInfo.expirationDate || null;
-        productId = entitlementInfo.productIdentifier as ProductId;
-      } else {
-        // Fallback to first active subscription
-        productId = activeSubscriptions.find((id: string) => 
-          id === PRODUCT_IDS.MONTHLY || id === PRODUCT_IDS.YEARLY
-        ) || null;
-      }
-    }
-
     const newEntitlement: Entitlement = {
-      isPro: hasActiveSubscription,
-      source: hasActiveSubscription ? 'apple' : 'none',
-      expiresAt,
-      productId,
+      isPro: !!activeSub,
+      source: activeSub ? 'apple' : 'none',
+      expiresAt: activeSub?.expirationDate || null,
+      productId: activeSub?.productIdentifier as ProductId || null,
       lastCheckedAt: new Date().toISOString(),
     };
 
@@ -263,31 +248,18 @@ export async function getProducts(): Promise<{ monthly: ProductInfo | null; year
   }
 
   try {
-    const offerings = await purchasesPlugin.getOfferings();
-    console.log('[ApplePurchases] Offerings:', offerings);
+    const { products } = await purchasesPlugin.getProducts({
+      productIdentifiers: [PRODUCT_IDS.MONTHLY, PRODUCT_IDS.YEARLY],
+    });
+    console.log('[ApplePurchases] Products:', products);
 
-    const current = offerings?.current;
-    if (!current) {
-      console.warn('[ApplePurchases] No current offerings available');
-      return { monthly: null, yearly: null };
-    }
-
-    // Find monthly and yearly packages
-    const monthlyPackage = current.availablePackages?.find((pkg: any) => 
-      pkg.product?.identifier === PRODUCT_IDS.MONTHLY
-    );
-    const yearlyPackage = current.availablePackages?.find((pkg: any) => 
-      pkg.product?.identifier === PRODUCT_IDS.YEARLY
-    );
-
-    const mapProduct = (pkg: any): ProductInfo | null => {
-      if (!pkg?.product) return null;
-      const product = pkg.product;
+    const mapProduct = (product: any): ProductInfo | null => {
+      if (!product) return null;
       return {
-        id: product.identifier,
+        id: product.productIdentifier || product.identifier,
         title: product.title || product.localizedTitle || 'Subscription',
         description: product.description || product.localizedDescription || '',
-        price: product.priceString || `$${product.price}`,
+        price: product.priceString || product.localizedPrice || `$${product.price}`,
         priceValue: parseFloat(product.price) || 0,
         currency: product.currencyCode || 'USD',
         introPrice: product.introPrice?.priceString,
@@ -295,9 +267,16 @@ export async function getProducts(): Promise<{ monthly: ProductInfo | null; year
       };
     };
 
+    const monthly = products?.find((p: any) =>
+      (p.productIdentifier || p.identifier) === PRODUCT_IDS.MONTHLY
+    );
+    const yearly = products?.find((p: any) =>
+      (p.productIdentifier || p.identifier) === PRODUCT_IDS.YEARLY
+    );
+
     return {
-      monthly: mapProduct(monthlyPackage),
-      yearly: mapProduct(yearlyPackage),
+      monthly: mapProduct(monthly),
+      yearly: mapProduct(yearly),
     };
   } catch (error) {
     console.error('[ApplePurchases] Failed to get products:', error);
@@ -315,28 +294,15 @@ export async function purchase(productId: ProductId): Promise<PurchaseResult> {
     return { status: 'failed', error: 'Purchases are only available on iOS' };
   }
 
-  if (!purchasesPlugin) {
+  if (!purchasesPlugin || !PURCHASE_TYPE_ENUM) {
     return { status: 'failed', error: 'Purchases not initialized' };
   }
 
   try {
-    const offerings = await purchasesPlugin.getOfferings();
-    const current = offerings?.current;
-    
-    if (!current) {
-      return { status: 'failed', error: 'No offerings available' };
-    }
-
-    const pkg = current.availablePackages?.find((p: any) => 
-      p.product?.identifier === productId
-    );
-
-    if (!pkg) {
-      return { status: 'failed', error: 'Product not found' };
-    }
-
-    // Initiate purchase
-    const result = await purchasesPlugin.purchasePackage({ aPackage: pkg });
+    const result = await purchasesPlugin.purchaseProduct({
+      productIdentifier: productId,
+      productType: PURCHASE_TYPE_ENUM.SUBS,
+    });
     console.log('[ApplePurchases] Purchase result:', result);
 
     // Refresh entitlement after purchase
@@ -375,8 +341,8 @@ export async function restorePurchases(): Promise<RestoreResult> {
   }
 
   try {
-    const customerInfo = await purchasesPlugin.restorePurchases();
-    console.log('[ApplePurchases] Restore result:', customerInfo);
+    await purchasesPlugin.restorePurchases();
+    console.log('[ApplePurchases] Restore complete');
 
     // Refresh entitlement
     await refreshEntitlementFromStore();
@@ -424,10 +390,9 @@ export function onEntitlementUpdate(listener: (entitlement: Entitlement) => void
 export async function openSubscriptionManagement(): Promise<void> {
   if (isIOSNative() && purchasesPlugin) {
     try {
-      await purchasesPlugin.showManageSubscriptions();
+      await purchasesPlugin.manageSubscriptions();
     } catch (error) {
       console.error('[ApplePurchases] Failed to open subscription management:', error);
-      // Fallback to URL
       window.open('https://apps.apple.com/account/subscriptions', '_blank');
     }
   } else {
