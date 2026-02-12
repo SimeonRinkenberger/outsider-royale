@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useCallback } from 'react';
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -34,8 +34,24 @@ const queryClient = new QueryClient();
 // Preload all images immediately on app load
 preloadAllImages();
 
-// Sync word categories from database on app load (fire and forget)
+// Initial sync on cold start
 syncCategories();
+
+/**
+ * Hook to re-sync categories when app is resumed (e.g. after force quit on mobile)
+ */
+function useSyncOnResume() {
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible' && navigator.onLine) {
+        console.log('[Sync] App resumed, syncing categories...');
+        syncCategories();
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, []);
+}
 
 /**
  * ProtectedRoute - allows access for both guest and authed users
@@ -57,7 +73,10 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   return <Navigate to="/onboarding" replace />;
 };
 
-const App = () => (
+const App = () => {
+  useSyncOnResume();
+  
+  return (
   <QueryClientProvider client={queryClient}>
     <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
       <NetworkProvider>
@@ -128,6 +147,7 @@ const App = () => (
       </NetworkProvider>
     </ThemeProvider>
   </QueryClientProvider>
-);
+  );
+};
 
 export default App;
