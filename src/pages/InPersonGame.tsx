@@ -194,7 +194,7 @@ const InPersonGame = () => {
   
   // Game config for play again with settings
   const [gameConfig, setGameConfig] = useState<GameConfig>({
-    selectedCategories: ['animal', 'food', 'movie'],
+    selectedCategories: ['dog_breeds', 'birds', 'desserts'],
     selectedCustomCategories: [],
     selectedModifiers: [],
     imposterCount: 1,
@@ -217,7 +217,7 @@ const InPersonGame = () => {
         ...prev,
         gameMode: (config.gameMode as GameConfig['gameMode']) || 'classic',
         roundCount: config.roundCount || 3,
-        selectedCategories: config.selectedCategories || ['animal', 'food', 'movie'],
+        selectedCategories: config.selectedCategories || ['dog_breeds', 'birds', 'desserts'],
         selectedCustomCategories: config.selectedCustomCategories || [],
         selectedModifiers: config.selectedModifiers || [],
         showOutsiderCount: config.showOutsiderCount ?? true,
@@ -244,7 +244,7 @@ const InPersonGame = () => {
       // Initialize game if needed
       if (!gameConfig.secretWord) {
         // Get selected categories
-        const selectedCats = gameConfig.selectedCategories || ['animal', 'food', 'movie'];
+        const selectedCats = gameConfig.selectedCategories || ['dog_breeds', 'birds', 'desserts'];
         const selectedCustomCats = gameConfig.selectedCustomCategories || [];
         const storedCustomCategories = gameConfig.customCategories || [];
         

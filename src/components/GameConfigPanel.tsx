@@ -15,14 +15,18 @@ import { canAccessCategory, isPaidCategory, CATEGORY_INFO } from '@/lib/entitlem
 import { Paywall } from '@/components/Paywall';
 
 const CATEGORIES = [
-  { value: 'animal', label: 'Animals', isPaid: false },
-  { value: 'brand', label: 'Brands', isPaid: true },
-  { value: 'food', label: 'Food', isPaid: false },
-  { value: 'movie', label: 'Movies', isPaid: true },
-  { value: 'person', label: 'People', isPaid: true },
-  { value: 'place', label: 'Places', isPaid: false },
-  { value: 'thing', label: 'Things', isPaid: false },
-  { value: 'degenerate', label: 'Spicy 🌶️', isPaid: true },
+  { value: 'dog_breeds', label: '🐕 Dog Breeds', isPaid: false },
+  { value: 'birds', label: '🦅 Birds', isPaid: false },
+  { value: 'desserts', label: '🍰 Desserts', isPaid: false },
+  { value: 'car_brands', label: '🚗 Car Brands', isPaid: false },
+  { value: 'ocean_animals', label: '🐙 Ocean Animals', isPaid: false },
+  { value: 'musical_instruments', label: '🎸 Instruments', isPaid: false },
+  { value: 'kitchen_appliances', label: '🍳 Kitchen Tools', isPaid: true },
+  { value: 'superheroes', label: '🦸 Superheroes', isPaid: true },
+  { value: 'board_games', label: '🎲 Board Games', isPaid: true },
+  { value: 'trees', label: '🌳 Trees', isPaid: true },
+  { value: 'scientists', label: '🔬 Scientists', isPaid: true },
+  { value: 'video_game_characters', label: '🎮 Video Games', isPaid: true },
 ];
 
 const GAME_MODES: { value: GameMode; label: string; description: string }[] = [
