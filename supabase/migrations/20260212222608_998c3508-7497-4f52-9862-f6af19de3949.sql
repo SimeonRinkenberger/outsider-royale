@@ -1,0 +1,1 @@
+ALTER TYPE word_category ADD VALUE 'tester';
