@@ -154,11 +154,11 @@ export function Paywall({ isOpen, onClose, trigger = 'menu' }: PaywallProps) {
             className="w-full max-w-md max-h-[90vh] overflow-y-auto"
             onClick={(e) => e.stopPropagation()}
           >
-            <Card className="m-4 p-6 space-y-6 rounded-t-3xl sm:rounded-3xl">
+            <Card className="m-4 p-6 space-y-6 rounded-t-3xl sm:rounded-3xl relative">
               {/* Close button */}
               <button
                 onClick={onClose}
-                className="absolute top-4 right-4 p-2 rounded-full hover:bg-muted transition-colors"
+                className="absolute top-4 right-4 p-2 rounded-full hover:bg-muted transition-colors z-10"
               >
                 <X className="h-5 w-5" />
               </button>

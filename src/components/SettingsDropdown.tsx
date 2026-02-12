@@ -47,13 +47,18 @@ export const SettingsDropdown = ({ className }: SettingsDropdownProps) => {
     if (open) {
       setIsSpinning(true);
       setTimeout(() => setIsSpinning(false), 500);
+      // Prevent iOS scroll jump by saving and restoring scroll position
+      const scrollY = window.scrollY;
+      requestAnimationFrame(() => {
+        window.scrollTo(0, scrollY);
+      });
     }
   };
 
   return (
     <DropdownMenu onOpenChange={handleOpenChange}>
       <DropdownMenuTrigger asChild>
-        <Button variant="ghost" size="icon" className={className}>
+        <Button variant="ghost" size="icon" className={className} onClick={(e) => e.stopPropagation()}>
           <Settings 
             className={cn(
               "h-5 w-5 transition-transform duration-500",
