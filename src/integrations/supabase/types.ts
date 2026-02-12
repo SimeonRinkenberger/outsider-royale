@@ -665,28 +665,6 @@ export type Database = {
       lobby_status: "waiting" | "in_progress" | "voting" | "results"
       product_type: "consumable" | "non_consumable" | "subscription"
       purchase_platform: "ios" | "android" | "web"
-      word_category:
-        | "brand"
-        | "food"
-        | "movie"
-        | "animal"
-        | "place"
-        | "thing"
-        | "person"
-        | "degenerate"
-        | "dog_breeds"
-        | "birds"
-        | "desserts"
-        | "car_brands"
-        | "ocean_animals"
-        | "musical_instruments"
-        | "kitchen_appliances"
-        | "superheroes"
-        | "board_games"
-        | "trees"
-        | "scientists"
-        | "video_game_characters"
-        | "tester"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -819,29 +797,6 @@ export const Constants = {
       lobby_status: ["waiting", "in_progress", "voting", "results"],
       product_type: ["consumable", "non_consumable", "subscription"],
       purchase_platform: ["ios", "android", "web"],
-      word_category: [
-        "brand",
-        "food",
-        "movie",
-        "animal",
-        "place",
-        "thing",
-        "person",
-        "degenerate",
-        "dog_breeds",
-        "birds",
-        "desserts",
-        "car_brands",
-        "ocean_animals",
-        "musical_instruments",
-        "kitchen_appliances",
-        "superheroes",
-        "board_games",
-        "trees",
-        "scientists",
-        "video_game_characters",
-        "tester",
-      ],
     },
   },
 } as const
