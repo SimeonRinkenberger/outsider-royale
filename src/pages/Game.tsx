@@ -1167,7 +1167,7 @@ const Game = () => {
                 {isEliminationMode ? `Round ${game.current_round_number} Voting` : 'Vote for the Outsider'}
               </h1>
               <p className="text-sm text-muted-foreground">
-                {isHiddenImposterMode ? `Who had a different word?` : `Who didn't know: "${secretWord.text}"?`}
+                {isHiddenImposterMode ? `Who had a different word?` : `Who do you think is the outsider?`}
               </p>
             </div>
             <div className="flex items-center gap-2">
@@ -1213,16 +1213,6 @@ const Game = () => {
                 Outsider{outsiders.length > 1 ? 's' : ''}: {players.filter(p => outsiders.some(o => o.player_id === p.id)).map(p => p.display_name).join(', ')}
               </p>
             </Card> : <>
-              <Card className="p-6 bg-gradient-primary text-white shadow-card border-0 text-center">
-                <p className="text-white/80 text-sm mb-1">The secret word was</p>
-                <h2 className="text-3xl font-bold">{secretWord?.text ?? 'Loading...'}</h2>
-                <p className="text-white/70 text-xs uppercase tracking-wider mt-1">
-                  Category: {gameMetadata?.customCategory || secretWord?.category || 'Unknown'}
-                </p>
-                {isHiddenImposterMode && imposterWord && <p className="text-white/80 text-sm mt-2">
-                    Outsider word: <span className="font-bold">{imposterWord?.text ?? 'Loading...'}</span>
-                  </p>}
-              </Card>
               <AnimatePresence mode="wait">
                 {!votesSubmitted ? <motion.div key="voting-ui" initial={{
                   opacity: 0,
@@ -1384,7 +1374,7 @@ const Game = () => {
                   duration: 0.4,
                   ease: [0.4, 0, 0.2, 1]
                 }}>
-                    <Card className="p-6 bg-gradient-card border-border text-center">
+                     <Card className="p-6 bg-gradient-card border-border text-center">
                       <motion.div initial={{
                       scale: 0
                     }} animate={{
@@ -1401,6 +1391,37 @@ const Game = () => {
                       <p className="text-sm text-muted-foreground">
                         Waiting for other players...
                       </p>
+                    </Card>
+
+                    {/* Vote status tracker */}
+                    <Card className="p-4 mt-4 border-border">
+                      <h4 className="text-sm font-semibold text-muted-foreground mb-3 flex items-center gap-2">
+                        <Users className="h-4 w-4" />
+                        Vote Status
+                      </h4>
+                      <div className="space-y-2">
+                        {(isEliminationMode ? activePlayers : players).filter(p => !p.is_spectator).map(player => {
+                          const playerHasVoted = votes.some(v => v.voter_player_id === player.id);
+                          const avatar = player.avatar_url ? getAvatarById(player.avatar_url) : null;
+                          return (
+                            <div key={player.id} className="flex items-center justify-between py-1">
+                              <div className="flex items-center gap-2">
+                                <div className={`w-6 h-6 rounded-full flex items-center justify-center text-sm ${avatar ? avatar.color : 'bg-muted'}`}>
+                                  {avatar ? avatar.emoji : <User className="h-3 w-3 text-muted-foreground" />}
+                                </div>
+                                <span className="text-sm">{player.display_name}{player.id === currentPlayer?.id && ' (You)'}</span>
+                              </div>
+                              {playerHasVoted ? (
+                                <span className="text-xs text-primary flex items-center gap-1">
+                                  <CheckCircle2 className="h-3.5 w-3.5" /> Voted
+                                </span>
+                              ) : (
+                                <span className="text-xs text-muted-foreground">Waiting...</span>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
                     </Card>
                   </motion.div>}
               </AnimatePresence>
