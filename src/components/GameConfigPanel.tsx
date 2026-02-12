@@ -297,7 +297,14 @@ export const GameConfigPanel = ({
         {/* Category Selection */}
         <div className="space-y-3">
           <div className="flex items-center justify-between">
-            <Label className="text-sm">Categories</Label>
+            <div>
+              <Label className="text-sm">Categories</Label>
+              {!isPro && (
+                <p className="text-xs text-muted-foreground">
+                  6 free categories · 1,800 words included
+                </p>
+              )}
+            </div>
             <Button 
               variant="ghost" 
               size="sm" 

@@ -12,6 +12,7 @@ import { NetworkProvider } from './contexts/NetworkContext';
 import { AuthProvider } from './contexts/AuthContext';
 import { EntitlementProvider } from './contexts/EntitlementContext';
 import { preloadAllImages } from './lib/imagePreloader';
+import { syncCategories } from './lib/categoryCache';
 import ErrorBoundary from './components/ErrorBoundary';
 import OfflineBanner from './components/OfflineBanner';
 
@@ -32,6 +33,9 @@ const queryClient = new QueryClient();
 
 // Preload all images immediately on app load
 preloadAllImages();
+
+// Sync word categories from database on app load (fire and forget)
+syncCategories();
 
 /**
  * ProtectedRoute - allows access for both guest and authed users

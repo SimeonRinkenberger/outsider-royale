@@ -20,9 +20,10 @@ interface PaywallProps {
 }
 
 const BENEFITS = [
-  'All 8 word categories unlocked',
-  '500+ extra words to play with',
-  'New words added monthly',
+  'All 12 word categories unlocked (6 extra)',
+  '3,600+ words to play with',
+  'New categories & words added regularly',
+  'Custom categories with AI generation',
   'Support indie development',
 ];
 
