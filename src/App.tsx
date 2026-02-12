@@ -14,7 +14,7 @@ import { EntitlementProvider } from './contexts/EntitlementContext';
 import { preloadAllImages } from './lib/imagePreloader';
 import ErrorBoundary from './components/ErrorBoundary';
 import OfflineBanner from './components/OfflineBanner';
-import EntitlementDebug from './components/EntitlementDebug';
+
 import Menu from './pages/Menu';
 import Onboarding from './pages/Onboarding';
 import Home from './pages/Home';
@@ -64,7 +64,7 @@ const App = () => (
                 <Toaster />
                 <Sonner />
                 <OfflineBanner />
-                <EntitlementDebug />
+                
                 <BrowserRouter>
                   <TransitionProvider>
                     
