@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Settings, Volume2, VolumeX, Moon, Sun, RefreshCw } from 'lucide-react';
+import { useState, useRef, useCallback } from 'react';
+import { Settings, Volume2, VolumeX, Moon, Sun, RefreshCw, Crown, ExternalLink } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
 import {
@@ -15,6 +15,7 @@ import { useTheme } from 'next-themes';
 import { toast } from 'sonner';
 import { isNative } from '@/lib/platform';
 import { cn } from '@/lib/utils';
+import { useEntitlement } from '@/contexts/EntitlementContext';
 
 interface SettingsDropdownProps {
   className?: string;
@@ -23,7 +24,9 @@ interface SettingsDropdownProps {
 export const SettingsDropdown = ({ className }: SettingsDropdownProps) => {
   const { volume, setVolume, isMuted, toggleMute } = useAudio();
   const { theme, setTheme, resolvedTheme } = useTheme();
+  const { isPro, openManageSubscription } = useEntitlement();
   const [isSpinning, setIsSpinning] = useState(false);
+  const scrollPosRef = useRef(0);
 
   const forceUpdate = async () => {
     toast.info('Clearing cache and reloading...');
@@ -43,22 +46,36 @@ export const SettingsDropdown = ({ className }: SettingsDropdownProps) => {
 
   const currentTheme = resolvedTheme || theme;
 
-  const handleOpenChange = (open: boolean) => {
+  // Prevent iOS scroll jump: capture scroll position before dropdown opens
+  const handleTriggerPointerDown = useCallback(() => {
+    scrollPosRef.current = window.scrollY;
+  }, []);
+
+  const handleOpenChange = useCallback((open: boolean) => {
     if (open) {
       setIsSpinning(true);
       setTimeout(() => setIsSpinning(false), 500);
-      // Prevent iOS scroll jump by saving and restoring scroll position
-      const scrollY = window.scrollY;
+      // Restore scroll position that iOS may have shifted
+      const savedPos = scrollPosRef.current;
       requestAnimationFrame(() => {
-        window.scrollTo(0, scrollY);
+        window.scrollTo(0, savedPos);
+        // Double-check after a frame in case iOS adjusts late
+        requestAnimationFrame(() => {
+          window.scrollTo(0, savedPos);
+        });
       });
     }
-  };
+  }, []);
 
   return (
-    <DropdownMenu onOpenChange={handleOpenChange}>
+    <DropdownMenu onOpenChange={handleOpenChange} modal={false}>
       <DropdownMenuTrigger asChild>
-        <Button variant="ghost" size="icon" className={className} onClick={(e) => e.stopPropagation()}>
+        <Button
+          variant="ghost"
+          size="icon"
+          className={className}
+          onPointerDown={handleTriggerPointerDown}
+        >
           <Settings 
             className={cn(
               "h-5 w-5 transition-transform duration-500",
@@ -125,6 +142,18 @@ export const SettingsDropdown = ({ className }: SettingsDropdownProps) => {
           </div>
         </div>
         
+        {/* Manage Subscription - only show when Pro */}
+        {isPro && (
+          <>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={() => openManageSubscription()}>
+              <Crown className="h-4 w-4 mr-2 text-primary" />
+              Manage Subscription
+              <ExternalLink className="h-3 w-3 ml-auto text-muted-foreground" />
+            </DropdownMenuItem>
+          </>
+        )}
+
         {/* Refresh Button - only show on web */}
         {!isNative() && (
           <>
