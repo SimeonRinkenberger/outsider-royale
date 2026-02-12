@@ -1,12 +1,14 @@
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, User } from 'lucide-react';
+import { ArrowLeft, User, Crown } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { getStoredUserId, getStoredAvatarId, setStoredAvatarId } from '@/lib/gameUtils';
 import { getAvatarById } from '@/components/AvatarPicker';
 import { useTransition } from '@/contexts/TransitionContext';
 import { SettingsDropdown } from '@/components/SettingsDropdown';
+import { useEntitlement } from '@/contexts/EntitlementContext';
+import { Paywall } from '@/components/Paywall';
 interface GameHeaderProps {
   title: string;
   showBack?: boolean;
@@ -27,6 +29,8 @@ const GameHeader = ({
     startTransition
   } = useTransition();
   const userId = getStoredUserId();
+  const { isPro } = useEntitlement();
+  const [showPaywall, setShowPaywall] = useState(false);
 
   // Initialize from localStorage cache immediately
   const cachedAvatarId = getStoredAvatarId();
@@ -83,12 +87,19 @@ const GameHeader = ({
         </div>
         <div className="flex items-center gap-1 shrink-0">
           {rightContent}
+          {!isPro && (
+            <Button variant="ghost" size="sm" onClick={() => setShowPaywall(true)} className="text-primary">
+              <Crown className="h-4 w-4 mr-1" />
+              Pro
+            </Button>
+          )}
           <SettingsDropdown />
           <Button variant="ghost" size="icon" onClick={handleProfileClick} className="relative">
             {avatarEmoji ? <span className="text-lg">{avatarEmoji}</span> : <User className="h-5 w-5" />}
           </Button>
         </div>
       </div>
+      <Paywall isOpen={showPaywall} onClose={() => setShowPaywall(false)} trigger="menu" />
     </header>;
 };
 export default GameHeader;
