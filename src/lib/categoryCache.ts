@@ -12,6 +12,7 @@
  */
 
 import { supabase } from '@/integrations/supabase/client';
+import { BUNDLED_WORDS } from './bundledWords';
 
 const CACHE_KEY = 'outsider-royale-word-cache';
 const CACHE_TIMESTAMP_KEY = 'outsider-royale-word-cache-ts';
@@ -27,15 +28,25 @@ export interface WordCache {
 }
 
 /**
- * Get the cached words from localStorage
+ * Get the cached words from localStorage, falling back to bundled data
  */
 export function getCachedWords(): WordCache | null {
   try {
     const cached = localStorage.getItem(CACHE_KEY);
-    if (!cached) return null;
-    return JSON.parse(cached) as WordCache;
+    if (cached) {
+      return JSON.parse(cached) as WordCache;
+    }
+    // Fall back to bundled words (first launch, no internet)
+    return {
+      categories: BUNDLED_WORDS,
+      lastSynced: 'bundled',
+    };
   } catch {
-    return null;
+    // Even if parse fails, return bundled
+    return {
+      categories: BUNDLED_WORDS,
+      lastSynced: 'bundled',
+    };
   }
 }
 
