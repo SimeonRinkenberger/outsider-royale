@@ -639,6 +639,18 @@ export type Database = {
         | "thing"
         | "person"
         | "degenerate"
+        | "dog_breeds"
+        | "birds"
+        | "desserts"
+        | "car_brands"
+        | "ocean_animals"
+        | "musical_instruments"
+        | "kitchen_appliances"
+        | "superheroes"
+        | "board_games"
+        | "trees"
+        | "scientists"
+        | "video_game_characters"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -780,6 +792,18 @@ export const Constants = {
         "thing",
         "person",
         "degenerate",
+        "dog_breeds",
+        "birds",
+        "desserts",
+        "car_brands",
+        "ocean_animals",
+        "musical_instruments",
+        "kitchen_appliances",
+        "superheroes",
+        "board_games",
+        "trees",
+        "scientists",
+        "video_game_characters",
       ],
     },
   },
