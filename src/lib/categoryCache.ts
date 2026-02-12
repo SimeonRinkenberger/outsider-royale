@@ -1,18 +1,18 @@
 /**
  * Offline-first Category Cache
  * 
- * Syncs word categories from the database on app load when online,
+ * Syncs word categories AND category metadata from the database on app load when online,
  * and stores them locally for offline in-person gameplay.
  * 
  * Flow:
  * 1. On app startup, check if online
- * 2. If online, fetch all words from DB grouped by category and cache locally
+ * 2. If online, fetch all words + category metadata from DB and cache locally
  * 3. For in-person mode, always use the local cache (works offline)
  * 4. For online mode, still uses RPCs (server handles word selection)
  */
 
 import { supabase } from '@/integrations/supabase/client';
-import { BUNDLED_WORDS } from './bundledWords';
+import { BUNDLED_WORDS, BUNDLED_CATEGORIES } from './bundledWords';
 
 const CACHE_KEY = 'outsider-royale-word-cache';
 const CACHE_TIMESTAMP_KEY = 'outsider-royale-word-cache-ts';
@@ -22,29 +22,44 @@ export interface CachedWord {
   category: string;
 }
 
+export interface CategoryMeta {
+  id: string;
+  name: string;
+  emoji: string;
+  isPaid: boolean;
+  sortOrder: number;
+}
+
 export interface WordCache {
   categories: Record<string, string[]>; // category -> words[]
+  categoryMeta: CategoryMeta[]; // category metadata from DB
   lastSynced: string; // ISO timestamp
 }
 
 /**
  * Get the cached words from localStorage, falling back to bundled data
  */
-export function getCachedWords(): WordCache | null {
+export function getCachedWords(): WordCache {
   try {
     const cached = localStorage.getItem(CACHE_KEY);
     if (cached) {
-      return JSON.parse(cached) as WordCache;
+      const parsed = JSON.parse(cached) as WordCache;
+      // Ensure categoryMeta exists (backwards compat)
+      if (!parsed.categoryMeta) {
+        parsed.categoryMeta = BUNDLED_CATEGORIES;
+      }
+      return parsed;
     }
     // Fall back to bundled words (first launch, no internet)
     return {
       categories: BUNDLED_WORDS,
+      categoryMeta: BUNDLED_CATEGORIES,
       lastSynced: 'bundled',
     };
   } catch {
-    // Even if parse fails, return bundled
     return {
       categories: BUNDLED_WORDS,
+      categoryMeta: BUNDLED_CATEGORIES,
       lastSynced: 'bundled',
     };
   }
@@ -60,63 +75,90 @@ function saveToCache(cache: WordCache): void {
 
 /**
  * Sync categories from the database.
- * Fetches ALL words and stores them locally.
+ * Fetches ALL words AND category metadata, stores them locally.
  * Returns true if sync was successful.
  */
 export async function syncCategories(): Promise<boolean> {
   try {
-    // Fetch all words from DB (paginated to handle >1000 rows)
-    const allWords: CachedWord[] = [];
-    let from = 0;
-    const pageSize = 1000;
-    let hasMore = true;
+    // Fetch category metadata and words in parallel
+    const [metaResult, wordsResult] = await Promise.all([
+      supabase.from('categories').select('id, name, emoji, is_paid, sort_order').order('sort_order'),
+      fetchAllWords(),
+    ]);
 
-    while (hasMore) {
-      const { data, error } = await supabase
-        .from('words')
-        .select('text, category')
-        .range(from, from + pageSize - 1);
-
-      if (error) {
-        console.error('Failed to sync categories:', error);
-        return false;
-      }
-
-      if (data && data.length > 0) {
-        allWords.push(...data.map(w => ({ text: w.text, category: w.category })));
-        from += pageSize;
-        hasMore = data.length === pageSize;
-      } else {
-        hasMore = false;
-      }
-    }
-
-    if (allWords.length === 0) {
-      console.warn('No words returned from database');
+    if (metaResult.error) {
+      console.error('Failed to sync category metadata:', metaResult.error);
       return false;
     }
 
-    // Group by category
-    const categories: Record<string, string[]> = {};
-    for (const word of allWords) {
-      if (!categories[word.category]) {
-        categories[word.category] = [];
-      }
-      categories[word.category].push(word.text);
-    }
+    if (!wordsResult) return false;
+
+    const categoryMeta: CategoryMeta[] = (metaResult.data || []).map(c => ({
+      id: c.id,
+      name: c.name,
+      emoji: c.emoji,
+      isPaid: c.is_paid,
+      sortOrder: c.sort_order,
+    }));
 
     const cache: WordCache = {
-      categories,
+      categories: wordsResult,
+      categoryMeta,
       lastSynced: new Date().toISOString(),
     };
 
     saveToCache(cache);
-    console.log(`Category cache synced: ${allWords.length} words across ${Object.keys(categories).length} categories`);
+    console.log(`Category cache synced: ${categoryMeta.length} categories, ${Object.values(wordsResult).flat().length} words`);
     return true;
   } catch (error) {
     console.error('Category sync failed:', error);
     return false;
   }
+}
+
+/**
+ * Fetch all words from the database (paginated)
+ */
+async function fetchAllWords(): Promise<Record<string, string[]> | null> {
+  const allWords: CachedWord[] = [];
+  let from = 0;
+  const pageSize = 1000;
+  let hasMore = true;
+
+  while (hasMore) {
+    const { data, error } = await supabase
+      .from('words')
+      .select('text, category')
+      .range(from, from + pageSize - 1);
+
+    if (error) {
+      console.error('Failed to sync words:', error);
+      return null;
+    }
+
+    if (data && data.length > 0) {
+      allWords.push(...data.map(w => ({ text: w.text, category: w.category })));
+      from += pageSize;
+      hasMore = data.length === pageSize;
+    } else {
+      hasMore = false;
+    }
+  }
+
+  if (allWords.length === 0) {
+    console.warn('No words returned from database');
+    return null;
+  }
+
+  const categories: Record<string, string[]> = {};
+  for (const word of allWords) {
+    if (!categories[word.category]) {
+      categories[word.category] = [];
+    }
+    categories[word.category].push(word.text);
+  }
+
+  return categories;
 }
 
 /**
@@ -135,7 +177,6 @@ export function getRandomWordFromCache(
   const cache = getCachedWords();
   if (!cache) return null;
 
-  // Build pool of words from selected categories
   const pool: { text: string; category: string }[] = [];
   for (const cat of selectedCategories) {
     const words = cache.categories[cat];

@@ -2,55 +2,65 @@
  * Entitlement Helpers
  * 
  * Utility functions for checking access based on entitlement status.
- * Uses cached entitlement - no DB calls during gameplay.
+ * Categories are now dynamically loaded from the synced cache (database-driven).
  */
 
 import type { Entitlement } from '@/services/purchases/applePurchases';
+import { getCachedWords, type CategoryMeta } from './categoryCache';
 
-// Free categories available to all users (first 5)
-export const FREE_CATEGORIES = ['birds', 'desserts', 'car_brands', 'ocean_animals', 'musical_instruments'] as const;
-export type FreeCategory = typeof FREE_CATEGORIES[number];
+/**
+ * Get all synced categories from the cache (DB-driven)
+ */
+export function getSyncedCategories(): CategoryMeta[] {
+  const cache = getCachedWords();
+  return cache.categoryMeta.sort((a, b) => a.sortOrder - b.sortOrder);
+}
 
-// Paid categories (require Pro subscription)
-export const PAID_CATEGORIES = ['kitchen_appliances', 'superheroes', 'board_games', 'trees', 'scientists', 'video_game_characters'] as const;
-export type PaidCategory = typeof PAID_CATEGORIES[number];
+/**
+ * Get free category IDs
+ */
+export function getFreeCategoryIds(): string[] {
+  return getSyncedCategories().filter(c => !c.isPaid).map(c => c.id);
+}
 
-// All categories
-export const ALL_CATEGORIES = [...FREE_CATEGORIES, ...PAID_CATEGORIES] as const;
-export type Category = typeof ALL_CATEGORIES[number];
+/**
+ * Get paid category IDs
+ */
+export function getPaidCategoryIds(): string[] {
+  return getSyncedCategories().filter(c => c.isPaid).map(c => c.id);
+}
 
 /**
  * Check if a category is free (available to all users)
  */
 export function isFreeCategory(categoryId: string): boolean {
-  return FREE_CATEGORIES.includes(categoryId as FreeCategory);
+  const cat = getSyncedCategories().find(c => c.id === categoryId);
+  return cat ? !cat.isPaid : false;
 }
 
 /**
  * Check if a category is paid (requires Pro)
  */
 export function isPaidCategory(categoryId: string): boolean {
-  return PAID_CATEGORIES.includes(categoryId as PaidCategory);
+  const cat = getSyncedCategories().find(c => c.id === categoryId);
+  return cat ? cat.isPaid : false;
 }
 
 /**
  * Check if user can access a specific category
  */
 export function canAccessCategory(categoryId: string, entitlement: Entitlement): boolean {
-  if (entitlement.isPro) {
-    return true;
-  }
+  if (entitlement.isPro) return true;
   return isFreeCategory(categoryId);
 }
 
 /**
  * Get list of categories user can access
  */
-export function getAccessibleCategories(entitlement: Entitlement): readonly string[] {
-  if (entitlement.isPro) {
-    return ALL_CATEGORIES;
-  }
-  return FREE_CATEGORIES;
+export function getAccessibleCategories(entitlement: Entitlement): string[] {
+  const all = getSyncedCategories();
+  if (entitlement.isPro) return all.map(c => c.id);
+  return all.filter(c => !c.isPaid).map(c => c.id);
 }
 
 /**
@@ -60,9 +70,7 @@ export function filterAccessibleCategories(
   categories: string[],
   entitlement: Entitlement
 ): string[] {
-  if (entitlement.isPro) {
-    return categories;
-  }
+  if (entitlement.isPro) return categories;
   return categories.filter(cat => isFreeCategory(cat));
 }
 
@@ -74,102 +82,26 @@ export function hasAnyPaidCategories(selectedCategories: string[]): boolean {
 }
 
 /**
- * Get category display info
+ * Get category display info from synced data
  */
 export interface CategoryInfo {
   id: string;
   name: string;
-  description: string;
-  isPaid: boolean;
   emoji: string;
+  isPaid: boolean;
 }
 
-export const CATEGORY_INFO: Record<string, CategoryInfo> = {
-  birds: {
-    id: 'birds',
-    name: 'Birds',
-    description: 'Birds from around the world',
-    isPaid: false,
-    emoji: '🦅',
-  },
-  desserts: {
-    id: 'desserts',
-    name: 'Desserts',
-    description: 'Sweet treats and pastries',
-    isPaid: false,
-    emoji: '🍰',
-  },
-  car_brands: {
-    id: 'car_brands',
-    name: 'Car Brands',
-    description: 'Automobile manufacturers worldwide',
-    isPaid: false,
-    emoji: '🚗',
-  },
-  ocean_animals: {
-    id: 'ocean_animals',
-    name: 'Ocean Animals',
-    description: 'Marine life and sea creatures',
-    isPaid: false,
-    emoji: '🐙',
-  },
-  musical_instruments: {
-    id: 'musical_instruments',
-    name: 'Musical Instruments',
-    description: 'Instruments from every culture',
-    isPaid: false,
-    emoji: '🎸',
-  },
-  kitchen_appliances: {
-    id: 'kitchen_appliances',
-    name: 'Kitchen Tools',
-    description: 'Cooking gear and gadgets',
-    isPaid: true,
-    emoji: '🍳',
-  },
-  superheroes: {
-    id: 'superheroes',
-    name: 'Superheroes',
-    description: 'Heroes and villains from comics',
-    isPaid: true,
-    emoji: '🦸',
-  },
-  board_games: {
-    id: 'board_games',
-    name: 'Board Games',
-    description: 'Tabletop and card games',
-    isPaid: true,
-    emoji: '🎲',
-  },
-  trees: {
-    id: 'trees',
-    name: 'Trees',
-    description: 'Tree species from every continent',
-    isPaid: true,
-    emoji: '🌳',
-  },
-  scientists: {
-    id: 'scientists',
-    name: 'Famous Scientists',
-    description: 'Renowned scientists and inventors',
-    isPaid: true,
-    emoji: '🔬',
-  },
-  video_game_characters: {
-    id: 'video_game_characters',
-    name: 'Video Game Characters',
-    description: 'Iconic gaming protagonists and villains',
-    isPaid: true,
-    emoji: '🎮',
-  },
-};
-
 /**
- * Get sorted categories with free first
+ * Get sorted categories with free first, then paid
  */
 export function getSortedCategories(): CategoryInfo[] {
-  return [
-    ...FREE_CATEGORIES.map(id => CATEGORY_INFO[id]),
-    ...PAID_CATEGORIES.map(id => CATEGORY_INFO[id]),
-  ];
+  const cats = getSyncedCategories();
+  const free = cats.filter(c => !c.isPaid);
+  const paid = cats.filter(c => c.isPaid);
+  return [...free, ...paid].map(c => ({
+    id: c.id,
+    name: c.name,
+    emoji: c.emoji,
+    isPaid: c.isPaid,
+  }));
 }

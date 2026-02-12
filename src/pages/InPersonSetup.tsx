@@ -8,6 +8,7 @@ import { toast } from 'sonner';
 import { motion, AnimatePresence } from 'framer-motion';
 import GameHeader from '@/components/GameHeader';
 import { GameConfigPanel, GameConfig } from '@/components/GameConfigPanel';
+import { getFreeCategoryIds } from '@/lib/entitlements';
 import { useCustomContent } from '@/hooks/useCustomContent';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import {
@@ -111,7 +112,7 @@ const InPersonSetup = () => {
   } = useCustomContent();
 
   const [config, setConfig] = useState<GameConfig>({
-    selectedCategories: ['birds', 'desserts', 'car_brands'],
+    selectedCategories: getFreeCategoryIds(),
     selectedCustomCategories: [],
     selectedModifiers: [],
     imposterCount: 1,
