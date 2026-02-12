@@ -581,21 +581,29 @@ export type Database = {
       }
       words: {
         Row: {
-          category: Database["public"]["Enums"]["word_category"]
+          category: string
           id: string
           text: string
         }
         Insert: {
-          category: Database["public"]["Enums"]["word_category"]
+          category: string
           id?: string
           text: string
         }
         Update: {
-          category?: Database["public"]["Enums"]["word_category"]
+          category?: string
           id?: string
           text?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "words_category_fk"
+            columns: ["category"]
+            isOneToOne: false
+            referencedRelation: "categories"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {
