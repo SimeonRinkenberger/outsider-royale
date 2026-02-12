@@ -170,9 +170,11 @@ export async function initPurchases(): Promise<void> {
     const { NativePurchases } = await import('@capgo/native-purchases');
     purchasesPlugin = NativePurchases;
 
-    // Configure the SDK (no API key needed for pure StoreKit)
-    // For production, you'd configure with RevenueCat API key if using that service
-    // Here we're using native StoreKit directly
+    // Configure RevenueCat SDK with API key
+    await purchasesPlugin.configure({
+      apiKey: 'appl_eZXUQDKifpGINqKHlaEQAXTvrdX',
+    });
+    console.log('[ApplePurchases] RevenueCat configured');
 
     // Listen for transaction updates
     await purchasesPlugin.addListener('purchasesUpdate', async (info: any) => {
