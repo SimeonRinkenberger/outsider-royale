@@ -6,6 +6,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useGameState } from '@/hooks/useGameState';
 import { useCustomContent } from '@/hooks/useCustomContent';
 import { getStoredUserId } from '@/lib/gameUtils';
+import { getFreeCategoryIds } from '@/lib/entitlements';
 import { toast } from 'sonner';
 import { RotateCcw, DoorOpen, Settings, ChevronDown, User } from 'lucide-react';
 import judgeFoxImg from '@/assets/judge_fox.png';
@@ -49,7 +50,7 @@ const Results = () => {
   const [isResetting, setIsResetting] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [gameConfig, setGameConfig] = useState<GameConfig>({
-    selectedCategories: ['birds', 'desserts', 'car_brands', 'ocean_animals', 'musical_instruments'],
+    selectedCategories: getFreeCategoryIds(),
     selectedCustomCategories: [],
     selectedModifiers: [],
     imposterCount: 1,

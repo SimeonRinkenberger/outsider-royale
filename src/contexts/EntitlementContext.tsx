@@ -6,6 +6,7 @@
  */
 
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
+import { syncCategories } from '@/lib/categoryCache';
 import {
   initPurchases,
   getEntitlement,
@@ -72,8 +73,12 @@ export function EntitlementProvider({ children }: { children: React.ReactNode })
         await initPurchases();
         
         if (mounted) {
-          setEntitlement(getEntitlement());
+          const currentEntitlement = getEntitlement();
+          setEntitlement(currentEntitlement);
           setIsLoading(false);
+          
+          // Re-sync categories with correct entitlement level
+          syncCategories(currentEntitlement.isPro);
         }
 
         // Load products in background
@@ -104,6 +109,8 @@ export function EntitlementProvider({ children }: { children: React.ReactNode })
     const unsubscribe = onEntitlementUpdate((newEntitlement) => {
       if (mounted) {
         setEntitlement(newEntitlement);
+        // Re-sync categories when entitlement changes (e.g., upgrade to Pro)
+        syncCategories(newEntitlement.isPro);
       }
     });
 
