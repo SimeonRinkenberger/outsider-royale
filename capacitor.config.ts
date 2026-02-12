@@ -4,10 +4,6 @@ const config: CapacitorConfig = {
   appId: 'com.simeonpaul.outsiderroyale',
   appName: 'Outsider Royale',
   webDir: 'dist',
-  server: {
-    url: 'https://4b9de44f-1c68-4ee8-8e08-f7594c181759.lovableproject.com?forceHideBadge=true',
-    cleartext: true
-  }
 };
 
 export default config;
