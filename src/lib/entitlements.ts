@@ -7,8 +7,8 @@
 
 import type { Entitlement } from '@/services/purchases/applePurchases';
 
-// Free categories available to all users (first 6)
-export const FREE_CATEGORIES = ['dog_breeds', 'birds', 'desserts', 'car_brands', 'ocean_animals', 'musical_instruments'] as const;
+// Free categories available to all users (first 5)
+export const FREE_CATEGORIES = ['birds', 'desserts', 'car_brands', 'ocean_animals', 'musical_instruments'] as const;
 export type FreeCategory = typeof FREE_CATEGORIES[number];
 
 // Paid categories (require Pro subscription)
@@ -85,13 +85,6 @@ export interface CategoryInfo {
 }
 
 export const CATEGORY_INFO: Record<string, CategoryInfo> = {
-  dog_breeds: {
-    id: 'dog_breeds',
-    name: 'Dog Breeds',
-    description: 'Popular and exotic dog breeds',
-    isPaid: false,
-    emoji: '🐕',
-  },
   birds: {
     id: 'birds',
     name: 'Birds',

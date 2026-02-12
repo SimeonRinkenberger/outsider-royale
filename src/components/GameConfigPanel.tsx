@@ -15,7 +15,6 @@ import { canAccessCategory, isPaidCategory, CATEGORY_INFO } from '@/lib/entitlem
 import { Paywall } from '@/components/Paywall';
 
 const CATEGORIES = [
-  { value: 'dog_breeds', label: '🐕 Dog Breeds', isPaid: false },
   { value: 'birds', label: '🦅 Birds', isPaid: false },
   { value: 'desserts', label: '🍰 Desserts', isPaid: false },
   { value: 'car_brands', label: '🚗 Car Brands', isPaid: false },
@@ -301,7 +300,7 @@ export const GameConfigPanel = ({
               <Label className="text-sm">Categories</Label>
               {!isPro && (
                 <p className="text-xs text-muted-foreground">
-                  6 free categories · 1,800 words included
+                  5 free categories · 15 words each (75 total)
                 </p>
               )}
             </div>
