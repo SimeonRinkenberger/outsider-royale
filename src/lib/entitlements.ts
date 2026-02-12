@@ -7,12 +7,12 @@
 
 import type { Entitlement } from '@/services/purchases/applePurchases';
 
-// Free categories available to all users
-export const FREE_CATEGORIES = ['food', 'animal', 'place', 'thing'] as const;
+// Free categories available to all users (first 6)
+export const FREE_CATEGORIES = ['dog_breeds', 'birds', 'desserts', 'car_brands', 'ocean_animals', 'musical_instruments'] as const;
 export type FreeCategory = typeof FREE_CATEGORIES[number];
 
 // Paid categories (require Pro subscription)
-export const PAID_CATEGORIES = ['brand', 'movie', 'person', 'degenerate'] as const;
+export const PAID_CATEGORIES = ['kitchen_appliances', 'superheroes', 'board_games', 'trees', 'scientists', 'video_game_characters'] as const;
 export type PaidCategory = typeof PAID_CATEGORIES[number];
 
 // All categories
@@ -35,26 +35,16 @@ export function isPaidCategory(categoryId: string): boolean {
 
 /**
  * Check if user can access a specific category
- * 
- * @param categoryId - The category to check
- * @param entitlement - User's current entitlement state
- * @returns true if user can access this category
  */
 export function canAccessCategory(categoryId: string, entitlement: Entitlement): boolean {
-  // Pro users can access everything
   if (entitlement.isPro) {
     return true;
   }
-  
-  // Free users can only access free categories
   return isFreeCategory(categoryId);
 }
 
 /**
  * Get list of categories user can access
- * 
- * @param entitlement - User's current entitlement state
- * @returns Array of accessible category IDs
  */
 export function getAccessibleCategories(entitlement: Entitlement): readonly string[] {
   if (entitlement.isPro) {
@@ -65,10 +55,6 @@ export function getAccessibleCategories(entitlement: Entitlement): readonly stri
 
 /**
  * Filter categories to only those user can access
- * 
- * @param categories - Categories to filter
- * @param entitlement - User's current entitlement state
- * @returns Filtered array of accessible categories
  */
 export function filterAccessibleCategories(
   categories: string[],
@@ -82,9 +68,6 @@ export function filterAccessibleCategories(
 
 /**
  * Check if any selected categories are paid-only
- * 
- * @param selectedCategories - User's selected categories
- * @returns true if any selected category requires Pro
  */
 export function hasAnyPaidCategories(selectedCategories: string[]): boolean {
   return selectedCategories.some(cat => isPaidCategory(cat));
@@ -102,61 +85,89 @@ export interface CategoryInfo {
 }
 
 export const CATEGORY_INFO: Record<string, CategoryInfo> = {
-  food: {
-    id: 'food',
-    name: 'Food & Drinks',
-    description: 'Popular foods, drinks, and dishes',
+  dog_breeds: {
+    id: 'dog_breeds',
+    name: 'Dog Breeds',
+    description: 'Popular and exotic dog breeds',
     isPaid: false,
-    emoji: '🍕',
+    emoji: '🐕',
   },
-  animal: {
-    id: 'animal',
-    name: 'Animals',
-    description: 'Creatures big and small',
+  birds: {
+    id: 'birds',
+    name: 'Birds',
+    description: 'Birds from around the world',
     isPaid: false,
-    emoji: '🦁',
+    emoji: '🦅',
   },
-  place: {
-    id: 'place',
-    name: 'Places',
-    description: 'Cities, countries, and landmarks',
+  desserts: {
+    id: 'desserts',
+    name: 'Desserts',
+    description: 'Sweet treats and pastries',
     isPaid: false,
-    emoji: '🗺️',
+    emoji: '🍰',
   },
-  thing: {
-    id: 'thing',
-    name: 'Things',
-    description: 'Everyday objects and items',
+  car_brands: {
+    id: 'car_brands',
+    name: 'Car Brands',
+    description: 'Automobile manufacturers worldwide',
     isPaid: false,
-    emoji: '📦',
+    emoji: '🚗',
   },
-  brand: {
-    id: 'brand',
-    name: 'Brands',
-    description: 'Famous companies and products',
-    isPaid: true,
-    emoji: '🏷️',
+  ocean_animals: {
+    id: 'ocean_animals',
+    name: 'Ocean Animals',
+    description: 'Marine life and sea creatures',
+    isPaid: false,
+    emoji: '🐙',
   },
-  movie: {
-    id: 'movie',
-    name: 'Movies & TV',
-    description: 'Films and shows everyone knows',
-    isPaid: true,
-    emoji: '🎬',
+  musical_instruments: {
+    id: 'musical_instruments',
+    name: 'Musical Instruments',
+    description: 'Instruments from every culture',
+    isPaid: false,
+    emoji: '🎸',
   },
-  person: {
-    id: 'person',
-    name: 'Famous People',
-    description: 'Celebrities and historical figures',
+  kitchen_appliances: {
+    id: 'kitchen_appliances',
+    name: 'Kitchen Tools',
+    description: 'Cooking gear and gadgets',
     isPaid: true,
-    emoji: '⭐',
+    emoji: '🍳',
   },
-  degenerate: {
-    id: 'degenerate',
-    name: 'Spicy',
-    description: 'Adult-only risqué content',
+  superheroes: {
+    id: 'superheroes',
+    name: 'Superheroes',
+    description: 'Heroes and villains from comics',
     isPaid: true,
-    emoji: '🌶️',
+    emoji: '🦸',
+  },
+  board_games: {
+    id: 'board_games',
+    name: 'Board Games',
+    description: 'Tabletop and card games',
+    isPaid: true,
+    emoji: '🎲',
+  },
+  trees: {
+    id: 'trees',
+    name: 'Trees',
+    description: 'Tree species from every continent',
+    isPaid: true,
+    emoji: '🌳',
+  },
+  scientists: {
+    id: 'scientists',
+    name: 'Famous Scientists',
+    description: 'Renowned scientists and inventors',
+    isPaid: true,
+    emoji: '🔬',
+  },
+  video_game_characters: {
+    id: 'video_game_characters',
+    name: 'Video Game Characters',
+    description: 'Iconic gaming protagonists and villains',
+    isPaid: true,
+    emoji: '🎮',
   },
 };
 
