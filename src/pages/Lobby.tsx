@@ -6,6 +6,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useGameState } from '@/hooks/useGameState';
 import { useCustomContent } from '@/hooks/useCustomContent';
 import { getStoredUserId } from '@/lib/gameUtils';
+import { getFreeCategoryIds } from '@/lib/entitlements';
 import { toast } from 'sonner';
 import { Copy, Users, Crown, Play, X, Settings, ChevronDown, HelpCircle } from 'lucide-react';
 import lobbyFoxImg from '@/assets/lobby_fox.png';
@@ -52,7 +53,7 @@ const Lobby = () => {
   const [isInitialLoad, setIsInitialLoad] = useState(true);
   const [copyAnimating, setCopyAnimating] = useState(false);
   const [gameConfig, setGameConfig] = useState<GameConfig>({
-    selectedCategories: ['birds', 'desserts', 'car_brands', 'ocean_animals', 'musical_instruments'],
+    selectedCategories: getFreeCategoryIds(),
     selectedCustomCategories: [],
     selectedModifiers: [],
     imposterCount: 1,

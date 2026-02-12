@@ -14,6 +14,33 @@ export type Database = {
   }
   public: {
     Tables: {
+      categories: {
+        Row: {
+          created_at: string
+          emoji: string
+          id: string
+          is_paid: boolean
+          name: string
+          sort_order: number
+        }
+        Insert: {
+          created_at?: string
+          emoji?: string
+          id: string
+          is_paid?: boolean
+          name: string
+          sort_order?: number
+        }
+        Update: {
+          created_at?: string
+          emoji?: string
+          id?: string
+          is_paid?: boolean
+          name?: string
+          sort_order?: number
+        }
+        Relationships: []
+      }
       clues: {
         Row: {
           clue_text: string

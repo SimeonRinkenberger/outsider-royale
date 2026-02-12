@@ -11,22 +11,10 @@ import { CustomCategoryManager } from '@/components/CustomCategoryManager';
 import { GameModifiers } from '@/components/GameModifiers';
 import { CustomCategory, CustomModifier, AVAILABLE_MODIFIERS } from '@/hooks/useCustomContent';
 import { useEntitlement } from '@/contexts/EntitlementContext';
-import { canAccessCategory, isPaidCategory, CATEGORY_INFO } from '@/lib/entitlements';
+import { canAccessCategory, getSortedCategories } from '@/lib/entitlements';
 import { Paywall } from '@/components/Paywall';
 
-const CATEGORIES = [
-  { value: 'birds', label: '🦅 Birds', isPaid: false },
-  { value: 'desserts', label: '🍰 Desserts', isPaid: false },
-  { value: 'car_brands', label: '🚗 Car Brands', isPaid: false },
-  { value: 'ocean_animals', label: '🐙 Ocean Animals', isPaid: false },
-  { value: 'musical_instruments', label: '🎸 Instruments', isPaid: false },
-  { value: 'kitchen_appliances', label: '🍳 Kitchen Tools', isPaid: true },
-  { value: 'superheroes', label: '🦸 Superheroes', isPaid: true },
-  { value: 'board_games', label: '🎲 Board Games', isPaid: true },
-  { value: 'trees', label: '🌳 Trees', isPaid: true },
-  { value: 'scientists', label: '🔬 Scientists', isPaid: true },
-  { value: 'video_game_characters', label: '🎮 Video Games', isPaid: true },
-];
+// Categories are now loaded dynamically from the synced cache (DB-driven)
 
 const GAME_MODES: { value: GameMode; label: string; description: string }[] = [
   { value: 'classic', label: 'Classic', description: 'Vote after all rounds. Find the outsider!' },
@@ -82,6 +70,7 @@ export const GameConfigPanel = ({
   const [showPaywall, setShowPaywall] = useState(false);
   
   const { entitlement, isPro } = useEntitlement();
+  const dynamicCategories = getSortedCategories();
 
   const maxImposters = Math.max(1, playerCount - 1);
   const recommendedImposters = playerCount <= 4 ? 1 
@@ -108,9 +97,9 @@ export const GameConfigPanel = ({
 
   const selectAllCategories = () => {
     // Only select categories user has access to
-    const accessibleCategories = CATEGORIES
-      .filter(c => canAccessCategory(c.value, entitlement))
-      .map(c => c.value);
+    const accessibleCategories = dynamicCategories
+      .filter(c => canAccessCategory(c.id, entitlement))
+      .map(c => c.id);
     
     updateConfig({
       selectedCategories: accessibleCategories,
@@ -314,34 +303,34 @@ export const GameConfigPanel = ({
             </Button>
           </div>
           <div className="grid grid-cols-2 gap-2">
-            {CATEGORIES.map((cat) => {
+            {dynamicCategories.map((cat) => {
               const isLocked = cat.isPaid && !isPro;
-              const isSelected = config.selectedCategories.includes(cat.value);
+              const isSelected = config.selectedCategories.includes(cat.id);
               
               return (
                 <div 
-                  key={cat.value} 
+                  key={cat.id} 
                   className={`flex items-center justify-between p-2 rounded-md cursor-pointer transition-colors ${
                     isLocked 
                       ? 'hover:bg-primary/5 opacity-75' 
                       : 'hover:bg-muted/50'
                   }`}
-                  onClick={() => toggleCategory(cat.value)}
+                  onClick={() => toggleCategory(cat.id)}
                 >
                   <div className="flex items-center space-x-2">
                     <Checkbox
-                      id={cat.value}
+                      id={cat.id}
                       checked={isSelected}
                       disabled={isLocked}
-                      onCheckedChange={() => toggleCategory(cat.value)}
+                      onCheckedChange={() => toggleCategory(cat.id)}
                     />
                     <label
-                      htmlFor={cat.value}
+                      htmlFor={cat.id}
                       className={`text-sm font-medium cursor-pointer select-none ${
                         isLocked ? 'text-muted-foreground' : ''
                       }`}
                     >
-                      {cat.label}
+                      {cat.emoji} {cat.name}
                     </label>
                   </div>
                   {isLocked && (
