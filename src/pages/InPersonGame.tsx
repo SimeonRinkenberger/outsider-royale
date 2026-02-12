@@ -28,6 +28,7 @@ import { CSS } from '@dnd-kit/utilities';
 import GameHeader from '@/components/GameHeader';
 import { useAudio } from '@/contexts/AudioContext';
 import { useTransition } from '@/contexts/TransitionContext';
+import { useEntitlement } from '@/contexts/EntitlementContext';
 import { ActiveModifiersDisplay } from '@/components/ActiveModifiersDisplay';
 import { GameConfigPanel, GameConfig } from '@/components/GameConfigPanel';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
@@ -182,6 +183,7 @@ const InPersonGame = () => {
   const revealOpacity = useTransform(dragY, [-150, -50], [1, 0]);
   
   const { setMusicState } = useAudio();
+  const { isPro } = useEntitlement();
   const {
     customCategories,
     customModifiers,
@@ -195,7 +197,7 @@ const InPersonGame = () => {
   
   // Game config for play again with settings
   const [gameConfig, setGameConfig] = useState<GameConfig>({
-    selectedCategories: ['dog_breeds', 'birds', 'desserts'],
+    selectedCategories: ['birds', 'desserts', 'car_brands'],
     selectedCustomCategories: [],
     selectedModifiers: [],
     imposterCount: 1,
@@ -218,7 +220,7 @@ const InPersonGame = () => {
         ...prev,
         gameMode: (config.gameMode as GameConfig['gameMode']) || 'classic',
         roundCount: config.roundCount || 3,
-        selectedCategories: config.selectedCategories || ['dog_breeds', 'birds', 'desserts'],
+        selectedCategories: config.selectedCategories || ['birds', 'desserts', 'car_brands'],
         selectedCustomCategories: config.selectedCustomCategories || [],
         selectedModifiers: config.selectedModifiers || [],
         showOutsiderCount: config.showOutsiderCount ?? true,
@@ -245,7 +247,7 @@ const InPersonGame = () => {
       // Initialize game if needed
       if (!gameConfig.secretWord) {
         // Get selected categories
-        const selectedCats = gameConfig.selectedCategories || ['dog_breeds', 'birds', 'desserts'];
+        const selectedCats = gameConfig.selectedCategories || ['birds', 'desserts', 'car_brands'];
         const selectedCustomCats = gameConfig.selectedCustomCategories || [];
         const storedCustomCategories = gameConfig.customCategories || [];
         
@@ -265,7 +267,7 @@ const InPersonGame = () => {
         
         if (selectedCats.length > 0 && allCustomWords.length === 0) {
           // Only built-in categories - use local cache
-          randomWordData = getRandomWordFromCache(selectedCats);
+          randomWordData = getRandomWordFromCache(selectedCats, isPro);
           if (!randomWordData) {
             // Fallback to RPC if cache is empty
             const { data: rpcWords, error } = await supabase
@@ -284,7 +286,7 @@ const InPersonGame = () => {
           // Mix of built-in and custom - decide randomly
           const useBuiltIn = Math.random() < 0.5;
           if (useBuiltIn) {
-            randomWordData = getRandomWordFromCache(selectedCats);
+            randomWordData = getRandomWordFromCache(selectedCats, isPro);
           }
         }
         
@@ -312,7 +314,7 @@ const InPersonGame = () => {
               outsiderWord = differentWords[Math.floor(Math.random() * differentWords.length)].text;
             } else if (selectedCats.length > 0) {
               // Use cache for imposter word
-              const imposterResult = getImposterWordFromCache(selectedCats, randomWordData!.text);
+              const imposterResult = getImposterWordFromCache(selectedCats, randomWordData!.text, isPro);
               if (imposterResult) {
                 outsiderWord = imposterResult.text;
               }
@@ -473,7 +475,7 @@ const InPersonGame = () => {
     let randomWordData: { text: string; category: string } | null = null;
     
     if (gameConfig.selectedCategories.length > 0 && allCustomWords.length === 0) {
-      randomWordData = getRandomWordFromCache(gameConfig.selectedCategories);
+      randomWordData = getRandomWordFromCache(gameConfig.selectedCategories, isPro);
       if (!randomWordData) {
         toast.error('No words available. Connect to the internet to sync categories.');
         return;
@@ -481,7 +483,7 @@ const InPersonGame = () => {
     } else if (gameConfig.selectedCategories.length > 0 && allCustomWords.length > 0) {
       const useBuiltIn = Math.random() < 0.5;
       if (useBuiltIn) {
-        randomWordData = getRandomWordFromCache(gameConfig.selectedCategories);
+        randomWordData = getRandomWordFromCache(gameConfig.selectedCategories, isPro);
       }
     }
     
@@ -505,7 +507,7 @@ const InPersonGame = () => {
         if (differentWords.length > 0) {
           outsiderWord = differentWords[Math.floor(Math.random() * differentWords.length)].text;
         } else if (gameConfig.selectedCategories.length > 0) {
-          const imposterResult = getImposterWordFromCache(gameConfig.selectedCategories, randomWordData!.text);
+          const imposterResult = getImposterWordFromCache(gameConfig.selectedCategories, randomWordData!.text, isPro);
           if (imposterResult) {
             outsiderWord = imposterResult.text;
           }

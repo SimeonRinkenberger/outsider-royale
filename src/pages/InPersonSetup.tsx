@@ -111,7 +111,7 @@ const InPersonSetup = () => {
   } = useCustomContent();
 
   const [config, setConfig] = useState<GameConfig>({
-    selectedCategories: ['dog_breeds', 'birds', 'desserts'],
+    selectedCategories: ['birds', 'desserts', 'car_brands'],
     selectedCustomCategories: [],
     selectedModifiers: [],
     imposterCount: 1,

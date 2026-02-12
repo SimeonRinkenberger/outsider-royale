@@ -109,10 +109,17 @@ export async function syncCategories(): Promise<boolean> {
 }
 
 /**
+ * Number of words free users get per category
+ */
+export const FREE_WORDS_PER_CATEGORY = 15;
+
+/**
  * Get a random word from cached categories (for in-person mode)
+ * For free users, only the first FREE_WORDS_PER_CATEGORY words per category are available
  */
 export function getRandomWordFromCache(
-  selectedCategories: string[]
+  selectedCategories: string[],
+  isPro: boolean = true
 ): { text: string; category: string } | null {
   const cache = getCachedWords();
   if (!cache) return null;
@@ -122,7 +129,8 @@ export function getRandomWordFromCache(
   for (const cat of selectedCategories) {
     const words = cache.categories[cat];
     if (words) {
-      for (const word of words) {
+      const available = isPro ? words : words.slice(0, FREE_WORDS_PER_CATEGORY);
+      for (const word of available) {
         pool.push({ text: word, category: cat });
       }
     }
@@ -137,7 +145,8 @@ export function getRandomWordFromCache(
  */
 export function getImposterWordFromCache(
   selectedCategories: string[],
-  excludeWord: string
+  excludeWord: string,
+  isPro: boolean = true
 ): { text: string; category: string } | null {
   const cache = getCachedWords();
   if (!cache) return null;
@@ -146,7 +155,8 @@ export function getImposterWordFromCache(
   for (const cat of selectedCategories) {
     const words = cache.categories[cat];
     if (words) {
-      for (const word of words) {
+      const available = isPro ? words : words.slice(0, FREE_WORDS_PER_CATEGORY);
+      for (const word of available) {
         if (word !== excludeWord) {
           pool.push({ text: word, category: cat });
         }

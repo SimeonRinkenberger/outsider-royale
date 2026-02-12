@@ -1,6 +1,6 @@
 export type LobbyStatus = 'waiting' | 'in_progress' | 'voting' | 'results';
 export type GameStatus = 'clue_round' | 'voting' | 'results' | 'finished';
-export type WordCategory = 'dog_breeds' | 'birds' | 'desserts' | 'car_brands' | 'ocean_animals' | 'musical_instruments' | 'kitchen_appliances' | 'superheroes' | 'board_games' | 'trees' | 'scientists' | 'video_game_characters';
+export type WordCategory = 'birds' | 'desserts' | 'car_brands' | 'ocean_animals' | 'musical_instruments' | 'kitchen_appliances' | 'superheroes' | 'board_games' | 'trees' | 'scientists' | 'video_game_characters';
 export type GameMode = 'classic' | 'elimination' | 'hidden_imposter';
 
 export interface Profile {

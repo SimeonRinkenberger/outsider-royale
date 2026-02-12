@@ -52,7 +52,7 @@ const Lobby = () => {
   const [isInitialLoad, setIsInitialLoad] = useState(true);
   const [copyAnimating, setCopyAnimating] = useState(false);
   const [gameConfig, setGameConfig] = useState<GameConfig>({
-    selectedCategories: ['dog_breeds', 'birds', 'desserts', 'car_brands', 'ocean_animals', 'musical_instruments'],
+    selectedCategories: ['birds', 'desserts', 'car_brands', 'ocean_animals', 'musical_instruments'],
     selectedCustomCategories: [],
     selectedModifiers: [],
     imposterCount: 1,
