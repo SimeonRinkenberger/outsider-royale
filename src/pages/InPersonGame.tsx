@@ -37,6 +37,7 @@ import investigativeFoxImg from '@/assets/investigative_fox.png';
 import votingFoxImg from '@/assets/voting_fox.png';
 import judgeFoxImg from '@/assets/judge_fox.png';
 import { getRandomWordFromCache, getImposterWordFromCache, hasCachedCategories } from '@/lib/categoryCache';
+import { getFreeCategoryIds } from '@/lib/entitlements';
 
 interface SortablePlayerProps {
   id: string;
@@ -197,7 +198,7 @@ const InPersonGame = () => {
   
   // Game config for play again with settings
   const [gameConfig, setGameConfig] = useState<GameConfig>({
-    selectedCategories: ['birds', 'desserts', 'car_brands'],
+    selectedCategories: getFreeCategoryIds(),
     selectedCustomCategories: [],
     selectedModifiers: [],
     imposterCount: 1,
@@ -220,7 +221,7 @@ const InPersonGame = () => {
         ...prev,
         gameMode: (config.gameMode as GameConfig['gameMode']) || 'classic',
         roundCount: config.roundCount || 3,
-        selectedCategories: config.selectedCategories || ['birds', 'desserts', 'car_brands'],
+        selectedCategories: config.selectedCategories || getFreeCategoryIds(),
         selectedCustomCategories: config.selectedCustomCategories || [],
         selectedModifiers: config.selectedModifiers || [],
         showOutsiderCount: config.showOutsiderCount ?? true,
@@ -247,7 +248,7 @@ const InPersonGame = () => {
       // Initialize game if needed
       if (!gameConfig.secretWord) {
         // Get selected categories
-        const selectedCats = gameConfig.selectedCategories || ['birds', 'desserts', 'car_brands'];
+        const selectedCats = gameConfig.selectedCategories || getFreeCategoryIds();
         const selectedCustomCats = gameConfig.selectedCustomCategories || [];
         const storedCustomCategories = gameConfig.customCategories || [];
         

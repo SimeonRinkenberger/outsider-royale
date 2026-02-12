@@ -16,6 +16,7 @@ import { BUNDLED_WORDS, BUNDLED_CATEGORIES } from './bundledWords';
 
 const CACHE_KEY = 'outsider-royale-word-cache';
 const CACHE_TIMESTAMP_KEY = 'outsider-royale-word-cache-ts';
+const CACHE_ENTITLEMENT_KEY = 'outsider-royale-word-cache-entitlement';
 
 export interface CachedWord {
   text: string;
@@ -75,19 +76,24 @@ function saveToCache(cache: WordCache): void {
 
 /**
  * Sync categories from the database.
- * Fetches ALL words AND category metadata, stores them locally.
+ * For free users, only fetches the first FREE_WORDS_PER_CATEGORY words per category.
+ * For pro users, fetches all words.
  * Returns true if sync was successful.
  */
-export async function syncCategories(): Promise<boolean> {
+export async function syncCategories(isPro: boolean = false): Promise<boolean> {
   try {
+    // Check if entitlement changed since last sync — if so, force re-sync
+    const cachedEntitlementLevel = localStorage.getItem(CACHE_ENTITLEMENT_KEY);
+    const currentLevel = isPro ? 'pro' : 'free';
+    const entitlementChanged = cachedEntitlementLevel !== currentLevel;
+
     // Fetch category metadata and words in parallel
     const [metaResult, wordsResult] = await Promise.all([
       supabase.from('categories').select('id, name, emoji, is_paid, sort_order').order('sort_order'),
-      fetchAllWords(),
+      fetchAllWords(isPro),
     ]);
 
     if (metaResult.error) {
-      console.error('Failed to sync category metadata:', metaResult.error);
       return false;
     }
 
@@ -108,10 +114,9 @@ export async function syncCategories(): Promise<boolean> {
     };
 
     saveToCache(cache);
-    console.log(`Category cache synced: ${categoryMeta.length} categories, ${Object.values(wordsResult).flat().length} words`);
+    localStorage.setItem(CACHE_ENTITLEMENT_KEY, currentLevel);
     return true;
   } catch (error) {
-    console.error('Category sync failed:', error);
     return false;
   }
 }
@@ -119,7 +124,7 @@ export async function syncCategories(): Promise<boolean> {
 /**
  * Fetch all words from the database (paginated)
  */
-async function fetchAllWords(): Promise<Record<string, string[]> | null> {
+async function fetchAllWords(isPro: boolean = false): Promise<Record<string, string[]> | null> {
   const allWords: CachedWord[] = [];
   let from = 0;
   const pageSize = 1000;
@@ -132,7 +137,6 @@ async function fetchAllWords(): Promise<Record<string, string[]> | null> {
       .range(from, from + pageSize - 1);
 
     if (error) {
-      console.error('Failed to sync words:', error);
       return null;
     }
 
@@ -146,7 +150,6 @@ async function fetchAllWords(): Promise<Record<string, string[]> | null> {
   }
 
   if (allWords.length === 0) {
-    console.warn('No words returned from database');
     return null;
   }
 
@@ -158,8 +161,18 @@ async function fetchAllWords(): Promise<Record<string, string[]> | null> {
     categories[word.category].push(word.text);
   }
 
+  // For free users, truncate each category to FREE_WORDS_PER_CATEGORY
+  if (!isPro) {
+    for (const cat of Object.keys(categories)) {
+      categories[cat] = categories[cat].slice(0, FREE_WORDS_PER_CATEGORY);
+    }
+  }
+
   return categories;
 }
+
+
+
 
 /**
  * Number of words free users get per category

@@ -13,6 +13,7 @@ import { AuthProvider } from './contexts/AuthContext';
 import { EntitlementProvider } from './contexts/EntitlementContext';
 import { preloadAllImages } from './lib/imagePreloader';
 import { syncCategories } from './lib/categoryCache';
+import { getEntitlement } from './services/purchases/applePurchases';
 import ErrorBoundary from './components/ErrorBoundary';
 import OfflineBanner from './components/OfflineBanner';
 
@@ -34,8 +35,8 @@ const queryClient = new QueryClient();
 // Preload all images immediately on app load
 preloadAllImages();
 
-// Initial sync on cold start
-syncCategories();
+// Initial sync on cold start (free-tier only, re-syncs with entitlement in EntitlementProvider)
+syncCategories(false);
 
 /**
  * Hook to re-sync categories when app is resumed (e.g. after force quit on mobile)
@@ -44,8 +45,7 @@ function useSyncOnResume() {
   useEffect(() => {
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible' && navigator.onLine) {
-        console.log('[Sync] App resumed, syncing categories...');
-        syncCategories();
+        syncCategories(getEntitlement().isPro);
       }
     };
     document.addEventListener('visibilitychange', handleVisibilityChange);
@@ -62,7 +62,7 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const location = useLocation();
   const hasSession = hasValidSession();
   
-  console.log('[GUARD] route=', location.pathname, 'allowed=', hasSession, 'hasSession=', hasSession);
+  // Guard check - stripped in production by esbuild
   
   // Allow access if user has any valid session (guest or authed)
   if (hasSession) {
