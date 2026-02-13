@@ -39,24 +39,16 @@ const Menu = () => {
         }
       } = await supabase.auth.getSession();
       
-      // Anonymous sessions are guest sessions, not "authenticated"
+      // Only real (non-anonymous) sessions count as "authenticated"
       const isRealAuth = !!session && !session.user?.is_anonymous;
       setIsAuthenticated(isRealAuth);
 
-      if (isRealAuth) {
-        // Real authenticated user
-        setDisplayName(getStoredDisplayName());
-      } else if (session && getStoredUserId()) {
-        // Anonymous session with existing guest profile - show their name
+      // Show display name if we have a stored profile
+      const storedId = getStoredUserId();
+      if (storedId) {
         setDisplayName(getStoredDisplayName());
       } else {
-        // No guest profile - clear stale data and sign out anonymous session
-        clearStorage();
         setDisplayName(null);
-        // Sign out stale anonymous session so next guest starts fresh
-        if (session?.user?.is_anonymous) {
-          await supabase.auth.signOut();
-        }
       }
       setIsLoading(false);
     };
@@ -126,21 +118,11 @@ const Menu = () => {
       },
       loadingText: 'Creating profile',
       prepare: async () => {
-        // Ensure we have an anonymous auth session for RLS
-        const { data: { session: existingSession } } = await supabase.auth.getSession();
-        if (!existingSession) {
-          const { error: authError } = await supabase.auth.signInAnonymously();
-          if (authError) throw authError;
-        }
-        const { data: { user } } = await supabase.auth.getUser();
-        
         const {
           data,
           error
         } = await supabase.from('profiles').insert({
           display_name: guestName.trim(),
-          auth_user_id: user?.id,
-          is_guest: true,
         }).select().single();
         if (error) throw error;
         setStoredUserId(data.id);
