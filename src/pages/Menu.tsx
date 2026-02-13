@@ -67,6 +67,12 @@ const Menu = () => {
       return;
     }
 
+    // If profile already exists, just navigate
+    if (profileId) {
+      navigate('/home');
+      return;
+    }
+
     // Capture button position before async operation
     let buttonX = window.innerWidth / 2;
     let buttonY = window.innerHeight / 2;
@@ -83,13 +89,14 @@ const Menu = () => {
       },
       loadingText: 'Creating profile',
       prepare: async () => {
-        const { data: { user } } = await supabase.auth.getUser();
+        const userId = session?.user?.id;
+        if (!userId) throw new Error('No session');
         const {
           data,
           error
         } = await supabase.from('profiles').insert({
           display_name: guestName.trim(),
-          auth_user_id: user?.id
+          auth_user_id: userId
         }).select().single();
         if (error) throw error;
         setStoredUserId(data.id);
@@ -97,9 +104,10 @@ const Menu = () => {
         setStoredIsGuest(true);
         await refreshProfile();
         toast.success(`Welcome, ${data.display_name}!`);
-        setIsCreatingGuest(false);
       }
     });
+    // Reset creating state after transition starts (it will show toast on error)
+    setIsCreatingGuest(false);
   };
   const handleAuth = () => {
     // Set returnTo before navigating to auth
