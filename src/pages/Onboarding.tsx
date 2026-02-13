@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { supabase } from '@/integrations/supabase/client';
-import { setStoredUserId, setStoredDisplayName } from '@/lib/gameUtils';
+import { setStoredUserId, setStoredDisplayName, setStoredIsGuest } from '@/lib/gameUtils';
 import { toast } from 'sonner';
 import { User } from 'lucide-react';
 
@@ -20,9 +20,22 @@ const Onboarding = () => {
 
     setIsLoading(true);
     try {
+      // Ensure we have an anonymous auth session for RLS
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        const { error: authError } = await supabase.auth.signInAnonymously();
+        if (authError) throw authError;
+      }
+      
+      const { data: { user } } = await supabase.auth.getUser();
+      
       const { data, error } = await supabase
         .from('profiles')
-        .insert({ display_name: displayName.trim() })
+        .insert({ 
+          display_name: displayName.trim(),
+          auth_user_id: user?.id,
+          is_guest: true,
+        })
         .select()
         .single();
 
@@ -30,9 +43,10 @@ const Onboarding = () => {
 
       setStoredUserId(data.id);
       setStoredDisplayName(data.display_name);
+      setStoredIsGuest(true);
       
       toast.success(`Welcome, ${data.display_name}!`);
-      navigate('/home');
+      navigate('/menu');
     } catch (error) {
       console.error('Error creating profile:', error);
       toast.error('Failed to create profile');
