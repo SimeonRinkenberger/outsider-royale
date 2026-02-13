@@ -4,8 +4,9 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { supabase } from '@/integrations/supabase/client';
-import { getStoredUserId, getStoredDisplayName, clearStorage, setStoredUserId, setStoredDisplayName, setStoredIsGuest } from '@/lib/gameUtils';
+import { getStoredDisplayName, clearStorage, setStoredUserId, setStoredDisplayName, setStoredIsGuest } from '@/lib/gameUtils';
 import { setAuthReturnTo } from '@/lib/authRedirect';
+import { useAuth } from '@/contexts/AuthContext';
 import { Users, Wifi, User, LogIn, BarChart3, ExternalLink, Crown } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
@@ -19,6 +20,7 @@ const Menu = () => {
   const navigate = useNavigate();
   const { startTransition } = useTransition();
   const { isPro } = useEntitlement();
+  const { profileId, refreshProfile } = useAuth();
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [displayName, setDisplayName] = useState<string | null>(null);
@@ -38,9 +40,9 @@ const Menu = () => {
           session
         }
       } = await supabase.auth.getSession();
-      setIsAuthenticated(!!session);
+      setIsAuthenticated(!!session && !session.user.is_anonymous);
 
-      // Only show display name if authenticated or has a valid guest profile
+      // Only show display name if has a profile
       if (session) {
         setDisplayName(getStoredDisplayName());
       } else {
@@ -55,7 +57,7 @@ const Menu = () => {
         subscription
       }
     } = supabase.auth.onAuthStateChange((event, session) => {
-      setIsAuthenticated(!!session);
+      setIsAuthenticated(!!session && !session.user.is_anonymous);
       if (event === 'SIGNED_OUT') {
         clearStorage();
         setDisplayName(null);
@@ -78,8 +80,7 @@ const Menu = () => {
   };
   const handleOnline = (event: React.MouseEvent) => {
     // Check if user has a profile (guest or authenticated)
-    const userId = getStoredUserId();
-    if (userId) {
+    if (profileId) {
       const target = event.currentTarget as HTMLElement;
       const rect = target.getBoundingClientRect();
       startTransition('/home', {
@@ -115,16 +116,19 @@ const Menu = () => {
       },
       loadingText: 'Creating profile',
       prepare: async () => {
+        const { data: { user } } = await supabase.auth.getUser();
         const {
           data,
           error
         } = await supabase.from('profiles').insert({
-          display_name: guestName.trim()
+          display_name: guestName.trim(),
+          auth_user_id: user?.id
         }).select().single();
         if (error) throw error;
         setStoredUserId(data.id);
         setStoredDisplayName(data.display_name);
-        setStoredIsGuest(true); // Mark as guest session
+        setStoredIsGuest(true);
+        await refreshProfile();
         toast.success(`Welcome, ${data.display_name}!`);
         setIsCreatingGuest(false);
       }

@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import type { Lobby, LobbyPlayer, Game, Round, Clue, Vote, Word } from '@/types/game';
+import type { Lobby, LobbyPlayer, Game, Round, Clue, Vote } from '@/types/game';
 import { getCachedGameData, getCachedResultsData } from '@/lib/gamePreloadCache';
 
 export interface GameOutsider {
@@ -41,8 +41,8 @@ export const useGameState = (lobbyId: string | null) => {
   const [clues, setClues] = useState<Clue[]>(cachedGame?.clues || []); // Current round clues
   const [allClues, setAllClues] = useState<Clue[]>(cachedGame?.allClues || []); // All clues for the game
   const [votes, setVotes] = useState<Vote[]>(cachedResults?.votes || []);
-  const [secretWord, setSecretWord] = useState<Word | null>(cachedGame?.secretWord || cachedResults?.secretWord || null);
-  const [imposterWord, setImposterWord] = useState<Word | null>(cachedGame?.imposterWord || cachedResults?.imposterWord || null);
+  // secretWord and imposterWord are no longer fetched here for security
+  // Use get_my_game_role RPC in Game.tsx and get_game_results RPC in Results.tsx
   const [outsiders, setOutsiders] = useState<GameOutsider[]>(cachedGame?.outsiders || cachedResults?.outsiders || []);
   
   // Track current round ID for filtered clues subscription
@@ -124,27 +124,8 @@ export const useGameState = (lobbyId: string | null) => {
           if (gameData) {
             setGame(gameData as Game);
 
-            // Fetch secret word
-            const { data: wordData } = await supabase
-              .from('words')
-              .select('id, text, category')
-              .eq('id', gameData.secret_word_id)
-              .single();
-            
-            if (wordData) setSecretWord(wordData as Word);
-
-            // Fetch imposter word if exists (for hidden_imposter mode)
-            if (gameData.imposter_word_id) {
-              const { data: imposterWordData } = await supabase
-                .from('words')
-                .select('id, text, category')
-                .eq('id', gameData.imposter_word_id)
-                .single();
-              
-              if (imposterWordData) setImposterWord(imposterWordData as Word);
-            } else {
-              setImposterWord(null);
-            }
+            // Secret word and imposter word are fetched via secure RPCs in components
+            // (get_my_game_role for Game.tsx, get_game_results for Results.tsx)
 
             // Fetch current round
             const { data: roundData } = await supabase
@@ -282,27 +263,7 @@ export const useGameState = (lobbyId: string | null) => {
       if (gameData) {
         setGame(gameData as Game);
 
-        // Fetch secret word
-        const { data: wordData } = await supabase
-          .from('words')
-          .select('id, text, category')
-          .eq('id', gameData.secret_word_id)
-          .single();
-        
-        if (wordData) setSecretWord(wordData as Word);
-
-        // Fetch imposter word if exists (for hidden_imposter mode)
-        if (gameData.imposter_word_id) {
-          const { data: imposterWordData } = await supabase
-            .from('words')
-            .select('id, text, category')
-            .eq('id', gameData.imposter_word_id)
-            .single();
-          
-          if (imposterWordData) setImposterWord(imposterWordData as Word);
-        } else {
-          setImposterWord(null);
-        }
+        // Secret word and imposter word are fetched via secure RPCs in components
 
         // Fetch current round
         const { data: roundData } = await supabase
@@ -504,8 +465,6 @@ export const useGameState = (lobbyId: string | null) => {
     clues,
     allClues,
     votes,
-    secretWord,
-    imposterWord,
     outsiders
   };
 };

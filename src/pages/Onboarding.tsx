@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { supabase } from '@/integrations/supabase/client';
 import { setStoredUserId, setStoredDisplayName } from '@/lib/gameUtils';
+import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import { User } from 'lucide-react';
 
@@ -11,6 +12,7 @@ const Onboarding = () => {
   const [displayName, setDisplayName] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
+  const { refreshProfile } = useAuth();
 
   const handleContinue = async () => {
     if (!displayName.trim() || displayName.length > 50) {
@@ -20,9 +22,10 @@ const Onboarding = () => {
 
     setIsLoading(true);
     try {
+      const { data: { user } } = await supabase.auth.getUser();
       const { data, error } = await supabase
         .from('profiles')
-        .insert({ display_name: displayName.trim() })
+        .insert({ display_name: displayName.trim(), auth_user_id: user?.id })
         .select()
         .single();
 
@@ -30,6 +33,7 @@ const Onboarding = () => {
 
       setStoredUserId(data.id);
       setStoredDisplayName(data.display_name);
+      await refreshProfile();
       
       toast.success(`Welcome, ${data.display_name}!`);
       navigate('/home');
