@@ -50,9 +50,13 @@ const Menu = () => {
         // Anonymous session with existing guest profile - show their name
         setDisplayName(getStoredDisplayName());
       } else {
-        // No session or no guest profile - clear stale data
+        // No guest profile - clear stale data and sign out anonymous session
         clearStorage();
         setDisplayName(null);
+        // Sign out stale anonymous session so next guest starts fresh
+        if (session?.user?.is_anonymous) {
+          await supabase.auth.signOut();
+        }
       }
       setIsLoading(false);
     };
