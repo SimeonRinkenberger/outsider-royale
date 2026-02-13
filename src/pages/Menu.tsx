@@ -38,13 +38,19 @@ const Menu = () => {
           session
         }
       } = await supabase.auth.getSession();
-      setIsAuthenticated(!!session);
+      
+      // Anonymous sessions are guest sessions, not "authenticated"
+      const isRealAuth = !!session && !session.user?.is_anonymous;
+      setIsAuthenticated(isRealAuth);
 
-      // Only show display name if authenticated or has a valid guest profile
-      if (session) {
+      if (isRealAuth) {
+        // Real authenticated user
+        setDisplayName(getStoredDisplayName());
+      } else if (session && getStoredUserId()) {
+        // Anonymous session with existing guest profile - show their name
         setDisplayName(getStoredDisplayName());
       } else {
-        // Clear any stale guest data when not authenticated
+        // No session or no guest profile - clear stale data
         clearStorage();
         setDisplayName(null);
       }
@@ -55,11 +61,12 @@ const Menu = () => {
         subscription
       }
     } = supabase.auth.onAuthStateChange((event, session) => {
-      setIsAuthenticated(!!session);
+      const isRealAuth = !!session && !session.user?.is_anonymous;
+      setIsAuthenticated(isRealAuth);
       if (event === 'SIGNED_OUT') {
         clearStorage();
         setDisplayName(null);
-      } else if (session) {
+      } else if (session && getStoredUserId()) {
         setDisplayName(getStoredDisplayName());
       }
     });
