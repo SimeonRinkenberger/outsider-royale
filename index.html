@@ -30,26 +30,6 @@
 </head>
 
   <body>
-    <script>
-      // MUST run before any ES modules load. Replaces navigator.locks
-      // with a no-op to prevent Supabase auth deadlocks in iframes.
-      // navigator.locks is a readonly getter, so we must use defineProperty.
-      try {
-        Object.defineProperty(Navigator.prototype, 'locks', {
-          get: function() {
-            return {
-              request: function(_name) {
-                var args = Array.prototype.slice.call(arguments, 1);
-                var cb = typeof args[0] === 'function' ? args[0] : args[1];
-                return Promise.resolve(cb({ name: _name, mode: 'exclusive' }));
-              },
-              query: function() { return Promise.resolve({ held: [], pending: [] }); }
-            };
-          },
-          configurable: true
-        });
-      } catch(e) { console.warn('Lock patch failed:', e); }
-    </script>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>

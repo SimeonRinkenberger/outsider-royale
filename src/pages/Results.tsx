@@ -5,7 +5,7 @@ import { Card } from '@/components/ui/card';
 import { supabase } from '@/integrations/supabase/client';
 import { useGameState } from '@/hooks/useGameState';
 import { useCustomContent } from '@/hooks/useCustomContent';
-import { useAuth } from '@/contexts/AuthContext';
+import { getStoredUserId } from '@/lib/gameUtils';
 import { getFreeCategoryIds } from '@/lib/entitlements';
 import { toast } from 'sonner';
 import { RotateCcw, DoorOpen, Settings, ChevronDown, User } from 'lucide-react';
@@ -29,7 +29,7 @@ const Results = () => {
   // Try to get preloaded data first for instant render
   const cachedResultsData = lobbyId ? getCachedResultsData(lobbyId) : null;
   
-  const { lobby, players, game, votes, outsiders } = useGameState(lobbyId || null);
+  const { lobby, players, game, votes, secretWord, outsiders } = useGameState(lobbyId || null);
   const {
     customCategories,
     customModifiers,
@@ -62,24 +62,7 @@ const Results = () => {
     timedRoundDuration: 30,
   });
   const [settingsLoaded, setSettingsLoaded] = useState(false);
-  const { profileId: userId } = useAuth();
-
-  // Fetch results data via secure RPC (only available when game is results/finished)
-  const [resultsData, setResultsData] = useState<{
-    secret_word_text: string;
-    secret_word_category: string;
-    outsider_player_ids: string[];
-  } | null>(null);
-
-  useEffect(() => {
-    if (game?.id && (game.status === 'results' || game.status === 'finished')) {
-      supabase.rpc('get_game_results', { p_game_id: game.id }).then(({ data }) => {
-        if (data && data.length > 0) {
-          setResultsData(data[0]);
-        }
-      });
-    }
-  }, [game?.id, game?.status]);
+  const userId = getStoredUserId();
   const { setMusicState } = useAudio();
   const { startTransition, isTransitioning, markRevealReady, awaitingRevealId } = useTransition();
   
@@ -223,11 +206,7 @@ const Results = () => {
   
   // Use cached data if available for instant first paint - MOVED UP before win calculations
   const effectiveGame = game || cachedResultsData?.game;
-  const effectiveSecretWord = resultsData
-    ? { id: '', text: resultsData.secret_word_text, category: resultsData.secret_word_category }
-    : ((gameMetadata as any)?.customWord
-      ? { id: '', text: (gameMetadata as any).customWord, category: (gameMetadata as any)?.customCategory || '' }
-      : cachedResultsData?.secretWord || null);
+  const effectiveSecretWord = secretWord || cachedResultsData?.secretWord;
   const effectivePlayers = players.length > 0 ? players : (cachedResultsData?.players || []);
   const effectiveOutsiders = outsiders.length > 0 ? outsiders : (cachedResultsData?.outsiders || []);
   const effectiveVotes = votes.length > 0 ? votes : (cachedResultsData?.votes || []);

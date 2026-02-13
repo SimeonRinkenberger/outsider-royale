@@ -619,22 +619,9 @@ export type Database = {
           is_pro: boolean
         }[]
       }
-      check_outsider_guess: {
-        Args: { p_game_id: string; p_guess: string }
-        Returns: boolean
-      }
       check_user_entitlement: {
         Args: { p_product_key: string; p_user_id: string }
         Returns: boolean
-      }
-      claim_profile: { Args: { p_profile_id: string }; Returns: string }
-      get_game_results: {
-        Args: { p_game_id: string }
-        Returns: {
-          outsider_player_ids: string[]
-          secret_word_category: string
-          secret_word_text: string
-        }[]
       }
       get_imposter_word: {
         Args: { p_categories: string[]; p_secret_word_id: string }
@@ -644,18 +631,6 @@ export type Database = {
           text: string
         }[]
       }
-      get_my_game_role: {
-        Args: { p_game_id: string }
-        Returns: {
-          game_mode: string
-          imposter_word_category: string
-          imposter_word_text: string
-          is_outsider: boolean
-          secret_word_category: string
-          secret_word_text: string
-        }[]
-      }
-      get_my_profile_id: { Args: never; Returns: string }
       get_random_words_from_categories: {
         Args: {
           p_categories: string[]
@@ -683,9 +658,6 @@ export type Database = {
           is_pro: boolean
         }[]
       }
-      is_game_host: { Args: { p_game_id: string }; Returns: boolean }
-      is_lobby_host: { Args: { p_lobby_id: string }; Returns: boolean }
-      is_lobby_member: { Args: { p_lobby_id: string }; Returns: boolean }
     }
     Enums: {
       game_mode: "classic" | "elimination" | "hidden_imposter"

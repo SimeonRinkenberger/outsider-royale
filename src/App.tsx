@@ -5,10 +5,11 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { ThemeProvider } from "next-themes";
+import { hasValidSession } from './lib/gameUtils';
 import { AudioProvider } from './contexts/AudioContext';
 import { TransitionProvider } from './contexts/TransitionContext';
 import { NetworkProvider } from './contexts/NetworkContext';
-import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { AuthProvider } from './contexts/AuthContext';
 import { EntitlementProvider } from './contexts/EntitlementContext';
 import { preloadAllImages } from './lib/imagePreloader';
 import { syncCategories } from './lib/categoryCache';
@@ -58,17 +59,17 @@ function useSyncOnResume() {
  * Game flow routes (lobby, game, results) work for guests
  */
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
-  const { profileId, isLoading } = useAuth();
+  const location = useLocation();
+  const hasSession = hasValidSession();
   
-  // Wait for auth to initialize
-  if (isLoading) return null;
+  // Guard check - stripped in production by esbuild
   
-  // Has a linked profile - allow access
-  if (profileId) {
+  // Allow access if user has any valid session (guest or authed)
+  if (hasSession) {
     return <>{children}</>;
   }
   
-  // No profile - redirect to onboarding
+  // No session at all - redirect to onboarding
   return <Navigate to="/onboarding" replace />;
 };
 

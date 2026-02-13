@@ -5,7 +5,7 @@ import { Card } from '@/components/ui/card';
 import { supabase } from '@/integrations/supabase/client';
 import { useGameState } from '@/hooks/useGameState';
 import { useCustomContent } from '@/hooks/useCustomContent';
-import { useAuth } from '@/contexts/AuthContext';
+import { getStoredUserId } from '@/lib/gameUtils';
 import { getFreeCategoryIds } from '@/lib/entitlements';
 import { toast } from 'sonner';
 import { Copy, Users, Crown, Play, X, Settings, ChevronDown, HelpCircle } from 'lucide-react';
@@ -64,7 +64,7 @@ const Lobby = () => {
     votesPerPlayer: 1,
     timedRoundDuration: 30,
   });
-  const { profileId: userId } = useAuth();
+  const userId = getStoredUserId();
   
   const { setMusicState } = useAudio();
   useEffect(() => {

@@ -4,8 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
 import { supabase } from '@/integrations/supabase/client';
-import { generateLobbyCode, getStoredDisplayName } from '@/lib/gameUtils';
-import { useAuth } from '@/contexts/AuthContext';
+import { generateLobbyCode, getStoredUserId, getStoredDisplayName } from '@/lib/gameUtils';
 import { toast } from 'sonner';
 import { Plus, LogIn, HelpCircle } from 'lucide-react';
 import GameHeader from '@/components/GameHeader';
@@ -28,10 +27,9 @@ const Home = () => {
   const [showRulesInfo, setShowRulesInfo] = useState(false);
   const navigate = useNavigate();
   const { startTransition } = useTransition();
-  const { profileId } = useAuth();
 
   const createLobby = async (event?: React.MouseEvent<HTMLButtonElement>) => {
-    const userId = profileId;
+    const userId = getStoredUserId();
     const displayName = getStoredDisplayName();
     if (!userId || !displayName) {
       navigate('/');
@@ -87,7 +85,7 @@ const Home = () => {
   };
 
   const joinLobby = async (event?: React.MouseEvent<HTMLButtonElement>) => {
-    const userId = profileId;
+    const userId = getStoredUserId();
     const displayName = getStoredDisplayName();
     if (!userId || !displayName) {
       navigate('/');

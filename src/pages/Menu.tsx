@@ -4,10 +4,9 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { supabase } from '@/integrations/supabase/client';
-import { getStoredDisplayName, setStoredUserId, setStoredDisplayName, setStoredIsGuest, clearStorage } from '@/lib/gameUtils';
+import { getStoredUserId, getStoredDisplayName, clearStorage, setStoredUserId, setStoredDisplayName, setStoredIsGuest } from '@/lib/gameUtils';
 import { setAuthReturnTo } from '@/lib/authRedirect';
-import { useAuth } from '@/contexts/AuthContext';
-import { Users, Wifi, User, LogIn, BarChart3, ExternalLink, Crown, LogOut } from 'lucide-react';
+import { Users, Wifi, User, LogIn, BarChart3, ExternalLink, Crown } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
 import { useTransition } from '@/contexts/TransitionContext';
@@ -20,30 +19,53 @@ const Menu = () => {
   const navigate = useNavigate();
   const { startTransition } = useTransition();
   const { isPro } = useEntitlement();
-  const { profileId, session, isLoading: authLoading, refreshProfile, isAnonymous } = useAuth();
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [displayName, setDisplayName] = useState<string | null>(null);
   const [showGuestInput, setShowGuestInput] = useState(false);
   const [guestName, setGuestName] = useState('');
   const [hasAnimated, setHasAnimated] = useState(false);
   const [isCreatingGuest, setIsCreatingGuest] = useState(false);
   const [showPaywall, setShowPaywall] = useState(false);
   const { setMusicState } = useAudio();
-
-  const isAuthenticated = !!session && !session.user.is_anonymous;
-  const isLoading = authLoading;
-  const displayName = session ? getStoredDisplayName() : null;
-
   useEffect(() => {
     setMusicState('menu');
   }, [setMusicState]);
-  const handleResetGuest = async () => {
-    clearStorage();
-    await supabase.auth.signOut();
-    // AuthContext will pick up the sign-out, create a new anonymous session, and clear profileId
-    setShowGuestInput(false);
-    setGuestName('');
-    toast.success('Identity cleared. You can start fresh!');
-  };
+  useEffect(() => {
+    const checkAuth = async () => {
+      const {
+        data: {
+          session
+        }
+      } = await supabase.auth.getSession();
+      setIsAuthenticated(!!session);
 
+      // Only show display name if authenticated or has a valid guest profile
+      if (session) {
+        setDisplayName(getStoredDisplayName());
+      } else {
+        // Clear any stale guest data when not authenticated
+        clearStorage();
+        setDisplayName(null);
+      }
+      setIsLoading(false);
+    };
+    const {
+      data: {
+        subscription
+      }
+    } = supabase.auth.onAuthStateChange((event, session) => {
+      setIsAuthenticated(!!session);
+      if (event === 'SIGNED_OUT') {
+        clearStorage();
+        setDisplayName(null);
+      } else if (session) {
+        setDisplayName(getStoredDisplayName());
+      }
+    });
+    checkAuth();
+    return () => subscription.unsubscribe();
+  }, []);
   const handleInPerson = (event: React.MouseEvent) => {
     const target = event.currentTarget as HTMLElement;
     const rect = target.getBoundingClientRect();
@@ -56,7 +78,8 @@ const Menu = () => {
   };
   const handleOnline = (event: React.MouseEvent) => {
     // Check if user has a profile (guest or authenticated)
-    if (profileId) {
+    const userId = getStoredUserId();
+    if (userId) {
       const target = event.currentTarget as HTMLElement;
       const rect = target.getBoundingClientRect();
       startTransition('/home', {
@@ -76,12 +99,6 @@ const Menu = () => {
       return;
     }
 
-    // If profile already exists, just navigate
-    if (profileId) {
-      navigate('/home');
-      return;
-    }
-
     // Capture button position before async operation
     let buttonX = window.innerWidth / 2;
     let buttonY = window.innerHeight / 2;
@@ -98,25 +115,20 @@ const Menu = () => {
       },
       loadingText: 'Creating profile',
       prepare: async () => {
-        const userId = session?.user?.id;
-        if (!userId) throw new Error('No session');
         const {
           data,
           error
         } = await supabase.from('profiles').insert({
-          display_name: guestName.trim(),
-          auth_user_id: userId
+          display_name: guestName.trim()
         }).select().single();
         if (error) throw error;
         setStoredUserId(data.id);
         setStoredDisplayName(data.display_name);
-        setStoredIsGuest(true);
-        await refreshProfile();
+        setStoredIsGuest(true); // Mark as guest session
         toast.success(`Welcome, ${data.display_name}!`);
+        setIsCreatingGuest(false);
       }
     });
-    // Reset creating state after transition starts (it will show toast on error)
-    setIsCreatingGuest(false);
   };
   const handleAuth = () => {
     // Set returnTo before navigating to auth
@@ -188,10 +200,7 @@ const Menu = () => {
         duration: 0.5
       }} className="text-center space-y-2">
           <img alt="Outsider Royale" className="w-64 h-auto mx-auto" src={titleFox} />
-          {displayName && <div className="flex items-center justify-center gap-2">
-            <p className="text-muted-foreground">Playing as <span className="font-semibold text-foreground">{displayName}</span></p>
-            {isAnonymous && <button onClick={handleResetGuest} className="text-xs text-primary hover:underline">Not you?</button>}
-          </div>}
+          {displayName && <p className="text-muted-foreground">Playing as <span className="font-semibold text-foreground">{displayName}</span></p>}
           <p className="text-muted-foreground">Choose how you want to play</p>
         </motion.div>
 
