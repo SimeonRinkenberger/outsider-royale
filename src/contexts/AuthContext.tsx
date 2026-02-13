@@ -46,28 +46,38 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const init = async () => {
       try {
-        // 1. Get existing session or create anonymous one
-        // Use a timeout to prevent hanging on session restoration
+        // 1. Try to get existing session with timeout
         let s: Session | null = null;
         try {
           const result = await Promise.race([
             supabase.auth.getSession(),
             new Promise<never>((_, reject) => 
-              setTimeout(() => reject(new Error('getSession timeout')), 5000)
+              setTimeout(() => reject(new Error('getSession timeout')), 3000)
             )
           ]);
           s = result.data.session;
         } catch (e) {
-          console.warn('[Auth] getSession timed out or failed, signing in fresh:', e);
-          // Clear any stale session data and try fresh
-          try {
-            await supabase.auth.signOut();
-          } catch (_) {}
+          console.warn('[Auth] getSession failed, clearing tokens and signing in fresh');
+          // Clear stale auth tokens directly from localStorage
+          // Don't call signOut() as it may also hang
+          const keysToRemove: string[] = [];
+          for (let i = 0; i < localStorage.length; i++) {
+            const key = localStorage.key(i);
+            if (key && (key.startsWith('sb-') || key.includes('supabase'))) {
+              keysToRemove.push(key);
+            }
+          }
+          keysToRemove.forEach(k => localStorage.removeItem(k));
         }
 
         if (!s) {
           try {
-            const { data, error } = await supabase.auth.signInAnonymously();
+            const { data, error } = await Promise.race([
+              supabase.auth.signInAnonymously(),
+              new Promise<never>((_, reject) =>
+                setTimeout(() => reject(new Error('signInAnonymously timeout')), 5000)
+              )
+            ]);
             if (error) {
               console.error('[Auth] Anonymous sign-in failed:', error);
               if (mounted) setIsLoading(false);
@@ -75,7 +85,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             }
             s = data.session;
           } catch (e) {
-            console.error('[Auth] Anonymous sign-in threw:', e);
+            console.error('[Auth] Anonymous sign-in timed out:', e);
             if (mounted) setIsLoading(false);
             return;
           }
