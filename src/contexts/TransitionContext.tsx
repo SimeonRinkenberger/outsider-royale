@@ -3,6 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { createPortal } from 'react-dom';
 import { useMotionValue, animate } from 'framer-motion';
 import LoadingScreen from '@/components/LoadingScreen';
+import { toast } from 'sonner';
 
 // Animation durations in seconds
 const EXPAND_DURATION = 0.45;
@@ -163,6 +164,7 @@ export const TransitionProvider: React.FC<{ children: React.ReactNode }> = ({ ch
           }
         } catch (error) {
           // RELEASE LOCK on error
+          toast.error('Something went wrong. Please try again.');
           setPhase('idle');
           radius.set(0);
           transitionLockRef.current = false;
