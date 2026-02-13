@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { supabase } from '@/integrations/supabase/client';
 import { useGameState } from '@/hooks/useGameState';
 import { useCustomContent } from '@/hooks/useCustomContent';
-import { getStoredUserId } from '@/lib/gameUtils';
+import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import { Send, Eye, EyeOff, Users, CheckCircle2, DoorOpen, FastForward, ArrowRight, Lightbulb, User, Check } from 'lucide-react';
 import { ActiveModifiersDisplay } from '@/components/ActiveModifiersDisplay';
@@ -77,8 +77,6 @@ const Game = () => {
     clues,
     allClues,
     votes,
-    secretWord,
-    imposterWord,
     outsiders
   } = useGameState(lobbyId || null);
   const [clueInput, setClueInput] = useState('');
@@ -90,6 +88,15 @@ const Game = () => {
   const [guessInput, setGuessInput] = useState('');
   const [showGuessInput, setShowGuessInput] = useState(false);
   const [hasGuessed, setHasGuessed] = useState(false);
+  // Secure role data from RPC (never leaks secrets to wrong players)
+  const [roleData, setRoleData] = useState<{
+    is_outsider: boolean;
+    secret_word_text: string | null;
+    secret_word_category: string | null;
+    imposter_word_text: string | null;
+    imposter_word_category: string | null;
+    game_mode: string;
+  } | null>(null);
   // Ref to track if we've already navigated to results (for non-host players)
   const hasNavigatedToResultsRef = useRef(false);
   // Ref to track if host is currently moving to results (prevent double trigger)
@@ -97,7 +104,7 @@ const Game = () => {
   const {
     customModifiers
   } = useCustomContent();
-  const userId = getStoredUserId();
+  const { profileId: userId } = useAuth();
   const {
     setMusicState
   } = useAudio();
@@ -182,6 +189,18 @@ const Game = () => {
       }
     }
   }, [game?.id]);
+
+  // Fetch role data via secure RPC (hides secrets from outsiders)
+  useEffect(() => {
+    if (game?.id) {
+      supabase.rpc('get_my_game_role', { p_game_id: game.id }).then(({ data }) => {
+        if (data && data.length > 0) {
+          setRoleData(data[0]);
+        }
+      });
+    }
+  }, [game?.id]);
+
   const leaveLobby = async () => {
     if (!userId || !lobbyId) return;
     try {
@@ -207,7 +226,7 @@ const Game = () => {
   const isSpectator = currentPlayer?.is_spectator ?? false;
 
   // Check if current player is an outsider (using outsiders array)
-  const isOutsider = outsiders.some(o => o.player_id === currentPlayer?.id);
+  const isOutsider = roleData?.is_outsider ?? outsiders.some(o => o.player_id === currentPlayer?.id);
   // Check if player has submitted a clue for the CURRENT round only
   const hasSubmittedClue = clues.some(c => c.player_id === currentPlayer?.id && c.round_id === currentRound?.id);
   const hasVoted = votes.some(v => v.voter_player_id === currentPlayer?.id);
@@ -277,27 +296,30 @@ const Game = () => {
   const currentTurnPlayer = shuffledPlayers[currentTurnIndex];
   const isMyTurn = currentTurnPlayer?.id === currentPlayer?.id && !isSpectator;
 
-  // Determine what word to show based on game mode
+  // Determine what word to show based on game mode (uses secure RPC data)
   const displayWord = useMemo(() => {
-    if (!game || !secretWord) return null;
-    if (game.game_mode === 'hidden_imposter') {
-      // In hidden_imposter mode, everyone sees a word but imposters see a different word
-      if (isOutsider) {
-        // Prefer custom imposter word from metadata, fallback to DB imposter word
-        if (gameMetadata?.imposterCustomWord) {
-          return {
-            ...secretWord,
-            text: gameMetadata.imposterCustomWord
-          };
-        }
-        return imposterWord || secretWord;
+    if (!game || !roleData) return null;
+
+    if (roleData.is_outsider) {
+      // Outsider: show imposter word (hidden_imposter) or custom word, or nothing (classic)
+      if (gameMetadata?.imposterCustomWord) {
+        return { id: '', text: gameMetadata.imposterCustomWord, category: (gameMetadata as any)?.customCategory || '' };
       }
-      return secretWord;
+      if (roleData.imposter_word_text) {
+        return { id: '', text: roleData.imposter_word_text, category: roleData.imposter_word_category || '' };
+      }
+      return null; // Classic outsider sees nothing
     }
 
-    // In classic and elimination modes, outsiders don't see the word
-    return isOutsider ? null : secretWord;
-  }, [game?.game_mode, secretWord, imposterWord, isOutsider, gameMetadata?.imposterCustomWord]);
+    // Non-outsider: show secret word (prefer custom word from metadata)
+    if ((gameMetadata as any)?.customWord) {
+      return { id: '', text: (gameMetadata as any).customWord, category: (gameMetadata as any)?.customCategory || '' };
+    }
+    if (roleData.secret_word_text) {
+      return { id: '', text: roleData.secret_word_text, category: roleData.secret_word_category || '' };
+    }
+    return null;
+  }, [game, roleData, gameMetadata]);
 
   // Track if all clues are submitted for this round
   const allCluesSubmitted = clues.length === shuffledPlayers.length;
@@ -589,10 +611,13 @@ const Game = () => {
 
   // Outsider guess submission
   const submitGuess = async () => {
-    if (!currentPlayer || !game || !secretWord || hasGuessed || !guessInput.trim()) return;
+    if (!currentPlayer || !game || hasGuessed || !guessInput.trim()) return;
     setIsSubmitting(true);
     try {
-      const isCorrect = guessInput.trim().toLowerCase() === secretWord.text.toLowerCase();
+      const { data: isCorrect } = await supabase.rpc('check_outsider_guess', {
+        p_game_id: game.id,
+        p_guess: guessInput.trim()
+      });
       if (isCorrect) {
         // Outsider wins! Move directly to results
         toast.success("Correct! You've won the game!");
@@ -695,11 +720,10 @@ const Game = () => {
 
   // Use cached data if available, otherwise use live data - moved up for hasData calculation
   const effectiveGame = game || cachedGameData?.game;
-  const effectiveSecretWord = secretWord || cachedGameData?.secretWord;
   const effectiveCurrentRound = currentRound || cachedGameData?.currentRound;
 
   // Determine if we have data ready to paint (using effective values with cache fallback)
-  const hasData = !!(effectiveGame && effectiveSecretWord && effectiveCurrentRound);
+  const hasData = !!(effectiveGame && roleData && effectiveCurrentRound);
 
   // Mark reveal ready when we have data AND awaiting reveal
   const hasMarkedRevealRef = useRef(false);
@@ -719,7 +743,7 @@ const Game = () => {
 
   // Inline skeleton - renders page shell immediately, shows skeleton content if data not ready
   // CRITICAL: Don't show skeleton during active transition - let the overlay handle loading
-  const showSkeleton = (!effectiveGame || !effectiveSecretWord || !effectiveCurrentRound) && !isTransitioning;
+  const showSkeleton = (!effectiveGame || !roleData || !effectiveCurrentRound) && !isTransitioning;
   if (showSkeleton) {
     // Render inline skeleton within page shell - NOT a separate loading screen
     return <div className="min-h-screen bg-background overflow-x-hidden pb-[env(safe-area-inset-bottom)]">
@@ -832,9 +856,9 @@ const Game = () => {
                   <p className="text-sm text-muted-foreground">
                     You've been eliminated. Watch the game unfold!
                   </p>
-                  <p className="text-lg font-bold text-primary mt-4">Secret Word: {secretWord?.text ?? 'Loading...'}</p>
+                  <p className="text-lg font-bold text-primary mt-4">Secret Word: {displayWord?.text ?? roleData?.secret_word_text ?? 'Loading...'}</p>
                   <p className="text-xs text-muted-foreground">
-                    Category: {gameMetadata?.customCategory || secretWord?.category || 'Unknown'}
+                    Category: {(gameMetadata as any)?.customCategory || displayWord?.category || roleData?.secret_word_category || 'Unknown'}
                   </p>
                   <p className="text-sm text-muted-foreground">
                     Outsider{outsiders.length > 1 ? 's' : ''}: {players.filter(p => outsiders.some(o => o.player_id === p.id)).map(p => p.display_name).join(', ')}
@@ -846,7 +870,7 @@ const Game = () => {
                   <p className="text-white/80 text-sm">Your Word</p>
                   <h2 className="text-4xl font-bold">{displayWord?.text ?? 'Loading...'}</h2>
                   <p className="text-white/70 text-xs uppercase tracking-wider mt-1">
-                    Category: {gameMetadata?.customCategory || secretWord?.category || 'Unknown'}
+                    Category: {(gameMetadata as any)?.customCategory || displayWord?.category || 'Unknown'}
                   </p>
                   <p className="text-white/90 text-sm">
                     Give a clue that relates to this word
@@ -860,7 +884,7 @@ const Game = () => {
                     You don't know the secret word. Try to blend in by guessing what it might be from others' clues!
                   </p>
                   <p className="text-xs text-muted-foreground mt-2">
-                    Category: <span className="font-semibold">{gameMetadata?.customCategory || secretWord?.category || 'Unknown'}</span>
+                    Category: <span className="font-semibold">{(gameMetadata as any)?.customCategory || roleData?.secret_word_category || 'Unknown'}</span>
                   </p>
                   
                   {/* Outsider Guess Feature */}
@@ -894,9 +918,9 @@ const Game = () => {
                 <div className="text-center space-y-2">
                   <Eye className="h-8 w-8 mx-auto" />
                   <p className="text-white/80 text-sm">Secret Word</p>
-                  <h2 className="text-4xl font-bold">{secretWord?.text ?? 'Loading...'}</h2>
+                  <h2 className="text-4xl font-bold">{displayWord?.text ?? 'Loading...'}</h2>
                   <p className="text-white/70 text-xs uppercase tracking-wider mt-1">
-                    Category: {gameMetadata?.customCategory || secretWord?.category || 'Unknown'}
+                    Category: {(gameMetadata as any)?.customCategory || displayWord?.category || 'Unknown'}
                   </p>
                   <p className="text-white/90 text-sm">
                     Give a clue that relates to this word
@@ -1208,7 +1232,7 @@ const Game = () => {
               <p className="text-sm text-muted-foreground">
                 Watch as the remaining players vote.
               </p>
-              <p className="text-lg font-bold text-primary mt-4">Secret Word: {secretWord?.text ?? 'Loading...'}</p>
+              <p className="text-lg font-bold text-primary mt-4">Secret Word: {displayWord?.text ?? roleData?.secret_word_text ?? 'Loading...'}</p>
               <p className="text-sm text-muted-foreground">
                 Outsider{outsiders.length > 1 ? 's' : ''}: {players.filter(p => outsiders.some(o => o.player_id === p.id)).map(p => p.display_name).join(', ')}
               </p>
