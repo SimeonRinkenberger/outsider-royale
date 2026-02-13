@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { supabase } from '@/integrations/supabase/client';
-import { getStoredDisplayName, clearStorage, setStoredUserId, setStoredDisplayName, setStoredIsGuest } from '@/lib/gameUtils';
+import { getStoredDisplayName, setStoredUserId, setStoredDisplayName, setStoredIsGuest } from '@/lib/gameUtils';
 import { setAuthReturnTo } from '@/lib/authRedirect';
 import { useAuth } from '@/contexts/AuthContext';
 import { Users, Wifi, User, LogIn, BarChart3, ExternalLink, Crown } from 'lucide-react';
@@ -20,54 +20,21 @@ const Menu = () => {
   const navigate = useNavigate();
   const { startTransition } = useTransition();
   const { isPro } = useEntitlement();
-  const { profileId, refreshProfile } = useAuth();
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
-  const [displayName, setDisplayName] = useState<string | null>(null);
+  const { profileId, session, isLoading: authLoading, refreshProfile } = useAuth();
   const [showGuestInput, setShowGuestInput] = useState(false);
   const [guestName, setGuestName] = useState('');
   const [hasAnimated, setHasAnimated] = useState(false);
   const [isCreatingGuest, setIsCreatingGuest] = useState(false);
   const [showPaywall, setShowPaywall] = useState(false);
   const { setMusicState } = useAudio();
+
+  const isAuthenticated = !!session && !session.user.is_anonymous;
+  const isLoading = authLoading;
+  const displayName = session ? getStoredDisplayName() : null;
+
   useEffect(() => {
     setMusicState('menu');
   }, [setMusicState]);
-  useEffect(() => {
-    const checkAuth = async () => {
-      const {
-        data: {
-          session
-        }
-      } = await supabase.auth.getSession();
-      setIsAuthenticated(!!session && !session.user.is_anonymous);
-
-      // Only show display name if has a profile
-      if (session) {
-        setDisplayName(getStoredDisplayName());
-      } else {
-        // Clear any stale guest data when not authenticated
-        clearStorage();
-        setDisplayName(null);
-      }
-      setIsLoading(false);
-    };
-    const {
-      data: {
-        subscription
-      }
-    } = supabase.auth.onAuthStateChange((event, session) => {
-      setIsAuthenticated(!!session && !session.user.is_anonymous);
-      if (event === 'SIGNED_OUT') {
-        clearStorage();
-        setDisplayName(null);
-      } else if (session) {
-        setDisplayName(getStoredDisplayName());
-      }
-    });
-    checkAuth();
-    return () => subscription.unsubscribe();
-  }, []);
   const handleInPerson = (event: React.MouseEvent) => {
     const target = event.currentTarget as HTMLElement;
     const rect = target.getBoundingClientRect();
