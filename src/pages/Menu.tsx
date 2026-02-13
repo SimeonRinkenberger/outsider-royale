@@ -4,10 +4,10 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { supabase } from '@/integrations/supabase/client';
-import { getStoredDisplayName, setStoredUserId, setStoredDisplayName, setStoredIsGuest } from '@/lib/gameUtils';
+import { getStoredDisplayName, setStoredUserId, setStoredDisplayName, setStoredIsGuest, clearStorage } from '@/lib/gameUtils';
 import { setAuthReturnTo } from '@/lib/authRedirect';
 import { useAuth } from '@/contexts/AuthContext';
-import { Users, Wifi, User, LogIn, BarChart3, ExternalLink, Crown } from 'lucide-react';
+import { Users, Wifi, User, LogIn, BarChart3, ExternalLink, Crown, LogOut } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
 import { useTransition } from '@/contexts/TransitionContext';
@@ -20,7 +20,7 @@ const Menu = () => {
   const navigate = useNavigate();
   const { startTransition } = useTransition();
   const { isPro } = useEntitlement();
-  const { profileId, session, isLoading: authLoading, refreshProfile } = useAuth();
+  const { profileId, session, isLoading: authLoading, refreshProfile, isAnonymous } = useAuth();
   const [showGuestInput, setShowGuestInput] = useState(false);
   const [guestName, setGuestName] = useState('');
   const [hasAnimated, setHasAnimated] = useState(false);
@@ -35,6 +35,15 @@ const Menu = () => {
   useEffect(() => {
     setMusicState('menu');
   }, [setMusicState]);
+  const handleResetGuest = async () => {
+    clearStorage();
+    await supabase.auth.signOut();
+    // AuthContext will pick up the sign-out, create a new anonymous session, and clear profileId
+    setShowGuestInput(false);
+    setGuestName('');
+    toast.success('Identity cleared. You can start fresh!');
+  };
+
   const handleInPerson = (event: React.MouseEvent) => {
     const target = event.currentTarget as HTMLElement;
     const rect = target.getBoundingClientRect();
@@ -179,7 +188,10 @@ const Menu = () => {
         duration: 0.5
       }} className="text-center space-y-2">
           <img alt="Outsider Royale" className="w-64 h-auto mx-auto" src={titleFox} />
-          {displayName && <p className="text-muted-foreground">Playing as <span className="font-semibold text-foreground">{displayName}</span></p>}
+          {displayName && <div className="flex items-center justify-center gap-2">
+            <p className="text-muted-foreground">Playing as <span className="font-semibold text-foreground">{displayName}</span></p>
+            {isAnonymous && <button onClick={handleResetGuest} className="text-xs text-primary hover:underline">Not you?</button>}
+          </div>}
           <p className="text-muted-foreground">Choose how you want to play</p>
         </motion.div>
 
