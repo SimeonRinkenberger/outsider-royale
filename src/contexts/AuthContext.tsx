@@ -45,40 +45,66 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     let mounted = true;
 
     const init = async () => {
-      // 1. Get existing session or create anonymous one
-      let { data: { session: s } } = await supabase.auth.getSession();
-
-      if (!s) {
-        const { data, error } = await supabase.auth.signInAnonymously();
-        if (error) {
-          console.error('[Auth] Anonymous sign-in failed:', error);
-          if (mounted) setIsLoading(false);
-          return;
+      try {
+        // 1. Get existing session or create anonymous one
+        // Use a timeout to prevent hanging on session restoration
+        let s: Session | null = null;
+        try {
+          const result = await Promise.race([
+            supabase.auth.getSession(),
+            new Promise<never>((_, reject) => 
+              setTimeout(() => reject(new Error('getSession timeout')), 5000)
+            )
+          ]);
+          s = result.data.session;
+        } catch (e) {
+          console.warn('[Auth] getSession timed out or failed, signing in fresh:', e);
+          // Clear any stale session data and try fresh
+          try {
+            await supabase.auth.signOut();
+          } catch (_) {}
         }
-        s = data.session;
-      }
 
-      if (mounted) setSession(s);
+        if (!s) {
+          try {
+            const { data, error } = await supabase.auth.signInAnonymously();
+            if (error) {
+              console.error('[Auth] Anonymous sign-in failed:', error);
+              if (mounted) setIsLoading(false);
+              return;
+            }
+            s = data.session;
+          } catch (e) {
+            console.error('[Auth] Anonymous sign-in threw:', e);
+            if (mounted) setIsLoading(false);
+            return;
+          }
+        }
 
-      // 2. Resolve profile from DB
-      if (s) {
-        const pid = await resolveProfile();
+        if (mounted) setSession(s);
 
-        // 3. If no profile linked, try claiming legacy localStorage profile
-        if (!pid && mounted) {
-          const legacyId = getStoredUserId();
-          if (legacyId) {
-            try {
-              const { data: claimed } = await supabase.rpc('claim_profile', { p_profile_id: legacyId });
-              if (claimed && mounted) {
-                setProfileId(claimed);
-                setStoredUserId(claimed);
+        // 2. Resolve profile from DB
+        if (s) {
+          const pid = await resolveProfile();
+
+          // 3. If no profile linked, try claiming legacy localStorage profile
+          if (!pid && mounted) {
+            const legacyId = getStoredUserId();
+            if (legacyId) {
+              try {
+                const { data: claimed } = await supabase.rpc('claim_profile', { p_profile_id: legacyId });
+                if (claimed && mounted) {
+                  setProfileId(claimed);
+                  setStoredUserId(claimed);
+                }
+              } catch (e) {
+                // Claim failed - user needs new profile
               }
-            } catch (e) {
-              // Claim failed - user needs new profile
             }
           }
         }
+      } catch (e) {
+        console.error('[Auth] Init error:', e);
       }
 
       if (mounted) setIsLoading(false);
