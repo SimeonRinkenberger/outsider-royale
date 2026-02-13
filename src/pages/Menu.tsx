@@ -115,11 +115,21 @@ const Menu = () => {
       },
       loadingText: 'Creating profile',
       prepare: async () => {
+        // Ensure we have an anonymous auth session for RLS
+        const { data: { session: existingSession } } = await supabase.auth.getSession();
+        if (!existingSession) {
+          const { error: authError } = await supabase.auth.signInAnonymously();
+          if (authError) throw authError;
+        }
+        const { data: { user } } = await supabase.auth.getUser();
+        
         const {
           data,
           error
         } = await supabase.from('profiles').insert({
-          display_name: guestName.trim()
+          display_name: guestName.trim(),
+          auth_user_id: user?.id,
+          is_guest: true,
         }).select().single();
         if (error) throw error;
         setStoredUserId(data.id);
