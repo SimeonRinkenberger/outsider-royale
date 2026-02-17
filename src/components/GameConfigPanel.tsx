@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Card } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { FluidSlider } from '@/components/ui/fluid-slider';
@@ -13,7 +13,7 @@ import { CustomCategory, CustomModifier, AVAILABLE_MODIFIERS } from '@/hooks/use
 import { useEntitlement } from '@/contexts/EntitlementContext';
 import { canAccessCategory, getSortedCategories } from '@/lib/entitlements';
 import { Paywall } from '@/components/Paywall';
-import { getCachedWords } from '@/lib/categoryCache';
+import { getCachedWords, onCacheUpdate } from '@/lib/categoryCache';
 import { Badge } from '@/components/ui/badge';
 
 // Categories are now loaded dynamically from the synced cache (DB-driven)
@@ -74,7 +74,12 @@ export const GameConfigPanel = ({
   
   const { entitlement, isPro } = useEntitlement();
   const dynamicCategories = getSortedCategories();
-  const cache = getCachedWords();
+  const [cache, setCache] = useState(() => getCachedWords());
+
+  // Re-read cache whenever it's updated (e.g. after sync from DB)
+  useEffect(() => {
+    return onCacheUpdate(() => setCache(getCachedWords()));
+  }, []);
 
   const maxImposters = Math.max(1, playerCount - 1);
   const recommendedImposters = playerCount <= 4 ? 1 
