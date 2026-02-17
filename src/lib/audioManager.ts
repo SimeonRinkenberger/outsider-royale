@@ -323,13 +323,24 @@ class AudioManager {
   }
 
   async tryPlay(): Promise<void> {
-    // Resume AudioContext on user gesture
+    // Resume AudioContext on user gesture (iOS requires this after every suspension)
     if (this.ctx?.state === 'suspended') {
       await this.ctx.resume().catch(() => {});
     }
-    // If we have a pending state that couldn't play, retry
-    if (this.currentState !== 'silent' && !this.active && !this.isMuted) {
-      await this.setState(this.currentState);
+    // If we have a desired state but no active playback, try again
+    if (this.currentState !== 'silent' && !this.isMuted) {
+      if (!this.active) {
+        // Force re-trigger by resetting currentState so setState doesn't bail out
+        const desired = this.currentState;
+        this.currentState = 'silent';
+        await this.setState(desired);
+      } else if (this.ctx?.state === 'running') {
+        // Context just resumed - ensure gain is correct (not stuck at 0)
+        const track = this.decodedTracks.get(this.active.trackKey);
+        if (track && this.active.gain.gain.value === 0) {
+          this.active.gain.gain.value = track.targetVolume * this.masterVolume;
+        }
+      }
     }
   }
 

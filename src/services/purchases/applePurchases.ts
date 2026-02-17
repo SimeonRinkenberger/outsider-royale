@@ -50,7 +50,7 @@ export interface RestoreResult {
 // Storage keys
 const ENTITLEMENT_STORAGE_KEY = 'outsider_entitlement';
 const REVALIDATION_INTERVAL_MS = 6 * 60 * 60 * 1000; // 6 hours for background checks
-const RESUME_REVALIDATION_INTERVAL_MS = 5 * 60 * 1000; // 5 min cooldown for app resume checks
+const RESUME_REVALIDATION_INTERVAL_MS = 30 * 1000; // 30 second cooldown for app resume checks (aggressive)
 
 // Check if we're on iOS native
 export const isIOSNative = (): boolean => {
@@ -172,9 +172,13 @@ export async function initPurchases(): Promise<void> {
     }
   }
 
-  // If not on iOS, just use cached/default state
+  // If not on iOS native, ALWAYS force free (no way to validate purchases on web)
   if (!isIOSNative()) {
-    console.log('[ApplePurchases] Not on iOS native, using cached state');
+    console.log('[ApplePurchases] Not on iOS native, forcing free entitlement');
+    await updateEntitlement({
+      ...DEFAULT_ENTITLEMENT,
+      lastCheckedAt: new Date().toISOString(),
+    });
     isInitialized = true;
     return;
   }
