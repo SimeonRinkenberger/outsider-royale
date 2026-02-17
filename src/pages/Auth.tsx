@@ -12,6 +12,7 @@ import { ArrowLeft, Mail, Lock, User, Loader2, Check, X } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { z } from 'zod';
 import { useTransition } from '@/contexts/TransitionContext';
+import { useAuth } from '@/contexts/AuthContext';
 
 
 const emailSchema = z.string().email('Please enter a valid email address');
