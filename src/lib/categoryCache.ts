@@ -67,11 +67,25 @@ export function getCachedWords(): WordCache {
 }
 
 /**
+ * Listeners for cache updates (reactive UI)
+ */
+let cacheListeners: (() => void)[] = [];
+
+export function onCacheUpdate(listener: () => void): () => void {
+  cacheListeners.push(listener);
+  return () => {
+    cacheListeners = cacheListeners.filter(l => l !== listener);
+  };
+}
+
+/**
  * Save words to local cache
  */
 function saveToCache(cache: WordCache): void {
   localStorage.setItem(CACHE_KEY, JSON.stringify(cache));
   localStorage.setItem(CACHE_TIMESTAMP_KEY, cache.lastSynced);
+  // Notify listeners so UI re-renders with new data
+  cacheListeners.forEach(l => l());
 }
 
 /**
