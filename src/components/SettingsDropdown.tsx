@@ -1,5 +1,6 @@
 import { useState, useRef, useCallback } from 'react';
-import { Settings, Volume2, VolumeX, Moon, Sun, RefreshCw, Crown, ExternalLink } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Settings, Volume2, VolumeX, Moon, Sun, RefreshCw, Crown, ExternalLink, UserX } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
 import {
@@ -16,6 +17,7 @@ import { toast } from 'sonner';
 import { isNative } from '@/lib/platform';
 import { cn } from '@/lib/utils';
 import { useEntitlement } from '@/contexts/EntitlementContext';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface SettingsDropdownProps {
   className?: string;
@@ -25,6 +27,8 @@ export const SettingsDropdown = ({ className }: SettingsDropdownProps) => {
   const { volume, setVolume, isMuted, toggleMute } = useAudio();
   const { theme, setTheme, resolvedTheme } = useTheme();
   const { isPro, openManageSubscription } = useEntitlement();
+  const { isGuest, signOutAndReset, profileId } = useAuth();
+  const navigate = useNavigate();
   const [isSpinning, setIsSpinning] = useState(false);
   const scrollPosRef = useRef(0);
 
@@ -150,6 +154,21 @@ export const SettingsDropdown = ({ className }: SettingsDropdownProps) => {
               <Crown className="h-4 w-4 mr-2 text-primary" />
               Manage Subscription
               <ExternalLink className="h-3 w-3 ml-auto text-muted-foreground" />
+            </DropdownMenuItem>
+          </>
+        )}
+
+        {/* Switch Player - only for guests with a profile */}
+        {isGuest && profileId && (
+          <>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={async () => {
+              await signOutAndReset();
+              navigate('/');
+              toast.success('Signed out. Create a new guest or sign in.');
+            }}>
+              <UserX className="h-4 w-4 mr-2" />
+              Switch Player
             </DropdownMenuItem>
           </>
         )}
