@@ -34,6 +34,7 @@ export interface CategoryMeta {
 export interface WordCache {
   categories: Record<string, string[]>; // category -> words[]
   categoryMeta: CategoryMeta[]; // category metadata from DB
+  totalWordCounts: Record<string, number>; // full DB word counts per category (for display)
   lastSynced: string; // ISO timestamp
 }
 
@@ -45,22 +46,36 @@ export function getCachedWords(): WordCache {
     const cached = localStorage.getItem(CACHE_KEY);
     if (cached) {
       const parsed = JSON.parse(cached) as WordCache;
-      // Ensure categoryMeta exists (backwards compat)
-      if (!parsed.categoryMeta) {
-        parsed.categoryMeta = BUNDLED_CATEGORIES;
+      // Ensure backwards compat
+      if (!parsed.categoryMeta) parsed.categoryMeta = BUNDLED_CATEGORIES;
+      if (!parsed.totalWordCounts) {
+        parsed.totalWordCounts = {};
+        for (const [cat, words] of Object.entries(parsed.categories)) {
+          parsed.totalWordCounts[cat] = words.length;
+        }
       }
       return parsed;
     }
     // Fall back to bundled words (first launch, no internet)
+    const bundledCounts: Record<string, number> = {};
+    for (const [cat, words] of Object.entries(BUNDLED_WORDS)) {
+      bundledCounts[cat] = words.length;
+    }
     return {
       categories: BUNDLED_WORDS,
       categoryMeta: BUNDLED_CATEGORIES,
+      totalWordCounts: bundledCounts,
       lastSynced: 'bundled',
     };
   } catch {
+    const bundledCounts: Record<string, number> = {};
+    for (const [cat, words] of Object.entries(BUNDLED_WORDS)) {
+      bundledCounts[cat] = words.length;
+    }
     return {
       categories: BUNDLED_WORDS,
       categoryMeta: BUNDLED_CATEGORIES,
+      totalWordCounts: bundledCounts,
       lastSynced: 'bundled',
     };
   }
@@ -122,8 +137,9 @@ export async function syncCategories(isPro: boolean = false): Promise<boolean> {
     }));
 
     const cache: WordCache = {
-      categories: wordsResult,
+      categories: wordsResult.accessible,
       categoryMeta,
+      totalWordCounts: wordsResult.totalCounts,
       lastSynced: new Date().toISOString(),
     };
 
@@ -137,8 +153,9 @@ export async function syncCategories(isPro: boolean = false): Promise<boolean> {
 
 /**
  * Fetch all words from the database (paginated)
+ * Returns { accessible, totalCounts } where accessible is truncated for free users
  */
-async function fetchAllWords(isPro: boolean = false): Promise<Record<string, string[]> | null> {
+async function fetchAllWords(isPro: boolean = false): Promise<{ accessible: Record<string, string[]>; totalCounts: Record<string, number> } | null> {
   const allWords: CachedWord[] = [];
   let from = 0;
   const pageSize = 1000;
@@ -175,6 +192,12 @@ async function fetchAllWords(isPro: boolean = false): Promise<Record<string, str
     categories[word.category].push(word.text);
   }
 
+  // Capture total counts before truncating
+  const totalCounts: Record<string, number> = {};
+  for (const [cat, words] of Object.entries(categories)) {
+    totalCounts[cat] = words.length;
+  }
+
   // For free users, truncate each category to FREE_WORDS_PER_CATEGORY
   if (!isPro) {
     for (const cat of Object.keys(categories)) {
@@ -182,7 +205,7 @@ async function fetchAllWords(isPro: boolean = false): Promise<Record<string, str
     }
   }
 
-  return categories;
+  return { accessible: categories, totalCounts };
 }
 
 

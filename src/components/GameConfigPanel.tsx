@@ -73,13 +73,25 @@ export const GameConfigPanel = ({
   const [showPaywall, setShowPaywall] = useState(false);
   
   const { entitlement, isPro } = useEntitlement();
-  const dynamicCategories = getSortedCategories();
   const [cache, setCache] = useState(() => getCachedWords());
 
   // Re-read cache whenever it's updated (e.g. after sync from DB)
   useEffect(() => {
     return onCacheUpdate(() => setCache(getCachedWords()));
   }, []);
+
+  // Derive categories from reactive cache instead of stale getSortedCategories()
+  const dynamicCategories = (() => {
+    const cats = cache.categoryMeta.sort((a, b) => a.sortOrder - b.sortOrder);
+    const free = cats.filter(c => !c.isPaid);
+    const paid = cats.filter(c => c.isPaid);
+    return [...free, ...paid].map(c => ({
+      id: c.id,
+      name: c.name,
+      emoji: c.emoji,
+      isPaid: c.isPaid,
+    }));
+  })();
 
   const maxImposters = Math.max(1, playerCount - 1);
   const recommendedImposters = playerCount <= 4 ? 1 
@@ -228,7 +240,7 @@ export const GameConfigPanel = ({
                 {dynamicCategories.map((cat) => {
                   const isLocked = cat.isPaid && !isPro;
                   const isSelected = config.selectedCategories.includes(cat.id);
-                  const wordCount = cache.categories[cat.id]?.length ?? 0;
+                  const wordCount = cache.totalWordCounts?.[cat.id] ?? cache.categories[cat.id]?.length ?? 0;
                   
                   return (
                     <div 
