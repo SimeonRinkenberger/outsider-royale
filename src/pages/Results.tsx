@@ -215,7 +215,8 @@ const Results = () => {
   const effectiveOutsiderPlayers = effectivePlayers.filter(p => effectiveOutsiders.some(o => o.player_id === p.id));
   
   // Check loading with cached data fallback
-  const isLoading = !effectiveGame || !effectiveSecretWord || effectiveOutsiderPlayers.length === 0 || effectiveVotes.length === 0;
+  // Don't require votes if outsider guessed correctly (game ends without voting)
+  const isLoading = !effectiveGame || !effectiveSecretWord || effectiveOutsiderPlayers.length === 0 || (!outsiderGuessedCorrectly && effectiveVotes.length === 0);
 
   // Calculate vote results using effective data
   const votesByPlayer = effectivePlayers.map(player => {
@@ -761,6 +762,16 @@ const Results = () => {
           );
         })()}
 
+        {outsiderGuessedCorrectly ? (
+          <Card className="p-4 bg-destructive/10 border-destructive/20 text-center space-y-2">
+            <p className="text-sm font-semibold text-destructive">
+              🎯 {gameMetadata?.outsiderGuesser || 'The Outsider'} guessed the word correctly!
+            </p>
+            <p className="text-xs text-muted-foreground">
+              The outsider wins — no voting needed.
+            </p>
+          </Card>
+        ) : (
         <div className="space-y-3">
           <h3 className="text-sm font-semibold text-muted-foreground px-1">
             Vote Results
@@ -864,6 +875,7 @@ const Results = () => {
               })}
           </div>
         </div>
+        )}
 
         {/* Game Settings for Next Game (Host Only) */}
         {isHost && (
