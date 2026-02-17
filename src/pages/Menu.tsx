@@ -48,6 +48,10 @@ const Menu = () => {
       if (storedId) {
         setDisplayName(getStoredDisplayName());
       } else {
+        // No stored profile - sign out any stale anonymous session
+        if (session?.user?.is_anonymous) {
+          await supabase.auth.signOut();
+        }
         setDisplayName(null);
       }
       setIsLoading(false);
@@ -118,16 +122,29 @@ const Menu = () => {
       },
       loadingText: 'Creating profile',
       prepare: async () => {
+        // Always sign out first to clear any stale anonymous session
+        await supabase.auth.signOut();
+        clearStorage();
+        
+        // Create a fresh anonymous session for RLS
+        const { error: authError } = await supabase.auth.signInAnonymously();
+        if (authError) throw authError;
+        
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) throw new Error('Failed to create anonymous session');
+        
         const {
           data,
           error
         } = await supabase.from('profiles').insert({
           display_name: guestName.trim(),
+          auth_user_id: user.id,
+          is_guest: true,
         }).select().single();
         if (error) throw error;
         setStoredUserId(data.id);
         setStoredDisplayName(data.display_name);
-        setStoredIsGuest(true); // Mark as guest session
+        setStoredIsGuest(true);
         toast.success(`Welcome, ${data.display_name}!`);
         setIsCreatingGuest(false);
       }

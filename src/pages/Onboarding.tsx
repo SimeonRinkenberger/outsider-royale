@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { supabase } from '@/integrations/supabase/client';
-import { setStoredUserId, setStoredDisplayName } from '@/lib/gameUtils';
+import { setStoredUserId, setStoredDisplayName, setStoredIsGuest, clearStorage } from '@/lib/gameUtils';
 import { toast } from 'sonner';
 import { User } from 'lucide-react';
 
@@ -20,10 +20,22 @@ const Onboarding = () => {
 
     setIsLoading(true);
     try {
+      // Sign out any stale session first, then create fresh anonymous session
+      await supabase.auth.signOut();
+      clearStorage();
+      
+      const { error: authError } = await supabase.auth.signInAnonymously();
+      if (authError) throw authError;
+      
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('Failed to create anonymous session');
+      
       const { data, error } = await supabase
         .from('profiles')
         .insert({ 
           display_name: displayName.trim(),
+          auth_user_id: user.id,
+          is_guest: true,
         })
         .select()
         .single();
@@ -32,7 +44,7 @@ const Onboarding = () => {
 
       setStoredUserId(data.id);
       setStoredDisplayName(data.display_name);
-      
+      setStoredIsGuest(true);
       
       toast.success(`Welcome, ${data.display_name}!`);
       navigate('/menu');
