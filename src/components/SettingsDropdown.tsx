@@ -158,20 +158,6 @@ export const SettingsDropdown = ({ className }: SettingsDropdownProps) => {
           </>
         )}
 
-        {/* Switch Player - only for guests with a profile */}
-        {isGuest && profileId && (
-          <>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={async () => {
-              await signOutAndReset();
-              navigate('/');
-              toast.success('Signed out. Create a new guest or sign in.');
-            }}>
-              <UserX className="h-4 w-4 mr-2" />
-              Switch Player
-            </DropdownMenuItem>
-          </>
-        )}
 
         {/* Refresh Button - only show on web */}
         {!isNative() && (
