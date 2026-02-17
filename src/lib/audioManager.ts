@@ -33,8 +33,6 @@ const TRACKS: Record<string, { path: string; loop: boolean; targetVolume: number
   win_outsider: { path: '/audio/win_outsider.mp3', loop: false, targetVolume: 0.65 },
 };
 
-const TAG = '[AudioManager]';
-
 const prefersReducedMotion = () =>
   typeof window !== 'undefined' &&
   window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -65,13 +63,11 @@ class AudioManager {
 
     if (typeof document !== 'undefined') {
       document.addEventListener('visibilitychange', this.handleVisibilityChange);
-      // Register persistent gesture listeners for iOS unlock
       for (const ev of this.gestureEvents) {
         document.addEventListener(ev, this.handleUserGesture, { capture: true });
       }
     }
 
-    // Set up Capacitor native lifecycle hooks
     this.setupNativeLifecycle();
   }
 
@@ -80,7 +76,6 @@ class AudioManager {
     try {
       const { App } = await import('@capacitor/app');
       const handle = await App.addListener('appStateChange', (state: { isActive: boolean }) => {
-        console.log(TAG, 'appStateChange isActive=', state.isActive);
         if (state.isActive) {
           this.handleResume();
         } else {
@@ -88,27 +83,21 @@ class AudioManager {
         }
       });
       this.appStateCleanup = () => handle.remove();
-    } catch (e) {
-      console.warn(TAG, 'Could not set up native lifecycle:', e);
+    } catch {
+      // Native lifecycle not available
     }
   }
 
-  // --- iOS unlock: play a silent buffer on first gesture to fully unlock AudioContext ---
   private handleUserGesture = async () => {
     if (this.unlocked && this.ctx?.state === 'running') return;
-    
-    console.log(TAG, 'User gesture detected, attempting unlock. ctx state=', this.ctx?.state ?? 'null');
-    
+
     try {
       const ctx = this.ensureContext();
-      
-      // Resume if suspended
+
       if (ctx.state === 'suspended') {
         await ctx.resume();
-        console.log(TAG, 'resume() called, state=', ctx.state);
       }
 
-      // Play a tiny silent buffer to fully unlock iOS audio
       if (!this.unlocked) {
         const silentBuffer = ctx.createBuffer(1, 1, ctx.sampleRate);
         const src = ctx.createBufferSource();
@@ -117,36 +106,30 @@ class AudioManager {
         src.start(0);
         src.stop(ctx.currentTime + 0.001);
         this.unlocked = true;
-        console.log(TAG, 'Silent buffer played — audio unlocked');
       }
 
-      // If we have a desired state, try to play it
       if (this.currentState !== 'silent' && !this.isMuted && !this.active) {
         const desired = this.currentState;
-        this.currentState = 'silent'; // reset so setState doesn't bail
+        this.currentState = 'silent';
         await this.setState(desired);
       } else if (this.active && this.active.gain.gain.value === 0 && !this.isMuted) {
-        // Fix gain stuck at 0 after resume
         const track = this.decodedTracks.get(this.active.trackKey);
         if (track) {
           this.active.gain.gain.value = track.targetVolume * this.masterVolume;
-          console.log(TAG, 'Restored gain that was stuck at 0');
         }
       }
-    } catch (err) {
-      console.warn(TAG, 'Unlock attempt failed:', err);
+    } catch {
+      // Unlock attempt failed silently
     }
   };
 
   private ensureContext(): AudioContext {
     if (!this.ctx) {
       this.ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
-      console.log(TAG, 'AudioContext created, state=', this.ctx.state, 'sampleRate=', this.ctx.sampleRate);
     }
     return this.ctx;
   }
 
-  // --- Visibility change (works on both web and native) ---
   private handleVisibilityChange = () => {
     if (document.hidden) {
       this.handleSuspend();
@@ -157,49 +140,39 @@ class AudioManager {
 
   private handleSuspend(): void {
     if (!this.ctx) return;
-    console.log(TAG, 'Suspending audio (background)');
     this.ctx.suspend().catch(() => {});
   }
 
   private async handleResume(): Promise<void> {
     if (!this.ctx) return;
-    console.log(TAG, 'Resuming audio (foreground), ctx state=', this.ctx.state);
 
-    // iOS WKWebView workaround: suspend → resume cycle
-    // Just calling resume() often fails; the suspend→resume trick is more reliable
     try {
       if (this.ctx.state !== 'running') {
         await this.ctx.suspend();
         await new Promise(r => setTimeout(r, 50));
         await this.ctx.resume();
-        console.log(TAG, 'suspend→resume cycle complete, state=', this.ctx.state);
       }
-    } catch (e) {
-      console.warn(TAG, 'Resume cycle failed:', e);
+    } catch {
+      // Resume cycle failed
     }
 
-    // If we had active playback but it died, restart it
     if (this.currentState !== 'silent' && !this.isMuted) {
       if (!this.active) {
-        console.log(TAG, 'No active playback after resume, restarting', this.currentState);
         const desired = this.currentState;
         this.currentState = 'silent';
         await this.setState(desired);
       } else {
-        // Ensure gain isn't stuck at 0
         const track = this.decodedTracks.get(this.active.trackKey);
         if (track) {
           const expectedGain = track.targetVolume * this.masterVolume;
           if (this.active.gain.gain.value === 0 || Math.abs(this.active.gain.gain.value - expectedGain) > 0.01) {
             this.active.gain.gain.value = expectedGain;
-            console.log(TAG, 'Corrected gain after resume to', expectedGain);
           }
         }
       }
     }
   }
 
-  // --- Preload raw buffers (no AudioContext needed) ---
   async preload(): Promise<void> {
     if (!this.isEnabled || this.isInitialized) {
       this.isInitialized = true;
@@ -208,33 +181,19 @@ class AudioManager {
 
     const loadPromises = Object.entries(TRACKS).map(async ([key, config]) => {
       try {
-        // Use absolute URL to handle Capacitor file:// origin correctly
         const url = new URL(config.path, window.location.origin).href;
-        console.log(TAG, `Fetching ${key} from ${url}`);
         const response = await fetch(url);
-        if (!response.ok) {
-          console.warn(TAG, `Fetch failed for ${key}: ${response.status} ${response.statusText}`);
-          return;
-        }
-        const contentType = response.headers.get('content-type') || '';
-        if (!contentType.includes('audio') && !contentType.includes('octet-stream') && !contentType.includes('mpeg')) {
-          console.warn(TAG, `Unexpected content-type for ${key}: ${contentType}`);
-        }
+        if (!response.ok) return;
         const arrayBuffer = await response.arrayBuffer();
-        if (arrayBuffer.byteLength < 100) {
-          console.warn(TAG, `Buffer for ${key} is suspiciously small: ${arrayBuffer.byteLength} bytes`);
-          return;
-        }
+        if (arrayBuffer.byteLength < 100) return;
         this.rawBuffers.set(key, arrayBuffer);
-        console.log(TAG, `Fetched ${key}: ${arrayBuffer.byteLength} bytes`);
-      } catch (err) {
-        console.warn(TAG, `Failed to fetch ${key}:`, err);
+      } catch {
+        // Failed to fetch track
       }
     });
 
     await Promise.all(loadPromises);
     this.isInitialized = true;
-    console.log(TAG, 'Preloaded raw buffers for', this.rawBuffers.size, '/', Object.keys(TRACKS).length, 'tracks');
 
     if (this.pendingState) {
       const pending = this.pendingState;
@@ -243,20 +202,15 @@ class AudioManager {
     }
   }
 
-  // Decode a raw buffer into an AudioBuffer on demand
   private async decodeTrack(key: string): Promise<DecodedTrack | null> {
     if (this.decodedTracks.has(key)) return this.decodedTracks.get(key)!;
-    
+
     const raw = this.rawBuffers.get(key);
     const config = TRACKS[key];
-    if (!raw || !config) {
-      console.warn(TAG, `Cannot decode ${key}: raw=${!!raw} config=${!!config}`);
-      return null;
-    }
+    if (!raw || !config) return null;
 
     try {
       const ctx = this.ensureContext();
-      console.log(TAG, `Decoding ${key} (${raw.byteLength} bytes)...`);
       const audioBuffer = await ctx.decodeAudioData(raw.slice(0));
       const decoded: DecodedTrack = {
         buffer: audioBuffer,
@@ -264,10 +218,8 @@ class AudioManager {
         targetVolume: config.targetVolume,
       };
       this.decodedTracks.set(key, decoded);
-      console.log(TAG, `Decoded ${key}: duration=${audioBuffer.duration.toFixed(1)}s channels=${audioBuffer.numberOfChannels}`);
       return decoded;
-    } catch (err) {
-      console.warn(TAG, `Failed to decode ${key}:`, err);
+    } catch {
       return null;
     }
   }
@@ -282,7 +234,6 @@ class AudioManager {
 
     const ctx = this.ensureContext();
     if (ctx.state !== 'running') {
-      console.warn(TAG, `startPlayback(${key}): ctx not running (state=${ctx.state}), attempting resume`);
       ctx.resume().catch(() => {});
     }
 
@@ -291,12 +242,11 @@ class AudioManager {
 
     source.buffer = track.buffer;
     source.loop = track.loop;
-    gain.gain.value = 0; // start silent for fade-in
+    gain.gain.value = 0;
 
     source.connect(gain);
     gain.connect(ctx.destination);
     source.start(0);
-    console.log(TAG, `play started: ${key}, loop=${track.loop}`);
 
     if (!track.loop) {
       source.addEventListener('ended', () => {
@@ -345,7 +295,6 @@ class AudioManager {
 
     if (!this.isInitialized) {
       this.pendingState = state;
-      console.log(TAG, `setState(${state}) deferred — not yet initialized`);
       return;
     }
 
@@ -357,7 +306,6 @@ class AudioManager {
     this.isTransitioning = true;
     this.currentState = state;
     this.notifyListeners();
-    console.log(TAG, `setState → ${state}`);
 
     try {
       if (state === 'silent') {
@@ -366,10 +314,7 @@ class AudioManager {
       }
 
       const track = await this.decodeTrack(state);
-      if (!track) {
-        console.warn(TAG, `No track decoded for ${state}`);
-        return;
-      }
+      if (!track) return;
 
       if (this.active && this.active.trackKey !== state) {
         const fadeOutMs = (state === 'win_safe' || state === 'win_outsider')
@@ -384,7 +329,6 @@ class AudioManager {
 
       const targetVol = this.isMuted ? 0 : track.targetVolume * this.masterVolume;
       await this.fade(playback.gain, targetVol, this.getFadeDuration(400));
-      console.log(TAG, `Fade-in complete for ${state}, gain=${targetVol.toFixed(3)}`);
 
     } finally {
       this.isTransitioning = false;
@@ -444,8 +388,6 @@ class AudioManager {
     }, durationMs);
   }
 
-  // Called from AudioContext on user gesture — kept for compat but gesture handling
-  // is now internal via persistent listeners
   async tryPlay(): Promise<void> {
     await this.handleUserGesture();
   }
