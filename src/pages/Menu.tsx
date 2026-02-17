@@ -24,7 +24,9 @@ const Menu = () => {
     profileId,
     displayName,
     isRealAuth,
+    isGuest,
     createGuestProfile,
+    signOutAndReset,
   } = useAuth();
 
   const [showGuestInput, setShowGuestInput] = useState(false);
@@ -156,8 +158,20 @@ const Menu = () => {
           <img alt="Outsider Royale" className="w-64 h-auto mx-auto" src={titleFox} />
           {displayName && (
             <p className="text-muted-foreground">
-              Playing as <span className="font-semibold text-foreground">{displayName}</span>
+              Playing as {isGuest ? 'guest ' : ''}<span className="font-semibold text-foreground">{displayName}</span>
             </p>
+          )}
+          {isGuest && profileId && (
+            <button
+              type="button"
+              className="text-sm text-primary hover:text-primary/80 transition-colors font-medium"
+              onClick={async () => {
+                await signOutAndReset();
+                toast.success('Signed out.');
+              }}
+            >
+              Sign out
+            </button>
           )}
           <p className="text-muted-foreground">Choose how you want to play</p>
         </motion.div>
