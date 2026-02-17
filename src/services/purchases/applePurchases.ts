@@ -49,7 +49,8 @@ export interface RestoreResult {
 
 // Storage keys
 const ENTITLEMENT_STORAGE_KEY = 'outsider_entitlement';
-const REVALIDATION_INTERVAL_MS = 6 * 60 * 60 * 1000; // 6 hours
+const REVALIDATION_INTERVAL_MS = 6 * 60 * 60 * 1000; // 6 hours for background checks
+const RESUME_REVALIDATION_INTERVAL_MS = 5 * 60 * 1000; // 5 min cooldown for app resume checks
 
 // Check if we're on iOS native
 export const isIOSNative = (): boolean => {
@@ -159,6 +160,18 @@ export async function initPurchases(): Promise<void> {
   cachedEntitlement = await loadCachedEntitlement();
   console.log('[ApplePurchases] Loaded cached entitlement:', cachedEntitlement);
 
+  // Check if cached entitlement has expired (local check before any store call)
+  if (cachedEntitlement.isPro && cachedEntitlement.expiresAt) {
+    const expiryTime = new Date(cachedEntitlement.expiresAt).getTime();
+    if (Date.now() > expiryTime) {
+      console.log('[ApplePurchases] Cached entitlement expired, revoking Pro');
+      await updateEntitlement({
+        ...DEFAULT_ENTITLEMENT,
+        lastCheckedAt: new Date().toISOString(),
+      });
+    }
+  }
+
   // If not on iOS, just use cached/default state
   if (!isIOSNative()) {
     console.log('[ApplePurchases] Not on iOS native, using cached state');
@@ -184,9 +197,16 @@ export async function initPurchases(): Promise<void> {
       return;
     }
 
-    // Check current purchase status
-    if (needsRevalidation(cachedEntitlement)) {
-      await refreshEntitlementFromStore();
+    // Always revalidate on init (app launch)
+    await refreshEntitlementFromStore();
+
+    // Listen for app resume to revalidate subscription status
+    if (typeof document !== 'undefined') {
+      document.addEventListener('visibilitychange', handleAppResume);
+      // Capacitor-specific resume event
+      document.addEventListener('resume', () => {
+        revalidateOnResume();
+      });
     }
 
     isInitialized = true;
@@ -196,6 +216,26 @@ export async function initPurchases(): Promise<void> {
     // Continue with cached state on error
     isInitialized = true;
   }
+}
+
+/**
+ * Handle app resume - revalidate subscription with cooldown
+ */
+let lastResumeCheck = 0;
+
+function handleAppResume() {
+  if (!document.hidden) {
+    revalidateOnResume();
+  }
+}
+
+async function revalidateOnResume() {
+  const now = Date.now();
+  if (now - lastResumeCheck < RESUME_REVALIDATION_INTERVAL_MS) return;
+  lastResumeCheck = now;
+  
+  console.log('[ApplePurchases] App resumed, revalidating subscription...');
+  await refreshEntitlementFromStore();
 }
 
 /**

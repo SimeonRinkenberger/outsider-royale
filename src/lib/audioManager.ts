@@ -37,6 +37,7 @@ const prefersReducedMotion = () =>
 
 class AudioManager {
   private ctx: AudioContext | null = null;
+  private rawBuffers: Map<string, ArrayBuffer> = new Map();
   private decodedTracks: Map<string, DecodedTrack> = new Map();
   private active: ActivePlayback | null = null;
   private currentState: MusicState = 'silent';
@@ -82,38 +83,58 @@ class AudioManager {
     }
   };
 
-  // Preload all audio tracks by fetching + decoding to AudioBuffers
+  // Preload all audio tracks by fetching raw ArrayBuffers
+  // Decoding is deferred until first user gesture to satisfy iOS AudioContext rules
   async preload(): Promise<void> {
     if (!this.isEnabled || this.isInitialized) {
       this.isInitialized = true;
       return;
     }
 
-    // Create context early (may be suspended until user gesture)
-    const ctx = this.ensureContext();
-
+    // Fetch raw ArrayBuffers first (no AudioContext needed)
     const loadPromises = Object.entries(TRACKS).map(async ([key, config]) => {
       try {
         const response = await fetch(config.path);
         const arrayBuffer = await response.arrayBuffer();
-        const audioBuffer = await ctx.decodeAudioData(arrayBuffer);
-        this.decodedTracks.set(key, {
-          buffer: audioBuffer,
-          loop: config.loop,
-          targetVolume: config.targetVolume,
-        });
+        this.rawBuffers.set(key, arrayBuffer);
       } catch (err) {
-        console.warn(`[AudioManager] Failed to load ${key}:`, err);
+        console.warn(`[AudioManager] Failed to fetch ${key}:`, err);
       }
     });
 
     await Promise.all(loadPromises);
     this.isInitialized = true;
+    console.log('[AudioManager] Preloaded raw buffers for', this.rawBuffers.size, 'tracks');
 
     if (this.pendingState) {
       const pending = this.pendingState;
       this.pendingState = null;
       await this.setState(pending);
+    }
+  }
+
+  // Decode a raw buffer into an AudioBuffer on demand (requires AudioContext)
+  private async decodeTrack(key: string): Promise<DecodedTrack | null> {
+    if (this.decodedTracks.has(key)) return this.decodedTracks.get(key)!;
+    
+    const raw = this.rawBuffers.get(key);
+    const config = TRACKS[key];
+    if (!raw || !config) return null;
+
+    try {
+      const ctx = this.ensureContext();
+      // Must clone the ArrayBuffer since decodeAudioData detaches it
+      const audioBuffer = await ctx.decodeAudioData(raw.slice(0));
+      const decoded: DecodedTrack = {
+        buffer: audioBuffer,
+        loop: config.loop,
+        targetVolume: config.targetVolume,
+      };
+      this.decodedTracks.set(key, decoded);
+      return decoded;
+    } catch (err) {
+      console.warn(`[AudioManager] Failed to decode ${key}:`, err);
+      return null;
     }
   }
 
@@ -207,7 +228,7 @@ class AudioManager {
         return;
       }
 
-      const track = this.decodedTracks.get(state);
+      const track = await this.decodeTrack(state);
       if (!track) return;
 
       // Stop old track
@@ -321,6 +342,7 @@ class AudioManager {
       } catch {}
       this.active = null;
     }
+    this.rawBuffers.clear();
     this.decodedTracks.clear();
     if (this.ctx) {
       this.ctx.close().catch(() => {});

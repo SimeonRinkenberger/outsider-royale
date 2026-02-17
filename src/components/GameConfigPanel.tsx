@@ -332,6 +332,17 @@ export const GameConfigPanel = ({
                   </>
                 )}
               </div>
+
+              {/* Custom Category Manager - inside categories section */}
+              <div className="border-t border-border pt-3">
+                <CustomCategoryManager
+                  categories={customCategories}
+                  onAdd={onAddCategory}
+                  onUpdate={onUpdateCategory}
+                  onDelete={onDeleteCategory}
+                />
+              </div>
+
               {config.selectedCategories.length === 0 && config.selectedCustomCategories.length === 0 && (
                 <p className="text-xs text-destructive">Select at least one category</p>
               )}
@@ -506,15 +517,6 @@ export const GameConfigPanel = ({
                   </p>
                 </div>
               )}
-
-              <div className="border-t border-border pt-4">
-                <CustomCategoryManager
-                  categories={customCategories}
-                  onAdd={onAddCategory}
-                  onUpdate={onUpdateCategory}
-                  onDelete={onDeleteCategory}
-                />
-              </div>
             </div>
           </CollapsibleContent>
         </Card>
