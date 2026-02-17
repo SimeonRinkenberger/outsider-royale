@@ -394,9 +394,52 @@ const InPersonGame = () => {
     if (currentVoterIndex + 1 >= config.players.length) {
       updateConfig({ phase: 'results', votes: newVotes });
       
+      // Track in-person games played for signed-in users
+      trackInPersonGamePlayed();
     } else {
       updateConfig({ votes: newVotes, currentVoterIndex: currentVoterIndex + 1 });
       setSelectedVotes([]);
+    }
+  };
+
+  // Track in-person game completion for signed-in users
+  const trackInPersonGamePlayed = async () => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return; // Only track for signed-in users
+      
+      // Idempotency: use localStorage key based on game's secret word + players hash
+      const gameKey = `in-person-tracked-${config?.secretWord}-${config?.players.join(',')}`;
+      if (localStorage.getItem(gameKey)) return;
+      
+      // Fetch current stats
+      const { data: currentStats } = await supabase
+        .from('user_stats')
+        .select('in_person_games_played, games_played')
+        .eq('user_id', session.user.id)
+        .maybeSingle();
+      
+      if (!currentStats) {
+        // Create stats if they don't exist
+        await supabase.from('user_stats').insert({ 
+          user_id: session.user.id,
+          in_person_games_played: 1,
+          games_played: 1,
+        });
+      } else {
+        await supabase
+          .from('user_stats')
+          .update({
+            in_person_games_played: (currentStats.in_person_games_played || 0) + 1,
+            games_played: (currentStats.games_played || 0) + 1,
+          })
+          .eq('user_id', session.user.id);
+      }
+      
+      localStorage.setItem(gameKey, 'true');
+      console.log('In-person game tracked successfully');
+    } catch (error) {
+      console.error('Failed to track in-person game:', error);
     }
   };
 
