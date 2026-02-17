@@ -37,19 +37,22 @@ export const AudioProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       setMutedInternal(muted);
     });
 
-    // Handle user interaction to unlock audio
+    // Handle user interaction to unlock audio (keep listening until audio actually plays)
     const handleInteraction = () => {
       audioManager.tryPlay();
     };
 
-    document.addEventListener('click', handleInteraction, { once: true });
-    document.addEventListener('touchstart', handleInteraction, { once: true });
+    // Use persistent listeners - iOS WKWebView needs repeated gesture attempts
+    document.addEventListener('click', handleInteraction);
+    document.addEventListener('touchstart', handleInteraction);
+    document.addEventListener('touchend', handleInteraction);
 
     return () => {
       unsubscribeState();
       unsubscribeVolume();
       document.removeEventListener('click', handleInteraction);
       document.removeEventListener('touchstart', handleInteraction);
+      document.removeEventListener('touchend', handleInteraction);
     };
   }, []);
 
