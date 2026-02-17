@@ -481,7 +481,9 @@ export type Database = {
       }
       user_stats: {
         Row: {
+          best_correct_vote_streak: number
           best_win_streak: number
+          correct_vote_streak: number
           created_at: string
           current_win_streak: number
           favorite_category: string | null
@@ -491,6 +493,7 @@ export type Database = {
           games_won_as_outsider: number
           games_won_as_safe: number
           id: string
+          in_person_games_played: number
           total_clues_submitted: number
           total_correct_votes: number
           total_votes_cast: number
@@ -498,7 +501,9 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          best_correct_vote_streak?: number
           best_win_streak?: number
+          correct_vote_streak?: number
           created_at?: string
           current_win_streak?: number
           favorite_category?: string | null
@@ -508,6 +513,7 @@ export type Database = {
           games_won_as_outsider?: number
           games_won_as_safe?: number
           id?: string
+          in_person_games_played?: number
           total_clues_submitted?: number
           total_correct_votes?: number
           total_votes_cast?: number
@@ -515,7 +521,9 @@ export type Database = {
           user_id: string
         }
         Update: {
+          best_correct_vote_streak?: number
           best_win_streak?: number
+          correct_vote_streak?: number
           created_at?: string
           current_win_streak?: number
           favorite_category?: string | null
@@ -525,6 +533,7 @@ export type Database = {
           games_won_as_outsider?: number
           games_won_as_safe?: number
           id?: string
+          in_person_games_played?: number
           total_clues_submitted?: number
           total_correct_votes?: number
           total_votes_cast?: number
