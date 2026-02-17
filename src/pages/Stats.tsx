@@ -9,7 +9,7 @@ import { getStoredDisplayName, clearStorage, setStoredDisplayName, setStoredAvat
 import { toast } from 'sonner';
 import { ArrowLeft, Trophy, Target, MessageSquare, Vote, LogOut, TrendingUp, Mail, Lock, User, Loader2, HelpCircle, ChevronDown, Crosshair } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { AvatarPicker, getAvatarById } from '@/components/AvatarPicker';
 import { AccountSettings } from '@/components/AccountSettings';
 import { useTransition } from '@/contexts/TransitionContext';
@@ -528,63 +528,61 @@ const Stats = () => {
         </motion.div>
 
         {/* Win Rates */}
-        <TooltipProvider>
-          <div className="grid grid-cols-2 gap-4">
-            <motion.div
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: 0.2 }}
-            >
-              <Card className="p-4">
-                <div className="flex items-center gap-1.5 mb-2">
-                  <Target className="h-4 w-4 text-accent" />
-                  <span className="text-sm text-muted-foreground">Outsider Wins</span>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <button className="ml-auto" type="button">
-                        <HelpCircle className="h-3.5 w-3.5 text-muted-foreground/60" />
-                      </button>
-                    </TooltipTrigger>
-                    <TooltipContent side="top" className="max-w-[200px] text-xs">
-                      You win as outsider when less than 50% of the lobby votes for you.
-                    </TooltipContent>
-                  </Tooltip>
-                </div>
-                <p className="text-3xl font-bold">{outsiderWinRate}%</p>
-                <p className="text-xs text-muted-foreground">
-                  {stats?.games_won_as_outsider || 0}/{stats?.games_played_as_outsider || 0} games
-                </p>
-              </Card>
-            </motion.div>
+        <div className="grid grid-cols-2 gap-4">
+          <motion.div
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ delay: 0.2 }}
+          >
+            <Card className="p-4">
+              <div className="flex items-center gap-1.5 mb-2">
+                <Target className="h-4 w-4 text-accent" />
+                <span className="text-sm text-muted-foreground">Outsider Wins</span>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <button className="ml-auto" type="button">
+                      <HelpCircle className="h-3.5 w-3.5 text-muted-foreground/60" />
+                    </button>
+                  </PopoverTrigger>
+                  <PopoverContent side="top" className="max-w-[220px] text-xs p-3">
+                    You win as outsider when less than 50% of the lobby votes for you.
+                  </PopoverContent>
+                </Popover>
+              </div>
+              <p className="text-3xl font-bold">{outsiderWinRate}%</p>
+              <p className="text-xs text-muted-foreground">
+                {stats?.games_won_as_outsider || 0}/{stats?.games_played_as_outsider || 0} games
+              </p>
+            </Card>
+          </motion.div>
 
-            <motion.div
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: 0.2 }}
-            >
-              <Card className="p-4">
-                <div className="flex items-center gap-1.5 mb-2">
-                  <TrendingUp className="h-4 w-4 text-primary" />
-                  <span className="text-sm text-muted-foreground">Safe Player Wins</span>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <button className="ml-auto" type="button">
-                        <HelpCircle className="h-3.5 w-3.5 text-muted-foreground/60" />
-                      </button>
-                    </TooltipTrigger>
-                    <TooltipContent side="top" className="max-w-[200px] text-xs">
-                      You win as a safe player when 50% or more of the lobby votes for the outsider.
-                    </TooltipContent>
-                  </Tooltip>
-                </div>
-                <p className="text-3xl font-bold">{safeWinRate}%</p>
-                <p className="text-xs text-muted-foreground">
-                  {stats?.games_won_as_safe || 0}/{stats?.games_played_as_safe || 0} games
-                </p>
-              </Card>
-            </motion.div>
-          </div>
-        </TooltipProvider>
+          <motion.div
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ delay: 0.2 }}
+          >
+            <Card className="p-4">
+              <div className="flex items-center gap-1.5 mb-2">
+                <TrendingUp className="h-4 w-4 text-primary" />
+                <span className="text-sm text-muted-foreground">Safe Wins</span>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <button className="ml-auto" type="button">
+                      <HelpCircle className="h-3.5 w-3.5 text-muted-foreground/60" />
+                    </button>
+                  </PopoverTrigger>
+                  <PopoverContent side="top" className="max-w-[220px] text-xs p-3">
+                    You win as a safe player when 50% or more of the lobby votes for the outsider.
+                  </PopoverContent>
+                </Popover>
+              </div>
+              <p className="text-3xl font-bold">{safeWinRate}%</p>
+              <p className="text-xs text-muted-foreground">
+                {stats?.games_won_as_safe || 0}/{stats?.games_played_as_safe || 0} games
+              </p>
+            </Card>
+          </motion.div>
+        </div>
 
         {/* Correct Vote Streak */}
         <motion.div
@@ -596,6 +594,16 @@ const Stats = () => {
             <div className="flex items-center gap-2 mb-3">
               <Crosshair className="h-5 w-5 text-primary" />
               <span className="font-medium">Correct Vote Streak</span>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <button className="ml-auto" type="button">
+                    <HelpCircle className="h-3.5 w-3.5 text-muted-foreground/60" />
+                  </button>
+                </PopoverTrigger>
+                <PopoverContent side="top" className="max-w-[220px] text-xs p-3">
+                  Consecutive games where you correctly voted for the outsider.
+                </PopoverContent>
+              </Popover>
             </div>
             <div className="flex justify-between">
               <div>
@@ -618,9 +626,19 @@ const Stats = () => {
             transition={{ delay: 0.4 }}
           >
             <Card className="p-4">
-              <div className="flex items-center gap-2 mb-2">
+              <div className="flex items-center gap-1.5 mb-2">
                 <MessageSquare className="h-4 w-4 text-muted-foreground" />
                 <span className="text-sm text-muted-foreground">Clues Given</span>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <button className="ml-auto" type="button">
+                      <HelpCircle className="h-3.5 w-3.5 text-muted-foreground/60" />
+                    </button>
+                  </PopoverTrigger>
+                  <PopoverContent side="top" className="max-w-[220px] text-xs p-3">
+                    Total number of clues you've submitted across all games.
+                  </PopoverContent>
+                </Popover>
               </div>
               <p className="text-2xl font-bold">{stats?.total_clues_submitted || 0}</p>
             </Card>
@@ -632,9 +650,19 @@ const Stats = () => {
             transition={{ delay: 0.4 }}
           >
             <Card className="p-4">
-              <div className="flex items-center gap-2 mb-2">
+              <div className="flex items-center gap-1.5 mb-2">
                 <Vote className="h-4 w-4 text-muted-foreground" />
                 <span className="text-sm text-muted-foreground">Vote Accuracy</span>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <button className="ml-auto" type="button">
+                      <HelpCircle className="h-3.5 w-3.5 text-muted-foreground/60" />
+                    </button>
+                  </PopoverTrigger>
+                  <PopoverContent side="top" className="max-w-[220px] text-xs p-3">
+                    Percentage of your votes that correctly identified the outsider.
+                  </PopoverContent>
+                </Popover>
               </div>
               <p className="text-2xl font-bold">{voteAccuracy}%</p>
               <p className="text-xs text-muted-foreground">
@@ -651,8 +679,20 @@ const Stats = () => {
             transition={{ delay: 0.5 }}
           >
             <Card className="p-4">
-              <p className="text-sm text-muted-foreground mb-1">Favorite Category</p>
-              <p className="text-xl font-bold capitalize">{stats.favorite_category}</p>
+              <div className="flex items-center gap-1.5">
+                <p className="text-sm text-muted-foreground">Favorite Category</p>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <button className="ml-auto" type="button">
+                      <HelpCircle className="h-3.5 w-3.5 text-muted-foreground/60" />
+                    </button>
+                  </PopoverTrigger>
+                  <PopoverContent side="top" className="max-w-[220px] text-xs p-3">
+                    The word category you've played the most games with.
+                  </PopoverContent>
+                </Popover>
+              </div>
+              <p className="text-xl font-bold capitalize mt-1">{stats.favorite_category}</p>
             </Card>
           </motion.div>
         )}
