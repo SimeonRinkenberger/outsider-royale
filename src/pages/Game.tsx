@@ -589,10 +589,22 @@ const Game = () => {
 
   // Outsider guess submission
   const submitGuess = async () => {
-    if (!currentPlayer || !game || !secretWord || hasGuessed || !guessInput.trim()) return;
+    if (!currentPlayer || !game || hasGuessed || !guessInput.trim()) return;
     setIsSubmitting(true);
     try {
-      const isCorrect = guessInput.trim().toLowerCase() === secretWord.text.toLowerCase();
+      // Use server-side RPC to validate guess (prevents DevTools cheating)
+      const { data: isCorrect, error: guessError } = await supabase
+        .rpc('check_outsider_guess', {
+          p_game_id: game.id,
+          p_guess: guessInput.trim()
+        });
+      
+      if (guessError) {
+        console.error('Error checking guess:', guessError);
+        toast.error('Failed to check guess');
+        return;
+      }
+      
       if (isCorrect) {
         // Outsider wins! Move directly to results
         toast.success("Correct! You've won the game!");
