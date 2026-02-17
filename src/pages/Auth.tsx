@@ -39,6 +39,7 @@ const Auth = () => {
   const [errors, setErrors] = useState<{ email?: string; password?: string; displayName?: string }>({});
   const navigate = useNavigate();
   const { startTransition } = useTransition();
+  const { refreshProfile } = useAuth();
 
   const validateForm = () => {
     const newErrors: typeof errors = {};
@@ -118,7 +119,8 @@ const Auth = () => {
 
               setStoredUserId(updatedProfile.id);
               setStoredDisplayName(updatedProfile.display_name);
-              setStoredIsGuest(false); // Upgraded to authed
+              setStoredIsGuest(false);
+              await refreshProfile();
               
               toast.success('Account created! Your progress has been saved.');
               const returnTo = getAndClearAuthReturnTo() || '/menu';
@@ -147,7 +149,8 @@ const Auth = () => {
 
           setStoredUserId(profile.id);
           setStoredDisplayName(profile.display_name);
-          setStoredIsGuest(false); // New authed account
+          setStoredIsGuest(false);
+          await refreshProfile();
           
           toast.success('Account created successfully!');
           const returnTo = getAndClearAuthReturnTo() || '/menu';
@@ -184,7 +187,8 @@ const Auth = () => {
 
           setStoredUserId(profile.id);
           setStoredDisplayName(profile.display_name);
-          setStoredIsGuest(false); // Signed in = authed
+          setStoredIsGuest(false);
+          await refreshProfile();
           
           toast.success(`Welcome back, ${profile.display_name}!`);
           const returnTo = getAndClearAuthReturnTo() || '/menu';

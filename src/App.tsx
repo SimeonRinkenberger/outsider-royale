@@ -5,7 +5,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { ThemeProvider } from "next-themes";
-import { hasValidSession } from './lib/gameUtils';
+import { useAuth } from './contexts/AuthContext';
 import { AudioProvider } from './contexts/AudioContext';
 import { TransitionProvider } from './contexts/TransitionContext';
 import { NetworkProvider } from './contexts/NetworkContext';
@@ -59,18 +59,16 @@ function useSyncOnResume() {
  * Game flow routes (lobby, game, results) work for guests
  */
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
-  const location = useLocation();
-  const hasSession = hasValidSession();
+  const { status } = useAuth();
   
-  // Guard check - stripped in production by esbuild
+  // Still loading auth state — render nothing (or a spinner)
+  if (status === 'loading') return null;
   
-  // Allow access if user has any valid session (guest or authed)
-  if (hasSession) {
-    return <>{children}</>;
-  }
+  // Authenticated with a profile — allow access
+  if (status === 'ready') return <>{children}</>;
   
-  // No session at all - redirect to onboarding
-  return <Navigate to="/onboarding" replace />;
+  // No session / no profile — redirect to menu (which handles guest creation)
+  return <Navigate to="/menu" replace />;
 };
 
 const App = () => {
