@@ -656,6 +656,15 @@ export type Database = {
         }[]
       }
       get_my_profile_id: { Args: never; Returns: string }
+      get_or_create_profile: {
+        Args: { p_display_name?: string; p_is_guest?: boolean }
+        Returns: {
+          profile_avatar_url: string
+          profile_display_name: string
+          profile_id: string
+          profile_is_guest: boolean
+        }[]
+      }
       get_random_words_from_categories: {
         Args: {
           p_categories: string[]

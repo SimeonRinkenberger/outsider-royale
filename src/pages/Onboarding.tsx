@@ -2,8 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { supabase } from '@/integrations/supabase/client';
-import { setStoredUserId, setStoredDisplayName, setStoredIsGuest, clearStorage } from '@/lib/gameUtils';
+import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import { User } from 'lucide-react';
 
@@ -11,6 +10,7 @@ const Onboarding = () => {
   const [displayName, setDisplayName] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
+  const { createGuestProfile } = useAuth();
 
   const handleContinue = async () => {
     if (!displayName.trim() || displayName.length > 50) {
@@ -20,33 +20,8 @@ const Onboarding = () => {
 
     setIsLoading(true);
     try {
-      // Sign out any stale session first, then create fresh anonymous session
-      await supabase.auth.signOut();
-      clearStorage();
-      
-      const { error: authError } = await supabase.auth.signInAnonymously();
-      if (authError) throw authError;
-      
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error('Failed to create anonymous session');
-      
-      const { data, error } = await supabase
-        .from('profiles')
-        .insert({ 
-          display_name: displayName.trim(),
-          auth_user_id: user.id,
-          is_guest: true,
-        })
-        .select()
-        .single();
-
-      if (error) throw error;
-
-      setStoredUserId(data.id);
-      setStoredDisplayName(data.display_name);
-      setStoredIsGuest(true);
-      
-      toast.success(`Welcome, ${data.display_name}!`);
+      await createGuestProfile(displayName);
+      toast.success(`Welcome, ${displayName.trim()}!`);
       navigate('/menu');
     } catch (error) {
       console.error('Error creating profile:', error);
@@ -64,9 +39,7 @@ const Onboarding = () => {
             <User className="h-10 w-10 text-white" />
           </div>
           <h1 className="text-4xl font-bold text-white">Welcome!</h1>
-          <p className="text-white/90 text-lg">
-            Choose a display name to get started
-          </p>
+          <p className="text-white/90 text-lg">Choose a display name to get started</p>
         </div>
 
         <div className="bg-card/95 backdrop-blur rounded-2xl p-6 space-y-6 shadow-card">
@@ -80,9 +53,7 @@ const Onboarding = () => {
               className="h-12 text-base"
               onKeyDown={(e) => e.key === 'Enter' && handleContinue()}
             />
-            <p className="text-xs text-muted-foreground">
-              {displayName.length}/50 characters
-            </p>
+            <p className="text-xs text-muted-foreground">{displayName.length}/50 characters</p>
           </div>
 
           <Button
