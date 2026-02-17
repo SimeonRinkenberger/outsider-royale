@@ -20,9 +20,9 @@ interface PaywallProps {
 }
 
 const BENEFITS = [
-  'All 11 word categories unlocked (6 extra)',
-  '300 words per category (vs 15 free)',
-  '3,300+ total words to play with',
+  'All 11 word categories unlocked (7 extra)',
+  'Full word pools (60-100 words per category)',
+  '780+ total words to play with',
   'New categories & words added regularly',
   'Custom categories with AI generation',
   'Support indie development',
