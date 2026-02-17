@@ -7,8 +7,9 @@ import { Label } from '@/components/ui/label';
 import { supabase } from '@/integrations/supabase/client';
 import { getStoredDisplayName, clearStorage, setStoredDisplayName, setStoredAvatarId, isAuthenticated, getSessionMode, getStoredUserId, setStoredUserId, setStoredIsGuest } from '@/lib/gameUtils';
 import { toast } from 'sonner';
-import { ArrowLeft, Trophy, Target, Flame, MessageSquare, Vote, LogOut, TrendingUp, Mail, Lock, User, Loader2 } from 'lucide-react';
-import { motion } from 'framer-motion';
+import { ArrowLeft, Trophy, Target, MessageSquare, Vote, LogOut, TrendingUp, Mail, Lock, User, Loader2, HelpCircle, ChevronDown, Crosshair } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { AvatarPicker, getAvatarById } from '@/components/AvatarPicker';
 import { AccountSettings } from '@/components/AccountSettings';
 import { useTransition } from '@/contexts/TransitionContext';
@@ -29,6 +30,9 @@ interface UserStats {
   total_correct_votes: number;
   total_votes_cast: number;
   favorite_category: string | null;
+  correct_vote_streak: number;
+  best_correct_vote_streak: number;
+  in_person_games_played: number;
 }
 
 const Stats = () => {
@@ -42,6 +46,7 @@ const Stats = () => {
   const [profileId, setProfileId] = useState<string | null>(null);
   const [displayName, setDisplayName] = useState(getStoredDisplayName());
   const [userEmail, setUserEmail] = useState<string | null>(null);
+  const [totalGamesExpanded, setTotalGamesExpanded] = useState(false);
   const logoutButtonRef = useRef<HTMLButtonElement>(null);
   const backButtonRef = useRef<HTMLButtonElement>(null);
   
@@ -477,61 +482,111 @@ const Stats = () => {
           <p className="text-sm text-muted-foreground">Tap avatar to change</p>
         </motion.div>
 
-        {/* Overview */}
+        {/* Overview - Expandable Total Games */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
         >
-          <Card className="p-4 bg-gradient-primary text-white">
+          <Card 
+            className="p-4 bg-gradient-primary text-white cursor-pointer transition-all"
+            onClick={() => setTotalGamesExpanded(!totalGamesExpanded)}
+          >
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-white/80 text-sm">Total Games</p>
                 <p className="text-4xl font-bold">{stats?.games_played || 0}</p>
               </div>
-              <Trophy className="h-12 w-12 text-white/30" />
+              <div className="flex items-center gap-2">
+                <Trophy className="h-12 w-12 text-white/30" />
+                <ChevronDown className={`h-5 w-5 text-white/60 transition-transform duration-200 ${totalGamesExpanded ? 'rotate-180' : ''}`} />
+              </div>
             </div>
+            <AnimatePresence>
+              {totalGamesExpanded && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: 'auto' }}
+                  exit={{ opacity: 0, height: 0 }}
+                  transition={{ duration: 0.2 }}
+                  className="overflow-hidden"
+                >
+                  <div className="flex justify-between mt-4 pt-3 border-t border-white/20">
+                    <div>
+                      <p className="text-white/70 text-xs">Online</p>
+                      <p className="text-xl font-bold">{(stats?.games_played || 0) - (stats?.in_person_games_played || 0)}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-white/70 text-xs">In-Person</p>
+                      <p className="text-xl font-bold">{stats?.in_person_games_played || 0}</p>
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </Card>
         </motion.div>
 
         {/* Win Rates */}
-        <div className="grid grid-cols-2 gap-4">
-          <motion.div
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: 0.2 }}
-          >
-            <Card className="p-4">
-              <div className="flex items-center gap-2 mb-2">
-                <Target className="h-4 w-4 text-accent" />
-                <span className="text-sm text-muted-foreground">Outsider Wins</span>
-              </div>
-              <p className="text-3xl font-bold">{outsiderWinRate}%</p>
-              <p className="text-xs text-muted-foreground">
-                {stats?.games_won_as_outsider || 0}/{stats?.games_played_as_outsider || 0} games
-              </p>
-            </Card>
-          </motion.div>
+        <TooltipProvider>
+          <div className="grid grid-cols-2 gap-4">
+            <motion.div
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: 0.2 }}
+            >
+              <Card className="p-4">
+                <div className="flex items-center gap-1.5 mb-2">
+                  <Target className="h-4 w-4 text-accent" />
+                  <span className="text-sm text-muted-foreground">Outsider Wins</span>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button className="ml-auto" type="button">
+                        <HelpCircle className="h-3.5 w-3.5 text-muted-foreground/60" />
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent side="top" className="max-w-[200px] text-xs">
+                      You win as outsider when less than 50% of the lobby votes for you.
+                    </TooltipContent>
+                  </Tooltip>
+                </div>
+                <p className="text-3xl font-bold">{outsiderWinRate}%</p>
+                <p className="text-xs text-muted-foreground">
+                  {stats?.games_won_as_outsider || 0}/{stats?.games_played_as_outsider || 0} games
+                </p>
+              </Card>
+            </motion.div>
 
-          <motion.div
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: 0.2 }}
-          >
-            <Card className="p-4">
-              <div className="flex items-center gap-2 mb-2">
-                <TrendingUp className="h-4 w-4 text-primary" />
-                <span className="text-sm text-muted-foreground">Safe Player Wins</span>
-              </div>
-              <p className="text-3xl font-bold">{safeWinRate}%</p>
-              <p className="text-xs text-muted-foreground">
-                {stats?.games_won_as_safe || 0}/{stats?.games_played_as_safe || 0} games
-              </p>
-            </Card>
-          </motion.div>
-        </div>
+            <motion.div
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: 0.2 }}
+            >
+              <Card className="p-4">
+                <div className="flex items-center gap-1.5 mb-2">
+                  <TrendingUp className="h-4 w-4 text-primary" />
+                  <span className="text-sm text-muted-foreground">Safe Player Wins</span>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button className="ml-auto" type="button">
+                        <HelpCircle className="h-3.5 w-3.5 text-muted-foreground/60" />
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent side="top" className="max-w-[200px] text-xs">
+                      You win as a safe player when 50% or more of the lobby votes for the outsider.
+                    </TooltipContent>
+                  </Tooltip>
+                </div>
+                <p className="text-3xl font-bold">{safeWinRate}%</p>
+                <p className="text-xs text-muted-foreground">
+                  {stats?.games_won_as_safe || 0}/{stats?.games_played_as_safe || 0} games
+                </p>
+              </Card>
+            </motion.div>
+          </div>
+        </TooltipProvider>
 
-        {/* Streaks */}
+        {/* Correct Vote Streak */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -539,16 +594,16 @@ const Stats = () => {
         >
           <Card className="p-4">
             <div className="flex items-center gap-2 mb-3">
-              <Flame className="h-5 w-5 text-orange-500" />
-              <span className="font-medium">Win Streaks</span>
+              <Crosshair className="h-5 w-5 text-primary" />
+              <span className="font-medium">Correct Vote Streak</span>
             </div>
             <div className="flex justify-between">
               <div>
-                <p className="text-2xl font-bold">{stats?.current_win_streak || 0}</p>
+                <p className="text-2xl font-bold">{stats?.correct_vote_streak || 0}</p>
                 <p className="text-xs text-muted-foreground">Current</p>
               </div>
               <div className="text-right">
-                <p className="text-2xl font-bold">{stats?.best_win_streak || 0}</p>
+                <p className="text-2xl font-bold">{stats?.best_correct_vote_streak || 0}</p>
                 <p className="text-xs text-muted-foreground">Best</p>
               </div>
             </div>
