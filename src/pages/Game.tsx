@@ -531,8 +531,8 @@ const Game = () => {
         head: true
       }).eq('round_id', currentRound.id);
 
-      // Get shuffled order for this game (same for all rounds)
-      const gameShuffledPlayers = getShuffledPlayersForGame(players, game.id);
+      // Get shuffled order for this game (same for all rounds) - use active players only (exclude spectators)
+      const gameShuffledPlayers = getShuffledPlayersForGame(players.filter(p => !p.is_spectator), game.id);
       const currentTurn = count || 0;
       const expectedPlayer = gameShuffledPlayers[currentTurn];
       if (expectedPlayer?.id !== currentPlayer.id) {

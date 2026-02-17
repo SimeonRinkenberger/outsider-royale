@@ -267,8 +267,9 @@ const Results = () => {
       const playerWon = wasOutsider ? outsiderWins : groupWins;
       
       // Calculate if this player voted correctly (for safe players)
-      const playerVote = votes.find(v => v.voter_player_id === currentPlayer.id);
-      const votedCorrectly = playerVote && outsiders.some(o => o.player_id === playerVote.suspected_outsider_player_id);
+      const playerVotes = votes.filter(v => v.voter_player_id === currentPlayer.id);
+      const playerVote = playerVotes[0]; // For total_votes_cast tracking
+      const votedCorrectly = playerVotes.some(v => outsiders.some(o => o.player_id === v.suspected_outsider_player_id));
       
       // Get clues submitted by this player in this game
       const { data: playerClues } = await supabase
@@ -308,8 +309,8 @@ const Results = () => {
           correct_vote_streak: newCorrectVoteStreak,
           best_correct_vote_streak: newBestCorrectVoteStreak,
           total_clues_submitted: (currentStats?.total_clues_submitted || 0) + cluesCount,
-          total_votes_cast: (currentStats?.total_votes_cast || 0) + (playerVote ? 1 : 0),
-          total_correct_votes: (currentStats?.total_correct_votes || 0) + (votedCorrectly ? 1 : 0),
+          total_votes_cast: (currentStats?.total_votes_cast || 0) + playerVotes.length,
+          total_correct_votes: (currentStats?.total_correct_votes || 0) + playerVotes.filter(v => outsiders.some(o => o.player_id === v.suspected_outsider_player_id)).length,
         })
         .eq('user_id', session.user.id);
       

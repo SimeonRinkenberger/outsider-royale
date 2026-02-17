@@ -311,7 +311,7 @@ const Menu = () => {
                 <User className="h-5 w-5 text-muted-foreground" />
                 <div className="flex-1">
                   <p className="text-sm font-medium">Create an account</p>
-                  <p className="text-xs text-muted-foreground">Track your stats and win streaks</p>
+                  <p className="text-xs text-muted-foreground">Track your stats and voting streaks</p>
                 </div>
                 <Button size="sm" variant="outline" onClick={handleAuth}>
                   Sign Up
