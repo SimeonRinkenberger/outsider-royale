@@ -1,8 +1,10 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { useState } from 'react';
-import { Check, User } from 'lucide-react';
+import { useState, useRef } from 'react';
+import { Check, User, Upload, Loader2 } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 
 // Generic character avatars - using emoji-based avatars
 const AVATAR_OPTIONS = [
@@ -30,11 +32,18 @@ interface AvatarPickerProps {
   onSelect: (avatarId: string) => void;
 }
 
+const isCustomUrl = (avatar: string | null | undefined): boolean => {
+  return !!avatar && (avatar.startsWith('http://') || avatar.startsWith('https://'));
+};
+
 export const AvatarPicker = ({ currentAvatar, displayName, onSelect }: AvatarPickerProps) => {
   const [open, setOpen] = useState(false);
   const [selected, setSelected] = useState(currentAvatar);
+  const [isUploading, setIsUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const currentAvatarData = AVATAR_OPTIONS.find(a => a.id === currentAvatar);
+  const isCustomAvatar = isCustomUrl(currentAvatar);
 
   const handleSelect = (avatarId: string) => {
     setSelected(avatarId);
@@ -47,12 +56,67 @@ export const AvatarPicker = ({ currentAvatar, displayName, onSelect }: AvatarPic
     setOpen(false);
   };
 
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      toast.error('Please select an image file');
+      return;
+    }
+
+    // Validate file size (2MB max)
+    if (file.size > 2 * 1024 * 1024) {
+      toast.error('Image must be smaller than 2MB');
+      return;
+    }
+
+    setIsUploading(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('Not authenticated');
+
+      const fileExt = file.name.split('.').pop();
+      const filePath = `${user.id}/avatar.${fileExt}`;
+
+      // Upload to storage (upsert to overwrite previous)
+      const { error: uploadError } = await supabase.storage
+        .from('avatars')
+        .upload(filePath, file, { upsert: true });
+
+      if (uploadError) throw uploadError;
+
+      // Get public URL
+      const { data: { publicUrl } } = supabase.storage
+        .from('avatars')
+        .getPublicUrl(filePath);
+
+      // Add cache-busting param
+      const urlWithCacheBust = `${publicUrl}?t=${Date.now()}`;
+      
+      setSelected(urlWithCacheBust);
+      onSelect(urlWithCacheBust);
+      setOpen(false);
+      toast.success('Avatar uploaded!');
+    } catch (error: any) {
+      console.error('Upload error:', error);
+      toast.error(error.message || 'Failed to upload avatar');
+    } finally {
+      setIsUploading(false);
+      // Reset file input
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
+
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <button className="relative group">
           <Avatar className="h-16 w-16 border-2 border-primary/50 group-hover:border-primary transition-colors">
-            {currentAvatarData ? (
+            {isCustomAvatar ? (
+              <AvatarImage src={currentAvatar!} alt="User avatar" className="object-cover" />
+            ) : currentAvatarData ? (
               <div className={`w-full h-full flex items-center justify-center text-3xl ${currentAvatarData.color}`}>
                 {currentAvatarData.emoji}
               </div>
@@ -71,7 +135,37 @@ export const AvatarPicker = ({ currentAvatar, displayName, onSelect }: AvatarPic
         <DialogHeader>
           <DialogTitle>Choose Your Avatar</DialogTitle>
         </DialogHeader>
-        <div className="grid grid-cols-4 gap-3 py-4">
+
+        {/* Upload Button */}
+        <div className="flex justify-center">
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={handleFileUpload}
+          />
+          <Button
+            variant="outline"
+            className="gap-2 w-full"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={isUploading}
+          >
+            {isUploading ? (
+              <><Loader2 className="h-4 w-4 animate-spin" /> Uploading...</>
+            ) : (
+              <><Upload className="h-4 w-4" /> Upload Custom Photo</>
+            )}
+          </Button>
+        </div>
+
+        <div className="relative flex items-center py-1">
+          <div className="flex-1 border-t border-border" />
+          <span className="px-3 text-xs text-muted-foreground">or choose an emoji</span>
+          <div className="flex-1 border-t border-border" />
+        </div>
+
+        <div className="grid grid-cols-4 gap-3">
           {AVATAR_OPTIONS.map((avatar) => (
             <button
               key={avatar.id}
@@ -95,7 +189,7 @@ export const AvatarPicker = ({ currentAvatar, displayName, onSelect }: AvatarPic
         </div>
         <div className="flex justify-end gap-2">
           <Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
-          <Button onClick={handleSave} disabled={!selected}>Save</Button>
+          <Button onClick={handleSave} disabled={!selected || isCustomUrl(selected)}>Save</Button>
         </div>
       </DialogContent>
     </Dialog>
@@ -106,4 +200,4 @@ export const getAvatarById = (avatarId: string | null | undefined) => {
   return AVATAR_OPTIONS.find(a => a.id === avatarId);
 };
 
-export { AVATAR_OPTIONS };
+export { AVATAR_OPTIONS, isCustomUrl };
