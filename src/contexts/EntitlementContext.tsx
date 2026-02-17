@@ -2,7 +2,7 @@
  * EntitlementContext
  * 
  * Single source of truth for user entitlement (Pro) status.
- * Initializes on app start, listens for updates, and provides cached state.
+ * Fail-closed: defaults to free on any error or stale cache.
  */
 
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
@@ -27,29 +27,20 @@ import {
 } from '@/services/purchases/applePurchases';
 
 interface EntitlementContextValue {
-  // State
   isPro: boolean;
   entitlement: Entitlement;
   isLoading: boolean;
-  
-  // Products
   products: {
     monthly: ProductInfo | null;
     yearly: ProductInfo | null;
   };
   isLoadingProducts: boolean;
-  
-  // Actions
   purchase: (productId: ProductId) => Promise<PurchaseResult>;
   restorePurchases: () => Promise<RestoreResult>;
   refreshEntitlement: () => Promise<void>;
   openManageSubscription: () => Promise<void>;
-  
-  // Platform info
   canPurchase: boolean;
   isIOSNative: boolean;
-  
-  // Debug (dev only)
   debug?: typeof debugPurchases;
 }
 
@@ -64,7 +55,6 @@ export function EntitlementProvider({ children }: { children: React.ReactNode })
   });
   const [isLoadingProducts, setIsLoadingProducts] = useState(true);
 
-  // Initialize on mount
   useEffect(() => {
     let mounted = true;
 
@@ -76,26 +66,16 @@ export function EntitlementProvider({ children }: { children: React.ReactNode })
           const currentEntitlement = getEntitlement();
           setEntitlement(currentEntitlement);
           setIsLoading(false);
-          
-          // Re-sync categories with correct entitlement level
           syncCategories(currentEntitlement.isPro);
         }
 
-        // Load products in background
         try {
           const loadedProducts = await getProducts();
-          if (mounted) {
-            setProducts(loadedProducts);
-          }
-        } catch (error) {
-          console.error('[EntitlementProvider] Failed to load products:', error);
-        }
+          if (mounted) setProducts(loadedProducts);
+        } catch { /* non-fatal */ }
         
-        if (mounted) {
-          setIsLoadingProducts(false);
-        }
-      } catch (error) {
-        console.error('[EntitlementProvider] Init failed:', error);
+        if (mounted) setIsLoadingProducts(false);
+      } catch {
         if (mounted) {
           setIsLoading(false);
           setIsLoadingProducts(false);
@@ -105,11 +85,10 @@ export function EntitlementProvider({ children }: { children: React.ReactNode })
 
     init();
 
-    // Subscribe to updates
+    // Subscribe to updates from the purchase service
     const unsubscribe = onEntitlementUpdate((newEntitlement) => {
       if (mounted) {
         setEntitlement(newEntitlement);
-        // Re-sync categories when entitlement changes (e.g., upgrade to Pro)
         syncCategories(newEntitlement.isPro);
       }
     });
@@ -177,5 +156,4 @@ export function useEntitlement(): EntitlementContextValue {
   return context;
 }
 
-// Re-export types and constants
 export { PRODUCT_IDS, type ProductId, type Entitlement, type ProductInfo };

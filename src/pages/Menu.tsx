@@ -14,6 +14,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { SettingsDropdown } from '@/components/SettingsDropdown';
 import { Paywall } from '@/components/Paywall';
 import titleFox from '@/assets/title_fox.png';
+import { EntitlementDebugPanel } from '@/components/EntitlementDebugPanel';
 
 const Menu = () => {
   const navigate = useNavigate();
@@ -336,7 +337,7 @@ const Menu = () => {
             Privacy Policy
             <ExternalLink className="h-3 w-3" />
           </a>
-          <span className="text-xs text-muted-foreground">v1.0.0</span>
+          <EntitlementDebugPanel />
         </motion.div>
       </main>
     </div>

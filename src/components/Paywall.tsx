@@ -35,9 +35,17 @@ export function Paywall({ isOpen, onClose, trigger = 'menu' }: PaywallProps) {
     isLoadingProducts,
     purchase,
     restorePurchases,
+    refreshEntitlement,
     canPurchase,
     isLoading,
   } = useEntitlement();
+
+  // Revalidate entitlement every time the paywall opens
+  React.useEffect(() => {
+    if (isOpen) {
+      refreshEntitlement();
+    }
+  }, [isOpen, refreshEntitlement]);
 
   const [selectedPlan, setSelectedPlan] = useState<'monthly' | 'yearly'>('yearly');
   const [isPurchasing, setIsPurchasing] = useState(false);
