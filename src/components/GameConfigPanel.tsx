@@ -5,7 +5,7 @@ import { FluidSlider } from '@/components/ui/fluid-slider';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Button } from '@/components/ui/button';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { Settings, Gamepad2, Palette, Sparkles, ChevronDown, Lock, Crown } from 'lucide-react';
+import { Settings, Gamepad2, Palette, Sparkles, ChevronDown, Lock, Crown, LayoutGrid } from 'lucide-react';
 import { GameMode } from '@/types/game';
 import { CustomCategoryManager } from '@/components/CustomCategoryManager';
 import { GameModifiers } from '@/components/GameModifiers';
@@ -13,6 +13,8 @@ import { CustomCategory, CustomModifier, AVAILABLE_MODIFIERS } from '@/hooks/use
 import { useEntitlement } from '@/contexts/EntitlementContext';
 import { canAccessCategory, getSortedCategories } from '@/lib/entitlements';
 import { Paywall } from '@/components/Paywall';
+import { getCachedWords } from '@/lib/categoryCache';
+import { Badge } from '@/components/ui/badge';
 
 // Categories are now loaded dynamically from the synced cache (DB-driven)
 
@@ -66,11 +68,13 @@ export const GameConfigPanel = ({
 }: GameConfigPanelProps) => {
   const [gameModeOpen, setGameModeOpen] = useState(false);
   const [gameSettingsOpen, setGameSettingsOpen] = useState(false);
+  const [categoriesOpen, setCategoriesOpen] = useState(false);
   const [customizeOpen, setCustomizeOpen] = useState(false);
   const [showPaywall, setShowPaywall] = useState(false);
   
   const { entitlement, isPro } = useEntitlement();
   const dynamicCategories = getSortedCategories();
+  const cache = getCachedWords();
 
   const maxImposters = Math.max(1, playerCount - 1);
   const recommendedImposters = playerCount <= 4 ? 1 
@@ -83,7 +87,6 @@ export const GameConfigPanel = ({
   };
 
   const toggleCategory = (category: string) => {
-    // Check if user can access this category
     if (!canAccessCategory(category, entitlement)) {
       setShowPaywall(true);
       return;
@@ -96,7 +99,6 @@ export const GameConfigPanel = ({
   };
 
   const selectAllCategories = () => {
-    // Only select categories user has access to
     const accessibleCategories = dynamicCategories
       .filter(c => canAccessCategory(c.id, entitlement))
       .map(c => c.id);
@@ -104,6 +106,13 @@ export const GameConfigPanel = ({
     updateConfig({
       selectedCategories: accessibleCategories,
       selectedCustomCategories: customCategories.map(c => c.id),
+    });
+  };
+
+  const deselectAllCategories = () => {
+    updateConfig({
+      selectedCategories: [],
+      selectedCustomCategories: [],
     });
   };
 
@@ -121,6 +130,13 @@ export const GameConfigPanel = ({
     updateConfig({ selectedModifiers: newModifiers });
   };
 
+  const totalSelectedCategories = config.selectedCategories.length + config.selectedCustomCategories.length;
+  const totalWordCount = config.selectedCategories.reduce((sum, catId) => {
+    return sum + (cache.categories[catId]?.length ?? 0);
+  }, 0) + config.selectedCustomCategories.reduce((sum, catId) => {
+    const custom = customCategories.find(c => c.id === catId);
+    return sum + (custom?.words.length ?? 0);
+  }, 0);
 
   return (
     <div className="space-y-4">
@@ -157,6 +173,151 @@ export const GameConfigPanel = ({
                   <p className="text-xs text-muted-foreground mt-1 ml-6">{mode.description}</p>
                 </div>
               ))}
+            </div>
+          </CollapsibleContent>
+        </Card>
+      </Collapsible>
+
+      {/* Categories - Own dedicated section */}
+      <Collapsible open={categoriesOpen} onOpenChange={setCategoriesOpen}>
+        <Card className="p-4 bg-gradient-card border-border">
+          <CollapsibleTrigger className="flex items-center justify-between w-full">
+            <div className="flex items-center gap-2 text-sm font-semibold text-muted-foreground">
+              <LayoutGrid className={`h-4 w-4 ${categoriesOpen ? 'animate-spin-cw' : 'animate-spin-ccw'}`} />
+              Categories
+              <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4 font-normal">
+                {totalSelectedCategories} selected
+              </Badge>
+            </div>
+            <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform duration-200 ${categoriesOpen ? 'rotate-180' : ''}`} />
+          </CollapsibleTrigger>
+          <CollapsibleContent>
+            <div className="space-y-3 pt-4">
+              {/* Header with select all/none and total words */}
+              <div className="flex items-center justify-between">
+                <p className="text-xs text-muted-foreground">
+                  {totalWordCount} words in pool
+                </p>
+                <div className="flex gap-1">
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    onClick={selectAllCategories}
+                    className="text-xs h-7 px-2"
+                  >
+                    All
+                  </Button>
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    onClick={deselectAllCategories}
+                    className="text-xs h-7 px-2"
+                  >
+                    None
+                  </Button>
+                </div>
+              </div>
+              
+              {/* Category grid */}
+              <div className="grid grid-cols-1 gap-1.5">
+                {dynamicCategories.map((cat) => {
+                  const isLocked = cat.isPaid && !isPro;
+                  const isSelected = config.selectedCategories.includes(cat.id);
+                  const wordCount = cache.categories[cat.id]?.length ?? 0;
+                  
+                  return (
+                    <div 
+                      key={cat.id} 
+                      className={`flex items-center justify-between p-2.5 rounded-lg cursor-pointer transition-all ${
+                        isSelected
+                          ? 'bg-primary/10 border border-primary/30'
+                          : isLocked 
+                            ? 'hover:bg-muted/30 opacity-60 border border-transparent' 
+                            : 'hover:bg-muted/50 border border-transparent'
+                      }`}
+                      onClick={() => toggleCategory(cat.id)}
+                    >
+                      <div className="flex items-center gap-2.5">
+                        <Checkbox
+                          id={cat.id}
+                          checked={isSelected}
+                          disabled={isLocked}
+                          onCheckedChange={() => toggleCategory(cat.id)}
+                        />
+                        <span className="text-lg leading-none">{cat.emoji}</span>
+                        <div className="flex flex-col">
+                          <label
+                            htmlFor={cat.id}
+                            className={`text-sm font-medium cursor-pointer select-none ${
+                              isLocked ? 'text-muted-foreground' : ''
+                            }`}
+                          >
+                            {cat.name}
+                          </label>
+                          <span className="text-[11px] text-muted-foreground">
+                            {wordCount} words
+                          </span>
+                        </div>
+                      </div>
+                      {isLocked && (
+                        <div className="flex items-center gap-1 text-xs text-primary">
+                          <Lock className="h-3 w-3" />
+                          <span className="hidden sm:inline">PRO</span>
+                        </div>
+                      )}
+                      {cat.isPaid && isPro && (
+                        <Crown className="h-3 w-3 text-primary" />
+                      )}
+                    </div>
+                  );
+                })}
+              
+                {/* Custom Categories */}
+                {customCategories.length > 0 && (
+                  <>
+                    <div className="border-t border-border my-1 pt-2">
+                      <p className="text-xs text-muted-foreground mb-1">Custom Categories</p>
+                    </div>
+                    {customCategories.map((cat) => {
+                      const isSelected = config.selectedCustomCategories.includes(cat.id);
+                      return (
+                        <div 
+                          key={cat.id} 
+                          className={`flex items-center justify-between p-2.5 rounded-lg cursor-pointer transition-all ${
+                            isSelected
+                              ? 'bg-primary/10 border border-primary/30'
+                              : 'hover:bg-muted/50 border border-transparent'
+                          }`}
+                          onClick={() => toggleCustomCategory(cat.id)}
+                        >
+                          <div className="flex items-center gap-2.5">
+                            <Checkbox
+                              id={cat.id}
+                              checked={isSelected}
+                              onCheckedChange={() => toggleCustomCategory(cat.id)}
+                            />
+                            <Sparkles className="h-4 w-4 text-primary" />
+                            <div className="flex flex-col">
+                              <label
+                                htmlFor={cat.id}
+                                className="text-sm font-medium cursor-pointer select-none"
+                              >
+                                {cat.name}
+                              </label>
+                              <span className="text-[11px] text-muted-foreground">
+                                {cat.words.length} words
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </>
+                )}
+              </div>
+              {config.selectedCategories.length === 0 && config.selectedCustomCategories.length === 0 && (
+                <p className="text-xs text-destructive">Select at least one category</p>
+              )}
             </div>
           </CollapsibleContent>
         </Card>
@@ -282,103 +443,6 @@ export const GameConfigPanel = ({
           </div>
         )}
 
-        {/* Category Selection */}
-        <div className="space-y-3">
-          <div className="flex items-center justify-between">
-            <div>
-              <Label className="text-sm">Categories</Label>
-              {!isPro && (
-                <p className="text-xs text-muted-foreground">
-                  5 free categories · 15 words each (75 total)
-                </p>
-              )}
-            </div>
-            <Button 
-              variant="ghost" 
-              size="sm" 
-              onClick={selectAllCategories}
-              className="text-xs h-7"
-            >
-              Select All
-            </Button>
-          </div>
-          <div className="grid grid-cols-2 gap-2">
-            {dynamicCategories.map((cat) => {
-              const isLocked = cat.isPaid && !isPro;
-              const isSelected = config.selectedCategories.includes(cat.id);
-              
-              return (
-                <div 
-                  key={cat.id} 
-                  className={`flex items-center justify-between p-2 rounded-md cursor-pointer transition-colors ${
-                    isLocked 
-                      ? 'hover:bg-primary/5 opacity-75' 
-                      : 'hover:bg-muted/50'
-                  }`}
-                  onClick={() => toggleCategory(cat.id)}
-                >
-                  <div className="flex items-center space-x-2">
-                    <Checkbox
-                      id={cat.id}
-                      checked={isSelected}
-                      disabled={isLocked}
-                      onCheckedChange={() => toggleCategory(cat.id)}
-                    />
-                    <label
-                      htmlFor={cat.id}
-                      className={`text-sm font-medium cursor-pointer select-none ${
-                        isLocked ? 'text-muted-foreground' : ''
-                      }`}
-                    >
-                      {cat.emoji} {cat.name}
-                    </label>
-                  </div>
-                  {isLocked && (
-                    <div className="flex items-center gap-1 text-xs text-primary">
-                      <Lock className="h-3 w-3" />
-                      <span className="hidden sm:inline">PRO</span>
-                    </div>
-                  )}
-                  {cat.isPaid && isPro && (
-                    <Crown className="h-3 w-3 text-primary" />
-                  )}
-                </div>
-              );
-            })}
-          
-            {/* Custom Categories in same grid */}
-            {customCategories.length > 0 && (
-              <>
-                <div className="col-span-2 border-t border-border my-2 pt-2">
-                  <p className="text-xs text-muted-foreground mb-2">Custom Categories</p>
-                </div>
-                {customCategories.map((cat) => (
-                  <div 
-                    key={cat.id} 
-                    className="flex items-center space-x-2 p-2 rounded-md hover:bg-muted/50 cursor-pointer"
-                    onClick={() => toggleCustomCategory(cat.id)}
-                  >
-                    <Checkbox
-                      id={cat.id}
-                      checked={config.selectedCustomCategories.includes(cat.id)}
-                      onCheckedChange={() => toggleCustomCategory(cat.id)}
-                    />
-                    <label
-                      htmlFor={cat.id}
-                      className="text-sm font-medium cursor-pointer select-none flex items-center gap-1"
-                    >
-                      <Sparkles className="h-3 w-3 text-primary" />
-                      {cat.name}
-                    </label>
-                  </div>
-                ))}
-              </>
-            )}
-          </div>
-          {config.selectedCategories.length === 0 && config.selectedCustomCategories.length === 0 && (
-            <p className="text-xs text-destructive">Select at least one category</p>
-          )}
-        </div>
             </div>
           </CollapsibleContent>
         </Card>
