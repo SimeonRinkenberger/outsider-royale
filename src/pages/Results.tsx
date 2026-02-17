@@ -290,11 +290,11 @@ const Results = () => {
         await supabase.from('user_stats').insert({ user_id: session.user.id });
       }
       
-      // Calculate new streak
-      const newCurrentStreak = playerWon 
-        ? (currentStats?.current_win_streak || 0) + 1 
+      // Calculate correct vote streak (replaces win streak)
+      const newCorrectVoteStreak = votedCorrectly
+        ? (currentStats?.correct_vote_streak || 0) + 1
         : 0;
-      const newBestStreak = Math.max(newCurrentStreak, currentStats?.best_win_streak || 0);
+      const newBestCorrectVoteStreak = Math.max(newCorrectVoteStreak, currentStats?.best_correct_vote_streak || 0);
       
       // Update stats
       const { error } = await supabase
@@ -305,8 +305,8 @@ const Results = () => {
           games_played_as_safe: (currentStats?.games_played_as_safe || 0) + (wasOutsider ? 0 : 1),
           games_won_as_outsider: (currentStats?.games_won_as_outsider || 0) + (wasOutsider && playerWon ? 1 : 0),
           games_won_as_safe: (currentStats?.games_won_as_safe || 0) + (!wasOutsider && playerWon ? 1 : 0),
-          current_win_streak: newCurrentStreak,
-          best_win_streak: newBestStreak,
+          correct_vote_streak: newCorrectVoteStreak,
+          best_correct_vote_streak: newBestCorrectVoteStreak,
           total_clues_submitted: (currentStats?.total_clues_submitted || 0) + cluesCount,
           total_votes_cast: (currentStats?.total_votes_cast || 0) + (playerVote ? 1 : 0),
           total_correct_votes: (currentStats?.total_correct_votes || 0) + (votedCorrectly ? 1 : 0),
