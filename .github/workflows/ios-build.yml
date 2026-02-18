@@ -29,12 +29,18 @@ jobs:
       - name: Build web assets
         run: npm run build
 
+      - name: Resolve Swift Package dependencies
+        run: |
+          xcodebuild -resolvePackageDependencies \
+            -project ios/App/App.xcodeproj \
+            -scheme App
+
       - name: Archive iOS App
         run: |
           mkdir -p build
           set -o pipefail
           xcodebuild archive \
-            -workspace ios/App/App.xcworkspace \
+            -project ios/App/App.xcodeproj \
             -scheme App \
             -configuration Release \
             -destination "generic/platform=iOS" \
