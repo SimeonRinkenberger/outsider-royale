@@ -1,0 +1,10 @@
+{
+	"appId": "com.simeonpaul.outsiderroyale",
+	"appName": "Outsider Royale",
+	"webDir": "dist",
+	"packageClassList": [
+		"ClipboardPlugin",
+		"PreferencesPlugin",
+		"NativePurchasesPlugin"
+	]
+}
