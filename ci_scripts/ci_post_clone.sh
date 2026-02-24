@@ -10,7 +10,7 @@ cd "$WORKSPACE"
 
 echo "Using workspace: $WORKSPACE"
 echo "Installing npm dependencies for Capacitor Swift package paths..."
-npm ci --include=dev
+npm install
 
 echo "Building web assets..."
 npm run build
