@@ -17,7 +17,6 @@ import {
   getProducts,
   openSubscriptionManagement,
   isIOSNative,
-  debugPurchases,
   type Entitlement,
   type ProductInfo,
   type PurchaseResult,
@@ -41,7 +40,6 @@ interface EntitlementContextValue {
   openManageSubscription: () => Promise<void>;
   canPurchase: boolean;
   isIOSNative: boolean;
-  debug?: typeof debugPurchases;
 }
 
 const EntitlementContext = createContext<EntitlementContextValue | null>(null);
@@ -138,7 +136,6 @@ export function EntitlementProvider({ children }: { children: React.ReactNode })
     openManageSubscription: openSubscriptionManagement,
     canPurchase: isIOSNative(),
     isIOSNative: isIOSNative(),
-    debug: process.env.NODE_ENV !== 'production' ? debugPurchases : undefined,
   };
 
   return (

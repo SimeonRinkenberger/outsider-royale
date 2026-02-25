@@ -1,9 +1,11 @@
 /**
  * Apple In-App Purchases Service
  * 
- * Uses @capgo/native-purchases with StoreKit 2 for iOS.
- * FAIL-CLOSED: Pro is only granted with active StoreKit entitlement.
- * Cache has a strict TTL; expired/invalid cache defaults to FREE.
+ * Uses @capgo/native-purchases with StoreKit 2 for iOS subscriptions.
+ * Fail-closed entitlement model:
+ * - Pro is granted only for active, non-expired, non-cancelled subscription
+ * - Any validation failure revokes Pro immediately
+ * - Web never grants Pro
  */
 
 import { Capacitor } from '@capacitor/core';
@@ -51,10 +53,11 @@ export interface RestoreResult {
 // Storage keys
 const ENTITLEMENT_STORAGE_KEY = 'outsider_entitlement';
 
-// Cache TTL: cached Pro is trusted for at most 30 minutes
-const CACHE_TTL_MS = 30 * 60 * 1000;
+// Cache TTL: cached Pro is trusted for at most 15 minutes
+const CACHE_TTL_MS = 15 * 60 * 1000;
 // Resume revalidation cooldown: don't hammer StoreKit on rapid resume
 const RESUME_COOLDOWN_MS = 10 * 1000;
+const PRO_PRODUCT_IDS = new Set<ProductId>([PRODUCT_IDS.MONTHLY, PRODUCT_IDS.YEARLY]);
 
 // Check if we're on iOS native
 export const isIOSNative = (): boolean => {
@@ -78,24 +81,116 @@ let isInitialized = false;
 let updateListeners: ((entitlement: Entitlement) => void)[] = [];
 let lastResumeCheck = 0;
 
+interface StorePurchase {
+  productIdentifier?: string;
+  identifier?: string;
+  expirationDate?: string;
+  isActive?: boolean;
+  willCancel?: boolean | null;
+}
+
+function nowIso(): string {
+  return new Date().toISOString();
+}
+
+function freeEntitlement(lastValidatedAt: string = nowIso()): Entitlement {
+  return {
+    ...DEFAULT_ENTITLEMENT,
+    lastValidatedAt,
+  };
+}
+
+function normalizeProductId(value: unknown): ProductId | null {
+  return PRO_PRODUCT_IDS.has(value as ProductId) ? (value as ProductId) : null;
+}
+
+function parseExpirationMs(expiresAt: unknown): number | null {
+  if (typeof expiresAt !== 'string') return null;
+  const ms = Date.parse(expiresAt);
+  return Number.isFinite(ms) ? ms : null;
+}
+
+function isStrictProEntitlement(entitlement: Entitlement): boolean {
+  if (!entitlement.isPro) return false;
+  if (!normalizeProductId(entitlement.productId)) return false;
+
+  const expirationMs = parseExpirationMs(entitlement.expiresAt);
+  if (expirationMs === null) return false;
+
+  return expirationMs > Date.now();
+}
+
+function sanitizeEntitlement(entitlement: Entitlement): Entitlement {
+  const lastValidatedAt =
+    typeof entitlement.lastValidatedAt === 'string' && Number.isFinite(Date.parse(entitlement.lastValidatedAt))
+      ? entitlement.lastValidatedAt
+      : nowIso();
+
+  if (!isIOSNative()) {
+    return freeEntitlement(lastValidatedAt);
+  }
+
+  if (!isStrictProEntitlement(entitlement)) {
+    return freeEntitlement(lastValidatedAt);
+  }
+
+  return {
+    isPro: true,
+    source: 'apple',
+    expiresAt: entitlement.expiresAt!,
+    productId: normalizeProductId(entitlement.productId)!,
+    lastValidatedAt,
+  };
+}
+
+function getActiveProPurchase(purchases: unknown): StorePurchase | null {
+  if (!Array.isArray(purchases)) return null;
+
+  const now = Date.now();
+  for (const purchase of purchases as StorePurchase[]) {
+    const productId = normalizeProductId(purchase.productIdentifier || purchase.identifier);
+    if (!productId) continue;
+
+    // Fail closed: entitlement must explicitly be active
+    if (purchase.isActive !== true) continue;
+
+    // Business rule: cancelled subscriptions are treated as non-Pro immediately
+    if (purchase.willCancel === true) continue;
+
+    const expirationMs = parseExpirationMs(purchase.expirationDate);
+    if (expirationMs === null || expirationMs <= now) continue;
+
+    return purchase;
+  }
+
+  return null;
+}
+
 // ─── Storage helpers ───────────────────────────────────────
 
 async function loadCachedEntitlement(): Promise<Entitlement> {
+  if (!isIOSNative()) {
+    return { ...DEFAULT_ENTITLEMENT };
+  }
+
   try {
-    let raw: string | null = null;
-    if (isIOSNative()) {
-      const result = await Preferences.get({ key: ENTITLEMENT_STORAGE_KEY });
-      raw = result.value;
-    } else {
-      raw = localStorage.getItem(ENTITLEMENT_STORAGE_KEY);
-    }
+    const result = await Preferences.get({ key: ENTITLEMENT_STORAGE_KEY });
+    const raw = result.value;
     if (raw) {
-      const parsed = JSON.parse(raw) as Entitlement;
-      // Migrate old format: lastCheckedAt → lastValidatedAt
-      if ((parsed as any).lastCheckedAt && !parsed.lastValidatedAt) {
-        parsed.lastValidatedAt = (parsed as any).lastCheckedAt;
-      }
-      return parsed;
+      const parsed = JSON.parse(raw) as Partial<Entitlement> & { lastCheckedAt?: string };
+      const migrated: Entitlement = sanitizeEntitlement({
+        isPro: parsed.isPro === true,
+        source: parsed.source === 'apple' ? 'apple' : 'none',
+        expiresAt: typeof parsed.expiresAt === 'string' ? parsed.expiresAt : null,
+        productId: normalizeProductId(parsed.productId),
+        lastValidatedAt:
+          typeof parsed.lastValidatedAt === 'string'
+            ? parsed.lastValidatedAt
+            : typeof parsed.lastCheckedAt === 'string'
+              ? parsed.lastCheckedAt
+              : new Date(0).toISOString(),
+      });
+      return migrated;
     }
   } catch {
     // Corrupt cache → default to free
@@ -104,13 +199,13 @@ async function loadCachedEntitlement(): Promise<Entitlement> {
 }
 
 async function saveEntitlement(entitlement: Entitlement): Promise<void> {
+  if (!isIOSNative()) {
+    return;
+  }
+
   try {
     const serialized = JSON.stringify(entitlement);
-    if (isIOSNative()) {
-      await Preferences.set({ key: ENTITLEMENT_STORAGE_KEY, value: serialized });
-    } else {
-      localStorage.setItem(ENTITLEMENT_STORAGE_KEY, serialized);
-    }
+    await Preferences.set({ key: ENTITLEMENT_STORAGE_KEY, value: serialized });
   } catch {
     // Non-fatal
   }
@@ -125,9 +220,10 @@ function notifyListeners(entitlement: Entitlement): void {
 }
 
 async function setEntitlement(newEntitlement: Entitlement): Promise<void> {
-  cachedEntitlement = newEntitlement;
-  await saveEntitlement(newEntitlement);
-  notifyListeners(newEntitlement);
+  const safeEntitlement = sanitizeEntitlement(newEntitlement);
+  cachedEntitlement = safeEntitlement;
+  await saveEntitlement(safeEntitlement);
+  notifyListeners(safeEntitlement);
 }
 
 // ─── Cache validation (fail-closed) ───────────────────────
@@ -138,16 +234,13 @@ async function setEntitlement(newEntitlement: Entitlement): Promise<void> {
  */
 function isCacheValid(ent: Entitlement): boolean {
   if (!ent.isPro) return true; // free users are always "valid"
+  if (!isStrictProEntitlement(ent)) return false;
 
   const now = Date.now();
-
-  // Check hard expiry from StoreKit
-  if (ent.expiresAt) {
-    if (now > new Date(ent.expiresAt).getTime()) return false;
-  }
+  const lastValidated = Date.parse(ent.lastValidatedAt);
+  if (!Number.isFinite(lastValidated)) return false;
 
   // Check cache TTL — Pro can't persist beyond TTL without revalidation
-  const lastValidated = new Date(ent.lastValidatedAt).getTime();
   if (now - lastValidated > CACHE_TTL_MS) return false;
 
   return true;
@@ -158,19 +251,19 @@ function isCacheValid(ent: Entitlement): boolean {
 export async function initPurchases(): Promise<void> {
   if (isInitialized) return;
 
+  // If not on iOS native, ALWAYS force free (no way to validate on web)
+  if (!isIOSNative()) {
+    await setEntitlement(freeEntitlement());
+    isInitialized = true;
+    return;
+  }
+
   // Load cached entitlement
   cachedEntitlement = await loadCachedEntitlement();
 
   // Immediately validate cache — revoke Pro if stale/expired
   if (cachedEntitlement.isPro && !isCacheValid(cachedEntitlement)) {
-    await setEntitlement({ ...DEFAULT_ENTITLEMENT });
-  }
-
-  // If not on iOS native, ALWAYS force free (no way to validate on web)
-  if (!isIOSNative()) {
-    await setEntitlement({ ...DEFAULT_ENTITLEMENT });
-    isInitialized = true;
-    return;
+    await setEntitlement(freeEntitlement());
   }
 
   try {
@@ -181,7 +274,7 @@ export async function initPurchases(): Promise<void> {
     const { isBillingSupported } = await purchasesPlugin.isBillingSupported();
     if (!isBillingSupported) {
       // Can't verify purchases → fail closed
-      await setEntitlement({ ...DEFAULT_ENTITLEMENT });
+      await setEntitlement(freeEntitlement());
       isInitialized = true;
       return;
     }
@@ -206,7 +299,7 @@ export async function initPurchases(): Promise<void> {
     isInitialized = true;
   } catch {
     // Plugin load failed → fail closed
-    await setEntitlement({ ...DEFAULT_ENTITLEMENT });
+    await setEntitlement(freeEntitlement());
     isInitialized = true;
   }
 }
@@ -224,7 +317,7 @@ async function revalidateOnResume() {
 
   // First: local expiry check (instant, no network)
   if (cachedEntitlement.isPro && !isCacheValid(cachedEntitlement)) {
-    await setEntitlement({ ...DEFAULT_ENTITLEMENT });
+    await setEntitlement(freeEntitlement());
   }
 
   // Then: full StoreKit revalidation
@@ -234,47 +327,33 @@ async function revalidateOnResume() {
 // ─── Core: Refresh from StoreKit ──────────────────────────
 
 async function refreshEntitlementFromStore(): Promise<void> {
-  if (!isIOSNative() || !purchasesPlugin || !PURCHASE_TYPE_ENUM) return;
+  const validatedAt = nowIso();
+  if (!isIOSNative() || !purchasesPlugin || !PURCHASE_TYPE_ENUM) {
+    await setEntitlement(freeEntitlement(validatedAt));
+    return;
+  }
 
   try {
     const { purchases } = await purchasesPlugin.getPurchases({
       productType: PURCHASE_TYPE_ENUM.SUBS,
     });
 
-    // Find our subscription among returned purchases
-    const ourSubs = (purchases || []).filter((p: any) => {
-      const id = p.productIdentifier || p.identifier;
-      return id === PRODUCT_IDS.MONTHLY || id === PRODUCT_IDS.YEARLY;
-    });
-
-    // Find an ACTIVE subscription (not expired)
-    const now = Date.now();
-    const activeSub = ourSubs.find((p: any) => {
-      // If there's an expiration date, it must be in the future
-      if (p.expirationDate) {
-        return new Date(p.expirationDate).getTime() > now;
-      }
-      // No expiration date on a subscription is suspicious — treat as inactive
-      return false;
-    });
-
-    const newEntitlement: Entitlement = {
-      isPro: !!activeSub,
-      source: activeSub ? 'apple' : 'none',
-      expiresAt: activeSub?.expirationDate || null,
-      productId: (activeSub?.productIdentifier || activeSub?.identifier) as ProductId || null,
-      lastValidatedAt: new Date().toISOString(),
-    };
-
-    await setEntitlement(newEntitlement);
-  } catch {
-    // StoreKit call failed → FAIL CLOSED: revoke Pro
-    // Only keep Pro if cache is still valid (within TTL and not expired)
-    if (cachedEntitlement.isPro && !isCacheValid(cachedEntitlement)) {
-      await setEntitlement({ ...DEFAULT_ENTITLEMENT });
+    const activeSub = getActiveProPurchase(purchases);
+    if (!activeSub) {
+      await setEntitlement(freeEntitlement(validatedAt));
+      return;
     }
-    // If cache is still valid, keep current state but DON'T extend lastValidatedAt
-    // This means the next check will eventually expire it
+
+    await setEntitlement({
+      isPro: true,
+      source: 'apple',
+      expiresAt: activeSub.expirationDate!,
+      productId: normalizeProductId(activeSub.productIdentifier || activeSub.identifier)!,
+      lastValidatedAt: validatedAt,
+    });
+  } catch {
+    // Validation failed: fail closed immediately
+    await setEntitlement(freeEntitlement(validatedAt));
   }
 }
 
@@ -377,10 +456,14 @@ export async function restorePurchases(): Promise<RestoreResult> {
 // ─── Getters / Listeners ─────────────────────────────────
 
 export function getEntitlement(): Entitlement {
+  if (!isIOSNative()) {
+    return { ...DEFAULT_ENTITLEMENT };
+  }
+
   // Always validate cache before returning — fail closed
   if (cachedEntitlement.isPro && !isCacheValid(cachedEntitlement)) {
     // Synchronously return free; async cleanup will follow
-    const free = { ...DEFAULT_ENTITLEMENT, lastValidatedAt: new Date().toISOString() };
+    const free = freeEntitlement();
     cachedEntitlement = free;
     // Fire async save + notify
     setEntitlement(free);
@@ -390,9 +473,16 @@ export function getEntitlement(): Entitlement {
 }
 
 export async function forceRefreshEntitlement(): Promise<Entitlement> {
-  if (isIOSNative() && purchasesPlugin) {
-    await refreshEntitlementFromStore();
+  if (!isIOSNative()) {
+    await setEntitlement(freeEntitlement());
+    return getEntitlement();
   }
+
+  if (!isInitialized || !purchasesPlugin || !PURCHASE_TYPE_ENUM) {
+    await initPurchases();
+  }
+
+  await refreshEntitlementFromStore();
   return getEntitlement();
 }
 
@@ -420,20 +510,5 @@ export async function openSubscriptionManagement(): Promise<void> {
 // ─── Clear (for logout) ─────────────────────────────────
 
 export async function clearEntitlement(): Promise<void> {
-  await setEntitlement({ ...DEFAULT_ENTITLEMENT });
+  await setEntitlement(freeEntitlement());
 }
-
-// ─── Dev-only diagnostics (NOT debug overrides) ──────────
-
-export const debugPurchases = {
-  getState: () => ({
-    isInitialized,
-    cachedEntitlement: { ...cachedEntitlement },
-    isIOSNative: isIOSNative(),
-    hasPlugin: !!purchasesPlugin,
-    cacheValid: isCacheValid(cachedEntitlement),
-    cacheTTLMs: CACHE_TTL_MS,
-    timeSinceValidation: Date.now() - new Date(cachedEntitlement.lastValidatedAt).getTime(),
-  }),
-  // NO forceSetPro — removed for security
-};

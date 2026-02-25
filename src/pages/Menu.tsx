@@ -14,7 +14,6 @@ import { useAuth } from '@/contexts/AuthContext';
 import { SettingsDropdown } from '@/components/SettingsDropdown';
 import { Paywall } from '@/components/Paywall';
 import titleFox from '@/assets/title_fox.png';
-import { EntitlementDebugPanel } from '@/components/EntitlementDebugPanel';
 
 const Menu = () => {
   const navigate = useNavigate();
@@ -326,7 +325,7 @@ const Menu = () => {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ duration: 0.5, delay: 0.4 }}
-          className="pt-4 pb-2 text-center flex items-center justify-center gap-3"
+          className="pt-4 pb-2 text-center"
         >
           <a
             href="https://www.notion.so/Privacy-Policy-Outsider-Royale-2da1f594451b80d4a04bd700a4c35418"
@@ -337,7 +336,6 @@ const Menu = () => {
             Privacy Policy
             <ExternalLink className="h-3 w-3" />
           </a>
-          <EntitlementDebugPanel />
         </motion.div>
       </main>
     </div>
