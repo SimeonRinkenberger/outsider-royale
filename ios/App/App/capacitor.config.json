@@ -3,6 +3,7 @@
 	"appName": "Outsider Royale",
 	"webDir": "dist",
 	"packageClassList": [
+		"AppPlugin",
 		"ClipboardPlugin",
 		"PreferencesPlugin",
 		"NativePurchasesPlugin"
