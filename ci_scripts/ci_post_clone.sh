@@ -8,6 +8,7 @@ set -eu
 SCRIPT_DIR="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)"
 REPO_ROOT="$(CDPATH= cd -- "$SCRIPT_DIR/.." && pwd)"
 WORKSPACE="${CI_WORKSPACE:-$REPO_ROOT}"
+SCRIPT_VERSION="2026-02-26-node22-v2"
 
 # Some Xcode Cloud setups execute this script from ci_scripts.
 # Always build from the repo root where package.json/capacitor config live.
@@ -18,6 +19,7 @@ fi
 cd "$WORKSPACE"
 
 echo "Using workspace: $WORKSPACE"
+echo "ci_post_clone.sh version: $SCRIPT_VERSION"
 
 # Ensure common Node install locations are on PATH (Xcode Cloud shells can be minimal).
 export PATH="/opt/homebrew/bin:/usr/local/bin:/opt/homebrew/opt/node@22/bin:/usr/local/opt/node@22/bin:/opt/homebrew/opt/node/bin:/usr/local/opt/node/bin:$PATH"
@@ -43,14 +45,8 @@ if { ! have_node22 || ! command -v npm >/dev/null 2>&1; } && command -v brew >/d
   echo "Node >=22/npm not ready. Trying Homebrew Node.js install..."
   export HOMEBREW_NO_AUTO_UPDATE=1
   export HOMEBREW_NO_INSTALL_CLEANUP=1
-
-  if brew info node@22 >/dev/null 2>&1; then
-    brew list node@22 >/dev/null 2>&1 || brew install node@22 || true
-    NODE_PREFIX="$(brew --prefix node@22 2>/dev/null || true)"
-  else
-    brew list node >/dev/null 2>&1 || brew install node || true
-    NODE_PREFIX="$(brew --prefix node 2>/dev/null || true)"
-  fi
+  brew list node >/dev/null 2>&1 || brew install node || true
+  NODE_PREFIX="$(brew --prefix node 2>/dev/null || true)"
 
   if [ -n "$NODE_PREFIX" ]; then
     export PATH="$NODE_PREFIX/bin:$PATH"
