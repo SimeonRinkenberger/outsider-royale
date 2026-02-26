@@ -12,7 +12,7 @@ serve(async (req) => {
   }
 
   try {
-    const { description, examples, skipEntitlementCheck } = await req.json();
+    const { description, examples } = await req.json();
 
     if (!description || !examples || examples.length < 2) {
       return new Response(
@@ -21,50 +21,58 @@ serve(async (req) => {
       );
     }
 
-    // Get authorization header
-    const authHeader = req.headers.get('Authorization');
-    
     // Initialize Supabase client
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Get user from JWT if present
-    let userId: string | null = null;
+    // Require authenticated user (anonymous or full auth) for usage tracking/enforcement
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader) {
+      return new Response(
+        JSON.stringify({ error: 'Unauthorized' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const token = authHeader.replace('Bearer ', '');
+    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+    if (authError || !user) {
+      return new Response(
+        JSON.stringify({ error: 'Unauthorized' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const userId = user.id;
     let isPro = false;
     let aiGenerationsUsed = 0;
     const FREE_LIMIT = 2;
 
-    if (authHeader) {
-      const token = authHeader.replace('Bearer ', '');
-      const { data: { user }, error: authError } = await supabase.auth.getUser(token);
-      
-      if (!authError && user) {
-        userId = user.id;
-        
-        // Check entitlement
-        const { data: entitlementData } = await supabase
-          .rpc('check_ai_generation_entitlement', { p_user_id: userId });
-        
-        if (entitlementData && entitlementData.length > 0) {
-          const entitlement = entitlementData[0];
-          isPro = entitlement.is_pro || false;
-          aiGenerationsUsed = entitlement.ai_generations_used || 0;
-          
-          // Check if generation is allowed
-          if (!skipEntitlementCheck && !entitlement.can_generate) {
-            return new Response(
-              JSON.stringify({ 
-                error: 'AI generation limit reached',
-                code: 'LIMIT_REACHED',
-                isPro,
-                aiGenerationsUsed,
-                freeLimit: FREE_LIMIT,
-              }),
-              { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-            );
-          }
-        }
+    // Check entitlement (server-side only, cannot be bypassed by client input)
+    const { data: entitlementData, error: entitlementError } = await supabase
+      .rpc('check_ai_generation_entitlement', { p_user_id: userId });
+    if (entitlementError) {
+      throw new Error('Failed to check entitlement');
+    }
+
+    if (entitlementData && entitlementData.length > 0) {
+      const entitlement = entitlementData[0];
+      isPro = entitlement.is_pro || false;
+      aiGenerationsUsed = entitlement.ai_generations_used || 0;
+
+      // Enforce limits unconditionally
+      if (!entitlement.can_generate) {
+        return new Response(
+          JSON.stringify({ 
+            error: 'AI generation limit reached',
+            code: 'LIMIT_REACHED',
+            isPro,
+            aiGenerationsUsed,
+            freeLimit: FREE_LIMIT,
+          }),
+          { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
       }
     }
 
@@ -136,7 +144,7 @@ Rules:
 
     // Increment usage after successful generation (only if user is authenticated and not Pro)
     let newAiGenerationsUsed = aiGenerationsUsed;
-    if (userId && !isPro) {
+    if (!isPro) {
       const { data: incrementData } = await supabase
         .rpc('increment_ai_generation_usage', { p_user_id: userId });
       
