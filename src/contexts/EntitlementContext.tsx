@@ -14,6 +14,7 @@ import {
   identifyUser,
   getEntitlement,
   purchase,
+  purchaseConsumable,
   restorePurchases,
   forceRefreshEntitlement,
   onEntitlementUpdate,
@@ -40,10 +41,11 @@ interface EntitlementContextValue {
   };
   isLoadingProducts: boolean;
   purchase: (productId: ProductId) => Promise<PurchaseResult>;
+  purchaseConsumable: (productId: string) => Promise<PurchaseResult>;
   restorePurchases: () => Promise<RestoreResult>;
   refreshEntitlement: () => Promise<void>;
   openManageSubscription: () => Promise<void>;
-  openWebCheckout: () => Promise<void>;
+  openWebCheckout: (plan?: 'monthly' | 'yearly') => Promise<void>;
   canPurchase: boolean;
   canWebPurchase: boolean;
   isIOSNative: boolean;
@@ -126,6 +128,16 @@ export function EntitlementProvider({ children }: { children: React.ReactNode })
     }
   }, []);
 
+  const handlePurchaseConsumable = useCallback(async (productId: string): Promise<PurchaseResult> => {
+    setIsLoading(true);
+    try {
+      const result = await purchaseConsumable(productId);
+      return result;
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
   const handleRestore = useCallback(async (): Promise<RestoreResult> => {
     setIsLoading(true);
     try {
@@ -142,9 +154,9 @@ export function EntitlementProvider({ children }: { children: React.ReactNode })
     setEntitlement(newEntitlement);
   }, [profileId]);
 
-  const handleWebCheckout = useCallback(async (): Promise<void> => {
+  const handleWebCheckout = useCallback(async (plan: 'monthly' | 'yearly' = 'yearly'): Promise<void> => {
     if (!profileId) return;
-    const url = await getWebCheckoutUrl(profileId);
+    const url = await getWebCheckoutUrl(profileId, plan);
     if (url) {
       window.open(url, '_blank');
     }
@@ -157,6 +169,7 @@ export function EntitlementProvider({ children }: { children: React.ReactNode })
     products,
     isLoadingProducts,
     purchase: handlePurchase,
+    purchaseConsumable: handlePurchaseConsumable,
     restorePurchases: handleRestore,
     refreshEntitlement: handleRefresh,
     openManageSubscription: openSubscriptionManagement,

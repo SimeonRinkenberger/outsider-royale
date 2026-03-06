@@ -11,10 +11,11 @@ import { X, Sparkles, Crown, Zap, Loader2, ExternalLink } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { useEntitlement, PRODUCT_IDS } from '@/contexts/EntitlementContext';
+import { grantOneGeneration } from '@/lib/aiGenerationEntitlement';
 import { toast } from 'sonner';
 
 // Product ID for consumable AI generation
-export const AI_GENERATION_PRODUCT_ID = 'outsider_royale_ai_generation';
+export const AI_GENERATION_PRODUCT_ID = PRODUCT_IDS.AI_GENERATION;
 
 interface AIGenerationPaywallProps {
   isOpen: boolean;
@@ -31,6 +32,7 @@ export function AIGenerationPaywall({
     products,
     isLoadingProducts,
     purchase,
+    purchaseConsumable,
     canPurchase,
     isLoading,
   } = useEntitlement();
@@ -72,12 +74,19 @@ export function AIGenerationPaywall({
 
     setIsPurchasingSingle(true);
     try {
-      // For consumable purchase, we would use a different flow
-      // For now, show that this feature is coming
-      toast.info('Single generation purchase coming soon! Get Pro for unlimited access.');
-      
-      // TODO: Implement consumable purchase when StoreKit consumable is set up
-      // const result = await purchaseConsumable(AI_GENERATION_PRODUCT_ID);
+      const result = await purchaseConsumable(AI_GENERATION_PRODUCT_ID);
+
+      if (result.status === 'success') {
+        // Grant one additional AI generation
+        await grantOneGeneration();
+        toast.success('AI generation unlocked! 🎉');
+        onPurchaseComplete?.();
+        onClose();
+      } else if (result.status === 'cancelled') {
+        // User cancelled — no message needed
+      } else {
+        toast.error(result.error || 'Purchase failed. Please try again.');
+      }
     } catch (error) {
       toast.error('Something went wrong. Please try again.');
     } finally {
@@ -175,7 +184,7 @@ export function AIGenerationPaywall({
                       <p className="text-sm text-muted-foreground">
                         Generate one AI category
                       </p>
-                      <p className="text-lg font-bold mt-1">$0.99</p>
+                      <p className="text-lg font-bold mt-1">$1.99</p>
                     </div>
                     {isPurchasingSingle && (
                       <Loader2 className="h-5 w-5 animate-spin" />

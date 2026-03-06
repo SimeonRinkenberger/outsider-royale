@@ -59,13 +59,12 @@ serve(async (req) => {
       );
     }
 
-    // Check if entitlement is active
+    // Check if entitlement is active.
+    // A user who cancelled still has access until their period expires,
+    // so we only check the expiration date — not unsubscribe_detected_at.
     const now = new Date();
     const expiresAt = proEntitlement.expires_date ? new Date(proEntitlement.expires_date) : null;
-    const isActive = expiresAt ? expiresAt > now : false;
-    const unsubscribeDetected = proEntitlement.unsubscribe_detected_at != null;
-
-    const isPro = isActive && !unsubscribeDetected;
+    const isPro = expiresAt ? expiresAt > now : false;
 
     return new Response(
       JSON.stringify({

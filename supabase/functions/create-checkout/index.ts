@@ -11,7 +11,7 @@ serve(async (req) => {
   }
 
   try {
-    const { userId } = await req.json();
+    const { userId, plan = 'yearly' } = await req.json();
 
     if (!userId) {
       return new Response(
@@ -19,6 +19,8 @@ serve(async (req) => {
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
+
+    const isMonthly = plan === 'monthly';
 
     const rcSecretKey = Deno.env.get("REVENUECAT_SECRET_KEY");
     const stripeKey = Deno.env.get("STRIPE_SECRET_KEY");
@@ -59,9 +61,9 @@ serve(async (req) => {
           "cancel_url": `${origin}?checkout=cancel`,
           "client_reference_id": userId,
           "metadata[rc_app_user_id]": userId,
-          // The Stripe price IDs should be configured in RevenueCat
-          // and mapped to the same products
-          "line_items[0][price]": Deno.env.get("STRIPE_YEARLY_PRICE_ID") || "",
+          "line_items[0][price]": isMonthly
+            ? (Deno.env.get("STRIPE_MONTHLY_PRICE_ID") || "")
+            : (Deno.env.get("STRIPE_YEARLY_PRICE_ID") || ""),
           "line_items[0][quantity]": "1",
         }),
       });

@@ -17,6 +17,7 @@ export const ENTITLEMENT_ID = 'pro';
 export const PRODUCT_IDS = {
   MONTHLY: 'outsider_royale_monthly',
   YEARLY: 'outsider_royale_yearly',
+  AI_GENERATION: 'outsider_royale_ai_generation',
 } as const;
 
 export type ProductId = typeof PRODUCT_IDS[keyof typeof PRODUCT_IDS];
@@ -444,6 +445,59 @@ export async function purchasePackage(rcPackage: any): Promise<PurchaseResult> {
   }
 }
 
+// ─── Consumable Purchase (iOS) ───────────────────────────
+
+export async function purchaseConsumable(productId: string): Promise<PurchaseResult> {
+  if (!isNativePlatform()) {
+    return { status: 'failed', error: 'Native purchases are only available on iOS' };
+  }
+  if (!purchasesSDK) {
+    return { status: 'failed', error: 'Purchases not initialized' };
+  }
+
+  try {
+    const { offerings } = await purchasesSDK.getOfferings();
+
+    // Search all available offerings for the consumable product
+    let targetPackage: any = null;
+
+    // Check current offering first
+    const current = offerings?.current;
+    if (current?.availablePackages?.length) {
+      targetPackage = current.availablePackages.find(
+        (p: any) => p.product?.identifier === productId
+      );
+    }
+
+    // Fall back to searching all offerings
+    if (!targetPackage && offerings?.all) {
+      for (const offering of Object.values(offerings.all) as any[]) {
+        if (offering?.availablePackages?.length) {
+          targetPackage = offering.availablePackages.find(
+            (p: any) => p.product?.identifier === productId
+          );
+          if (targetPackage) break;
+        }
+      }
+    }
+
+    if (!targetPackage) {
+      return { status: 'failed', error: 'Product not found' };
+    }
+
+    const { customerInfo } = await purchasesSDK.purchasePackage({ aPackage: targetPackage });
+
+    // For consumables, customerInfo won't grant "pro" entitlement.
+    // Return success so the caller can grant the one-time benefit.
+    return { status: 'success' };
+  } catch (error: any) {
+    if (error?.userCancelled || error?.code === 'PURCHASE_CANCELLED' || error?.message?.includes('cancel')) {
+      return { status: 'cancelled' };
+    }
+    return { status: 'failed', error: error?.message || 'Purchase failed. Please try again.' };
+  }
+}
+
 // ─── Restore ──────────────────────────────────────────────
 
 export async function restorePurchases(): Promise<RestoreResult> {
@@ -466,7 +520,7 @@ export async function restorePurchases(): Promise<RestoreResult> {
 
 // ─── Web Purchase (Stripe via RevenueCat) ─────────────────
 
-export async function getWebCheckoutUrl(userId: string): Promise<string | null> {
+export async function getWebCheckoutUrl(userId: string, plan: 'monthly' | 'yearly' = 'yearly'): Promise<string | null> {
   try {
     const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
     const supabaseKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
@@ -477,7 +531,7 @@ export async function getWebCheckoutUrl(userId: string): Promise<string | null> 
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${supabaseKey}`,
       },
-      body: JSON.stringify({ userId }),
+      body: JSON.stringify({ userId, plan }),
     });
 
     if (!response.ok) return null;
@@ -530,7 +584,37 @@ export async function openSubscriptionManagement(): Promise<void> {
       window.open('https://apps.apple.com/account/subscriptions', '_blank');
     }
   } else {
-    window.open('https://apps.apple.com/account/subscriptions', '_blank');
+    // Web users subscribed via Stripe — open Stripe customer portal
+    // Falls back to RevenueCat's management URL if available
+    const portalUrl = await getWebManagementUrl();
+    if (portalUrl) {
+      window.open(portalUrl, '_blank');
+    } else {
+      // Last resort: generic Stripe billing portal
+      window.open('https://billing.stripe.com/p/login/outsiderroyale', '_blank');
+    }
+  }
+}
+
+async function getWebManagementUrl(): Promise<string | null> {
+  try {
+    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+    const supabaseKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+
+    const response = await fetch(`${supabaseUrl}/functions/v1/create-portal-session`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${supabaseKey}`,
+      },
+      body: JSON.stringify({}),
+    });
+
+    if (!response.ok) return null;
+    const data = await response.json();
+    return data.url || null;
+  } catch {
+    return null;
   }
 }
 
