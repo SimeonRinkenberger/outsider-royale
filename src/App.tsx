@@ -13,7 +13,7 @@ import { AuthProvider } from './contexts/AuthContext';
 import { EntitlementProvider } from './contexts/EntitlementContext';
 import { preloadAllImages } from './lib/imagePreloader';
 import { syncCategories } from './lib/categoryCache';
-import { getEntitlement } from './services/purchases/applePurchases';
+import { getEntitlement } from './services/purchases/purchaseService';
 import ErrorBoundary from './components/ErrorBoundary';
 import OfflineBanner from './components/OfflineBanner';
 
