@@ -8,7 +8,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { setStoredUserId, setStoredDisplayName, getStoredUserId, setStoredIsGuest, getSessionMode } from '@/lib/gameUtils';
 import { getAndClearAuthReturnTo, peekAuthReturnTo } from '@/lib/authRedirect';
 import { toast } from 'sonner';
-import { ArrowLeft, Mail, Lock, User, Loader2, Check, X } from 'lucide-react';
+import { ArrowLeft, Mail, Lock, User, Loader2, Check, X, Eye, EyeOff } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { z } from 'zod';
 import { useTransition } from '@/contexts/TransitionContext';
@@ -37,6 +37,7 @@ const Auth = () => {
   const [password, setPassword] = useState('');
   const [displayName, setDisplayName] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const [errors, setErrors] = useState<{ email?: string; password?: string; displayName?: string }>({});
   const navigate = useNavigate();
   const { startTransition } = useTransition();
@@ -310,12 +311,20 @@ const Auth = () => {
                   <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <Input
                     id="password"
-                    type="password"
+                    type={showPassword ? "text" : "password"}
                     placeholder="••••••••"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="pl-10 h-12"
+                    className="pl-10 pr-10 h-12"
                   />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                    tabIndex={-1}
+                  >
+                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
                 </div>
                 {errors.password && (
                   <p className="text-sm text-destructive">{errors.password}</p>
