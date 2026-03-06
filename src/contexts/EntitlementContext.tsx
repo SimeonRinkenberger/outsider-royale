@@ -2,13 +2,16 @@
  * EntitlementContext
  * 
  * Single source of truth for user entitlement (Pro) status.
+ * Uses RevenueCat as the authoritative backend for both iOS and web.
  * Fail-closed: defaults to free on any error or stale cache.
  */
 
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import { syncCategories } from '@/lib/categoryCache';
+import { useAuth } from '@/contexts/AuthContext';
 import {
   initPurchases,
+  identifyUser,
   getEntitlement,
   purchase,
   restorePurchases,
@@ -16,14 +19,16 @@ import {
   onEntitlementUpdate,
   getProducts,
   openSubscriptionManagement,
+  getWebCheckoutUrl,
   isIOSNative,
+  clearEntitlement,
   type Entitlement,
   type ProductInfo,
   type PurchaseResult,
   type RestoreResult,
   type ProductId,
   PRODUCT_IDS,
-} from '@/services/purchases/applePurchases';
+} from '@/services/purchases/purchaseService';
 
 interface EntitlementContextValue {
   isPro: boolean;
@@ -38,13 +43,16 @@ interface EntitlementContextValue {
   restorePurchases: () => Promise<RestoreResult>;
   refreshEntitlement: () => Promise<void>;
   openManageSubscription: () => Promise<void>;
+  openWebCheckout: () => Promise<void>;
   canPurchase: boolean;
+  canWebPurchase: boolean;
   isIOSNative: boolean;
 }
 
 const EntitlementContext = createContext<EntitlementContextValue | null>(null);
 
 export function EntitlementProvider({ children }: { children: React.ReactNode }) {
+  const { profileId } = useAuth();
   const [entitlement, setEntitlement] = useState<Entitlement>(getEntitlement());
   const [isLoading, setIsLoading] = useState(true);
   const [products, setProducts] = useState<{ monthly: ProductInfo | null; yearly: ProductInfo | null }>({
@@ -58,7 +66,8 @@ export function EntitlementProvider({ children }: { children: React.ReactNode })
 
     const init = async () => {
       try {
-        await initPurchases();
+        // Initialize with user ID for RevenueCat identification
+        await initPurchases(profileId || undefined);
         
         if (mounted) {
           const currentEntitlement = getEntitlement();
@@ -97,6 +106,15 @@ export function EntitlementProvider({ children }: { children: React.ReactNode })
     };
   }, []);
 
+  // When user profile changes, identify with RevenueCat
+  useEffect(() => {
+    if (profileId) {
+      identifyUser(profileId).catch(() => {
+        // Non-fatal: entitlement will be checked on next refresh
+      });
+    }
+  }, [profileId]);
+
   const handlePurchase = useCallback(async (productId: ProductId): Promise<PurchaseResult> => {
     setIsLoading(true);
     try {
@@ -120,9 +138,17 @@ export function EntitlementProvider({ children }: { children: React.ReactNode })
   }, []);
 
   const handleRefresh = useCallback(async (): Promise<void> => {
-    const newEntitlement = await forceRefreshEntitlement();
+    const newEntitlement = await forceRefreshEntitlement(profileId || undefined);
     setEntitlement(newEntitlement);
-  }, []);
+  }, [profileId]);
+
+  const handleWebCheckout = useCallback(async (): Promise<void> => {
+    if (!profileId) return;
+    const url = await getWebCheckoutUrl(profileId);
+    if (url) {
+      window.open(url, '_blank');
+    }
+  }, [profileId]);
 
   const value: EntitlementContextValue = {
     isPro: entitlement.isPro,
@@ -134,7 +160,9 @@ export function EntitlementProvider({ children }: { children: React.ReactNode })
     restorePurchases: handleRestore,
     refreshEntitlement: handleRefresh,
     openManageSubscription: openSubscriptionManagement,
+    openWebCheckout: handleWebCheckout,
     canPurchase: isIOSNative(),
+    canWebPurchase: !isIOSNative() && !!profileId,
     isIOSNative: isIOSNative(),
   };
 

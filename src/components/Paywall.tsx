@@ -2,12 +2,12 @@
  * Paywall Component
  * 
  * Shows subscription options with Apple-required disclosures.
- * Displays localized prices from StoreKit.
+ * Supports both iOS in-app purchases and web Stripe purchases via RevenueCat.
  */
 
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Check, Crown, Sparkles, RefreshCw, Loader2, ExternalLink } from 'lucide-react';
+import { X, Check, Crown, Sparkles, RefreshCw, Loader2, ExternalLink, Globe } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { useEntitlement, PRODUCT_IDS } from '@/contexts/EntitlementContext';
@@ -36,7 +36,9 @@ export function Paywall({ isOpen, onClose, trigger = 'menu' }: PaywallProps) {
     purchase,
     restorePurchases,
     refreshEntitlement,
+    openWebCheckout,
     canPurchase,
+    canWebPurchase,
     isLoading,
   } = useEntitlement();
 
@@ -80,21 +82,30 @@ export function Paywall({ isOpen, onClose, trigger = 'menu' }: PaywallProps) {
     }
   };
 
-  const handleRestore = async () => {
-    if (!canPurchase) {
-      toast.error('Restore is only available on iOS devices');
-      return;
+  const handleWebPurchase = async () => {
+    try {
+      await openWebCheckout();
+      toast.info('Complete your purchase in the new tab. Your Pro status will sync automatically.');
+    } catch {
+      toast.error('Failed to open checkout. Please try again.');
     }
+  };
 
+  const handleRestore = async () => {
     setIsRestoring(true);
     try {
-      const result = await restorePurchases();
-      
-      if (result.status === 'success') {
-        toast.success('Purchases restored successfully!');
-        onClose();
+      if (canPurchase) {
+        const result = await restorePurchases();
+        if (result.status === 'success') {
+          toast.success('Purchases restored successfully!');
+          onClose();
+        } else {
+          toast.error(result.error || 'No previous purchases found.');
+        }
       } else {
-        toast.error(result.error || 'No previous purchases found.');
+        // On web, just refresh entitlement from RevenueCat
+        await refreshEntitlement();
+        toast.info('Entitlement refreshed from server.');
       }
     } catch (error) {
       toast.error('Failed to restore purchases.');
@@ -131,7 +142,7 @@ export function Paywall({ isOpen, onClose, trigger = 'menu' }: PaywallProps) {
                 <div className="w-16 h-16 mx-auto bg-gradient-primary rounded-full flex items-center justify-center">
                   <Crown className="h-8 w-8 text-white" />
                 </div>
-                <h2 className="text-2xl font-bold">You're Pro!</h2>
+                <h2 className="text-2xl font-bold">Pro Active</h2>
                 <p className="text-muted-foreground">
                   You have full access to all categories and words.
                 </p>
@@ -184,6 +195,18 @@ export function Paywall({ isOpen, onClose, trigger = 'menu' }: PaywallProps) {
                 </p>
               </div>
 
+              {/* Plan display */}
+              <div className="space-y-2 p-4 rounded-xl bg-muted/50">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-muted-foreground">Free Plan</span>
+                  <span className="text-sm">4 categories, limited words</span>
+                </div>
+                <div className="flex items-center justify-between font-semibold">
+                  <span className="text-primary">Pro Plan</span>
+                  <span>All categories, full word pools</span>
+                </div>
+              </div>
+
               {/* Benefits */}
               <div className="space-y-3">
                 {BENEFITS.map((benefit, index) => (
@@ -202,82 +225,105 @@ export function Paywall({ isOpen, onClose, trigger = 'menu' }: PaywallProps) {
                 ))}
               </div>
 
-              {/* Plan selection */}
-              {isLoadingProducts ? (
-                <div className="flex justify-center py-8">
-                  <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-                </div>
-              ) : (
-                <div className="grid grid-cols-2 gap-3">
-                  {/* Monthly */}
-                  <button
-                    onClick={() => setSelectedPlan('monthly')}
-                    className={`relative p-4 rounded-xl border-2 transition-all text-left ${
-                      selectedPlan === 'monthly'
-                        ? 'border-primary bg-primary/5'
-                        : 'border-border hover:border-primary/50'
-                    }`}
-                  >
-                    <div className="space-y-1">
-                      <p className="font-semibold">Monthly</p>
-                      <p className="text-2xl font-bold">
-                        {products.monthly?.price || '$2.99'}
-                      </p>
-                      <p className="text-xs text-muted-foreground">per month</p>
+              {/* iOS: Plan selection + Subscribe button */}
+              {canPurchase && (
+                <>
+                  {isLoadingProducts ? (
+                    <div className="flex justify-center py-8">
+                      <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
                     </div>
-                    {products.monthly?.introPrice && (
-                      <div className="mt-2 text-xs text-primary">
-                        First month: {products.monthly.introPrice}
-                      </div>
-                    )}
-                  </button>
+                  ) : (
+                    <div className="grid grid-cols-2 gap-3">
+                      {/* Monthly */}
+                      <button
+                        onClick={() => setSelectedPlan('monthly')}
+                        className={`relative p-4 rounded-xl border-2 transition-all text-left ${
+                          selectedPlan === 'monthly'
+                            ? 'border-primary bg-primary/5'
+                            : 'border-border hover:border-primary/50'
+                        }`}
+                      >
+                        <div className="space-y-1">
+                          <p className="font-semibold">Monthly</p>
+                          <p className="text-2xl font-bold">
+                            {products.monthly?.price || '$2.99'}
+                          </p>
+                          <p className="text-xs text-muted-foreground">per month</p>
+                        </div>
+                        {products.monthly?.introPrice && (
+                          <div className="mt-2 text-xs text-primary">
+                            First month: {products.monthly.introPrice}
+                          </div>
+                        )}
+                      </button>
 
-                  {/* Yearly */}
-                  <button
-                    onClick={() => setSelectedPlan('yearly')}
-                    className={`relative p-4 rounded-xl border-2 transition-all text-left ${
-                      selectedPlan === 'yearly'
-                        ? 'border-primary bg-primary/5'
-                        : 'border-border hover:border-primary/50'
-                    }`}
-                  >
-                    {yearlySavings > 0 && (
-                      <div className="absolute -top-2 -right-2 bg-primary text-primary-foreground text-xs px-2 py-0.5 rounded-full font-medium">
-                        Save {yearlySavings}%
-                      </div>
-                    )}
-                    <div className="space-y-1">
-                      <p className="font-semibold">Yearly</p>
-                      <p className="text-2xl font-bold">
-                        {products.yearly?.price || '$14.99'}
-                      </p>
-                      <p className="text-xs text-muted-foreground">per year</p>
+                      {/* Yearly */}
+                      <button
+                        onClick={() => setSelectedPlan('yearly')}
+                        className={`relative p-4 rounded-xl border-2 transition-all text-left ${
+                          selectedPlan === 'yearly'
+                            ? 'border-primary bg-primary/5'
+                            : 'border-border hover:border-primary/50'
+                        }`}
+                      >
+                        {yearlySavings > 0 && (
+                          <div className="absolute -top-2 -right-2 bg-primary text-primary-foreground text-xs px-2 py-0.5 rounded-full font-medium">
+                            Save {yearlySavings}%
+                          </div>
+                        )}
+                        <div className="space-y-1">
+                          <p className="font-semibold">Yearly</p>
+                          <p className="text-2xl font-bold">
+                            {products.yearly?.price || '$14.99'}
+                          </p>
+                          <p className="text-xs text-muted-foreground">per year</p>
+                        </div>
+                      </button>
                     </div>
-                  </button>
-                </div>
+                  )}
+
+                  {/* Subscribe button */}
+                  <Button
+                    onClick={handlePurchase}
+                    disabled={isPurchasing || isLoading}
+                    className="w-full h-14 text-lg font-semibold"
+                    size="lg"
+                  >
+                    {isPurchasing ? (
+                      <Loader2 className="h-5 w-5 animate-spin" />
+                    ) : (
+                      <>
+                        <Crown className="h-5 w-5 mr-2" />
+                        Subscribe {selectedPlan === 'monthly' ? 'Monthly' : 'Yearly'}
+                      </>
+                    )}
+                  </Button>
+                </>
               )}
 
-              {/* Subscribe button */}
-              <Button
-                onClick={handlePurchase}
-                disabled={isPurchasing || isLoading || !canPurchase}
-                className="w-full h-14 text-lg font-semibold"
-                size="lg"
-              >
-                {isPurchasing ? (
-                  <Loader2 className="h-5 w-5 animate-spin" />
-                ) : (
-                  <>
-                    <Crown className="h-5 w-5 mr-2" />
-                    Subscribe {selectedPlan === 'monthly' ? 'Monthly' : 'Yearly'}
-                  </>
-                )}
-              </Button>
+              {/* Web: Stripe Purchase button */}
+              {!canPurchase && canWebPurchase && (
+                <Button
+                  onClick={handleWebPurchase}
+                  className="w-full h-14 text-lg font-semibold"
+                  size="lg"
+                >
+                  <Globe className="h-5 w-5 mr-2" />
+                  Subscribe via Web ($14.99/year)
+                </Button>
+              )}
+
+              {/* Not signed in on web */}
+              {!canPurchase && !canWebPurchase && (
+                <div className="bg-muted text-muted-foreground text-sm p-3 rounded-lg text-center">
+                  Sign in to subscribe, or open Outsider Royale on your iPhone.
+                </div>
+              )}
 
               {/* Restore */}
               <button
                 onClick={handleRestore}
-                disabled={isRestoring || !canPurchase}
+                disabled={isRestoring}
                 className="w-full flex items-center justify-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors py-2"
               >
                 {isRestoring ? (
@@ -288,17 +334,18 @@ export function Paywall({ isOpen, onClose, trigger = 'menu' }: PaywallProps) {
                 Restore Purchases
               </button>
 
-              {/* Apple-required legal text */}
+              {/* Legal text */}
               <div className="text-xs text-muted-foreground space-y-2 pt-2 border-t">
+                {canPurchase && (
+                  <p>
+                    Payment will be charged to your Apple ID account at the confirmation of purchase.
+                    Subscription automatically renews unless it is canceled at least 24 hours before
+                    the end of the current period. Your account will be charged for renewal within 24
+                    hours prior to the end of the current period.
+                  </p>
+                )}
                 <p>
-                  Payment will be charged to your Apple ID account at the confirmation of purchase.
-                  Subscription automatically renews unless it is canceled at least 24 hours before
-                  the end of the current period. Your account will be charged for renewal within 24
-                  hours prior to the end of the current period.
-                </p>
-                <p>
-                  You can manage and cancel your subscriptions by going to your App Store account
-                  settings after purchase.
+                  You can manage and cancel your subscriptions by going to your account settings after purchase.
                 </p>
                 <div className="flex gap-4 pt-1">
                   <a
@@ -321,14 +368,6 @@ export function Paywall({ isOpen, onClose, trigger = 'menu' }: PaywallProps) {
                   </a>
                 </div>
               </div>
-
-              {/* Platform warning */}
-              {!canPurchase && (
-                <div className="bg-destructive/10 text-destructive text-sm p-3 rounded-lg text-center">
-                  Subscriptions are only available on iOS devices.
-                  Please open Outsider Royale on your iPhone to subscribe.
-                </div>
-              )}
             </Card>
           </motion.div>
         </motion.div>
