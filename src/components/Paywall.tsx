@@ -84,7 +84,7 @@ export function Paywall({ isOpen, onClose, trigger = 'menu' }: PaywallProps) {
 
   const handleWebPurchase = async () => {
     try {
-      await openWebCheckout();
+      await openWebCheckout(selectedPlan);
       toast.info('Complete your purchase in the new tab. Your Pro status will sync automatically.');
     } catch {
       toast.error('Failed to open checkout. Please try again.');
@@ -301,16 +301,57 @@ export function Paywall({ isOpen, onClose, trigger = 'menu' }: PaywallProps) {
                 </>
               )}
 
-              {/* Web: Stripe Purchase button */}
+              {/* Web: Stripe Purchase with plan selection */}
               {!canPurchase && canWebPurchase && (
-                <Button
-                  onClick={handleWebPurchase}
-                  className="w-full h-14 text-lg font-semibold"
-                  size="lg"
-                >
-                  <Globe className="h-5 w-5 mr-2" />
-                  Subscribe via Web ($14.99/year)
-                </Button>
+                <>
+                  <div className="grid grid-cols-2 gap-3">
+                    {/* Monthly */}
+                    <button
+                      onClick={() => setSelectedPlan('monthly')}
+                      className={`relative p-4 rounded-xl border-2 transition-all text-left ${
+                        selectedPlan === 'monthly'
+                          ? 'border-primary bg-primary/5'
+                          : 'border-border hover:border-primary/50'
+                      }`}
+                    >
+                      <div className="space-y-1">
+                        <p className="font-semibold">Monthly</p>
+                        <p className="text-2xl font-bold">$2.99</p>
+                        <p className="text-xs text-muted-foreground">per month</p>
+                      </div>
+                    </button>
+
+                    {/* Yearly */}
+                    <button
+                      onClick={() => setSelectedPlan('yearly')}
+                      className={`relative p-4 rounded-xl border-2 transition-all text-left ${
+                        selectedPlan === 'yearly'
+                          ? 'border-primary bg-primary/5'
+                          : 'border-border hover:border-primary/50'
+                      }`}
+                    >
+                      {yearlySavings > 0 && (
+                        <div className="absolute -top-2 -right-2 bg-primary text-primary-foreground text-xs px-2 py-0.5 rounded-full font-medium">
+                          Save {yearlySavings}%
+                        </div>
+                      )}
+                      <div className="space-y-1">
+                        <p className="font-semibold">Yearly</p>
+                        <p className="text-2xl font-bold">$14.99</p>
+                        <p className="text-xs text-muted-foreground">per year</p>
+                      </div>
+                    </button>
+                  </div>
+
+                  <Button
+                    onClick={handleWebPurchase}
+                    className="w-full h-14 text-lg font-semibold"
+                    size="lg"
+                  >
+                    <Globe className="h-5 w-5 mr-2" />
+                    Subscribe {selectedPlan === 'monthly' ? 'Monthly' : 'Yearly'}
+                  </Button>
+                </>
               )}
 
               {/* Not signed in on web */}
