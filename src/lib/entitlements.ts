@@ -5,7 +5,7 @@
  * Categories are now dynamically loaded from the synced cache (database-driven).
  */
 
-import type { Entitlement } from '@/services/purchases/applePurchases';
+import type { Entitlement } from '@/services/purchases/purchaseService';
 import { getCachedWords, type CategoryMeta } from './categoryCache';
 
 /**

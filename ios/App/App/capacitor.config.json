@@ -6,6 +6,6 @@
 		"AppPlugin",
 		"ClipboardPlugin",
 		"PreferencesPlugin",
-		"NativePurchasesPlugin"
+		"PurchasesPlugin"
 	]
 }
