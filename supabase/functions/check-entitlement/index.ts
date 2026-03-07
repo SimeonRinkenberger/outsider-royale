@@ -1,24 +1,25 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
-};
+import { getCorsHeaders } from "../_shared/cors.ts";
+import { authenticateRequest } from "../_shared/auth.ts";
 
 serve(async (req) => {
+  const corsHeaders = getCorsHeaders(req);
+
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    const { userId } = await req.json();
-
-    if (!userId) {
+    // Authenticate the caller via JWT
+    const auth = await authenticateRequest(req);
+    if (!auth) {
       return new Response(
-        JSON.stringify({ error: "userId is required" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        JSON.stringify({ error: "Unauthorized" }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
+
+    const userId = auth.profileId; // RevenueCat app_user_id = profile ID
 
     const rcSecretKey = Deno.env.get("REVENUECAT_SECRET_KEY");
     if (!rcSecretKey) {
@@ -62,9 +63,10 @@ serve(async (req) => {
     // Check if entitlement is active.
     // A user who cancelled still has access until their period expires,
     // so we only check the expiration date — not unsubscribe_detected_at.
+    // Null expires_date = lifetime subscription (treat as active).
     const now = new Date();
     const expiresAt = proEntitlement.expires_date ? new Date(proEntitlement.expires_date) : null;
-    const isPro = expiresAt ? expiresAt > now : false;
+    const isPro = expiresAt ? expiresAt > now : true;
 
     return new Response(
       JSON.stringify({

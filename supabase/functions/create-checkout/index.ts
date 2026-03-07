@@ -1,26 +1,38 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
-};
+import { getCorsHeaders, validateOrigin } from "../_shared/cors.ts";
+import { authenticateRequest } from "../_shared/auth.ts";
 
 serve(async (req) => {
+  const corsHeaders = getCorsHeaders(req);
+
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    const { userId, plan = 'yearly' } = await req.json();
-
-    if (!userId) {
+    // Authenticate the caller via JWT
+    const auth = await authenticateRequest(req);
+    if (!auth) {
       return new Response(
-        JSON.stringify({ error: "userId is required" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        JSON.stringify({ error: "Unauthorized" }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    const isMonthly = plan === 'monthly';
+    const userId = auth.profileId; // RevenueCat app_user_id = profile ID
+
+    // Parse optional plan from body (default: yearly)
+    let plan = "yearly";
+    try {
+      const body = await req.json();
+      if (body.plan === "monthly" || body.plan === "yearly") {
+        plan = body.plan;
+      }
+    } catch {
+      // No body or invalid JSON — use default plan
+    }
+
+    const isMonthly = plan === "monthly";
 
     const rcSecretKey = Deno.env.get("REVENUECAT_SECRET_KEY");
     const stripeKey = Deno.env.get("STRIPE_SECRET_KEY");
@@ -33,11 +45,9 @@ serve(async (req) => {
     }
 
     // Option 1: Use RevenueCat's Web Billing checkout URL if available
-    // RevenueCat generates Stripe checkout sessions via their API
     const rcProjectId = Deno.env.get("REVENUECAT_PROJECT_ID");
-    
+
     if (rcProjectId) {
-      // RevenueCat Web Billing URL format
       const checkoutUrl = `https://billing.revenuecat.com/checkout/${rcProjectId}?app_user_id=${encodeURIComponent(userId)}`;
       return new Response(
         JSON.stringify({ url: checkoutUrl }),
@@ -47,25 +57,42 @@ serve(async (req) => {
 
     // Option 2: Create a Stripe Checkout session directly
     if (stripeKey) {
-      const origin = req.headers.get("origin") || "https://outsiderroyale.lovable.app";
-      
+      // Validate origin for redirect URLs — prevent open redirect
+      const safeOrigin = validateOrigin(req);
+
+      const priceId = isMonthly
+        ? (Deno.env.get("STRIPE_MONTHLY_PRICE_ID") || "")
+        : (Deno.env.get("STRIPE_YEARLY_PRICE_ID") || "");
+
+      if (!priceId) {
+        return new Response(
+          JSON.stringify({ error: "Price not configured" }),
+          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      const params: Record<string, string> = {
+        "mode": "subscription",
+        "success_url": `${safeOrigin}?checkout=success`,
+        "cancel_url": `${safeOrigin}?checkout=cancel`,
+        "client_reference_id": userId,
+        "metadata[rc_app_user_id]": userId,
+        "line_items[0][price]": priceId,
+        "line_items[0][quantity]": "1",
+      };
+
+      // Pre-fill email if available
+      if (auth.user.email) {
+        params["customer_email"] = auth.user.email;
+      }
+
       const stripeResponse = await fetch("https://api.stripe.com/v1/checkout/sessions", {
         method: "POST",
         headers: {
           "Authorization": `Bearer ${stripeKey}`,
           "Content-Type": "application/x-www-form-urlencoded",
         },
-        body: new URLSearchParams({
-          "mode": "subscription",
-          "success_url": `${origin}?checkout=success`,
-          "cancel_url": `${origin}?checkout=cancel`,
-          "client_reference_id": userId,
-          "metadata[rc_app_user_id]": userId,
-          "line_items[0][price]": isMonthly
-            ? (Deno.env.get("STRIPE_MONTHLY_PRICE_ID") || "")
-            : (Deno.env.get("STRIPE_YEARLY_PRICE_ID") || ""),
-          "line_items[0][quantity]": "1",
-        }),
+        body: new URLSearchParams(params),
       });
 
       if (stripeResponse.ok) {
@@ -75,6 +102,9 @@ serve(async (req) => {
           { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
+
+      const stripeError = await stripeResponse.text();
+      console.error("Stripe API error:", stripeError);
     }
 
     return new Response(

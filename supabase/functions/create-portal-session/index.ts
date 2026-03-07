@@ -1,18 +1,25 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
-};
+import { getCorsHeaders, validateOrigin } from "../_shared/cors.ts";
+import { authenticateRequest } from "../_shared/auth.ts";
 
 serve(async (req) => {
+  const corsHeaders = getCorsHeaders(req);
+
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    const stripeKey = Deno.env.get("STRIPE_SECRET_KEY");
+    // Authenticate the caller via JWT
+    const auth = await authenticateRequest(req);
+    if (!auth) {
+      return new Response(
+        JSON.stringify({ error: "Unauthorized" }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
 
+    const stripeKey = Deno.env.get("STRIPE_SECRET_KEY");
     if (!stripeKey) {
       return new Response(
         JSON.stringify({ error: "Stripe not configured" }),
@@ -20,7 +27,45 @@ serve(async (req) => {
       );
     }
 
-    const origin = req.headers.get("origin") || "https://outsiderroyale.lovable.app";
+    // Look up the Stripe customer by the user's email
+    const userEmail = auth.user.email;
+    if (!userEmail) {
+      return new Response(
+        JSON.stringify({ error: "No email associated with account" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Search for existing Stripe customer by email
+    const customerSearchResponse = await fetch(
+      `https://api.stripe.com/v1/customers?email=${encodeURIComponent(userEmail)}&limit=1`,
+      {
+        headers: {
+          "Authorization": `Bearer ${stripeKey}`,
+        },
+      }
+    );
+
+    if (!customerSearchResponse.ok) {
+      console.error("Stripe customer search failed:", await customerSearchResponse.text());
+      return new Response(
+        JSON.stringify({ error: "Failed to look up subscription" }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    const customerData = await customerSearchResponse.json();
+    const customer = customerData.data?.[0];
+
+    if (!customer) {
+      return new Response(
+        JSON.stringify({ error: "No subscription found for this account" }),
+        { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Validate origin for return URL — prevent open redirect
+    const safeOrigin = validateOrigin(req);
 
     // Create a Stripe Billing Portal session
     const response = await fetch("https://api.stripe.com/v1/billing_portal/sessions", {
@@ -30,7 +75,8 @@ serve(async (req) => {
         "Content-Type": "application/x-www-form-urlencoded",
       },
       body: new URLSearchParams({
-        "return_url": origin,
+        "customer": customer.id,
+        "return_url": safeOrigin,
       }),
     });
 
