@@ -10,21 +10,7 @@ import { Settings, User, Mail, Lock, ChevronDown, Loader2, Eye, EyeOff, Check, X
 import { motion } from 'framer-motion';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { z } from 'zod';
-
-const passwordSchema = z.string()
-  .min(8, 'Password must be at least 8 characters')
-  .regex(/[a-z]/, 'Password must contain a lowercase letter')
-  .regex(/[A-Z]/, 'Password must contain an uppercase letter')
-  .regex(/[0-9]/, 'Password must contain a number')
-  .regex(/[^a-zA-Z0-9]/, 'Password must contain a special character');
-
-const getPasswordRequirements = (password: string) => ({
-  minLength: password.length >= 8,
-  hasLowercase: /[a-z]/.test(password),
-  hasUppercase: /[A-Z]/.test(password),
-  hasNumber: /[0-9]/.test(password),
-  hasSpecial: /[^a-zA-Z0-9]/.test(password),
-});
+import { passwordSchema, getPasswordRequirements, PASSWORD_REQUIREMENT_LABELS, sanitizeTextInput } from '@/lib/passwordValidation';
 
 interface AccountSettingsProps {
   profileId: string | null;
@@ -51,19 +37,16 @@ export const AccountSettings = ({
   const [isUpdatingPassword, setIsUpdatingPassword] = useState(false);
 
   const handleUpdateDisplayName = async () => {
-    if (!profileId || !newDisplayName.trim()) {
+    const sanitized = sanitizeTextInput(newDisplayName, 50);
+    if (!profileId || !sanitized) {
       toast.error('Please enter a display name');
-      return;
-    }
-    if (newDisplayName.trim().length > 50) {
-      toast.error('Display name must be 50 characters or less');
       return;
     }
     setIsUpdatingName(true);
     try {
       const { error } = await supabase
         .from('profiles')
-        .update({ display_name: newDisplayName.trim() })
+        .update({ display_name: sanitized })
         .eq('id', profileId);
       if (error) throw error;
       setStoredDisplayName(newDisplayName.trim());
@@ -251,14 +234,8 @@ export const AccountSettings = ({
                   </div>
                   {newPassword.length > 0 && (
                     <div className="space-y-1 text-xs">
-                      {[
-                        { key: 'minLength', label: 'At least 8 characters' },
-                        { key: 'hasLowercase', label: 'Lowercase letter' },
-                        { key: 'hasUppercase', label: 'Uppercase letter' },
-                        { key: 'hasNumber', label: 'Number' },
-                        { key: 'hasSpecial', label: 'Special character (!@#$...)' },
-                      ].map(({ key, label }) => {
-                        const met = getPasswordRequirements(newPassword)[key as keyof ReturnType<typeof getPasswordRequirements>];
+                      {PASSWORD_REQUIREMENT_LABELS.map(({ key, label }) => {
+                        const met = getPasswordRequirements(newPassword)[key];
                         return (
                           <div key={key} className={`flex items-center gap-1.5 ${met ? 'text-green-500' : 'text-muted-foreground'}`}>
                             {met ? <Check className="h-3 w-3" /> : <X className="h-3 w-3" />}

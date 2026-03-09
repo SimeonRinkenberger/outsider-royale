@@ -17,7 +17,7 @@ import { toast } from 'sonner';
 import { isNative } from '@/lib/platform';
 import { cn } from '@/lib/utils';
 import { useEntitlement } from '@/contexts/EntitlementContext';
-import { useAuth } from '@/contexts/AuthContext';
+
 
 interface SettingsDropdownProps {
   className?: string;
@@ -27,7 +27,7 @@ export const SettingsDropdown = ({ className }: SettingsDropdownProps) => {
   const { volume, setVolume, isMuted, toggleMute } = useAudio();
   const { theme, setTheme, resolvedTheme } = useTheme();
   const { isPro, openManageSubscription } = useEntitlement();
-  const { isGuest, signOutAndReset, profileId } = useAuth();
+
   const navigate = useNavigate();
   const [isSpinning, setIsSpinning] = useState(false);
   const scrollPosRef = useRef(0);

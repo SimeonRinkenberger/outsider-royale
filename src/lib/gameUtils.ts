@@ -58,14 +58,11 @@ export const clearStorage = (): void => {
 export const getSessionMode = (): SessionMode => {
   const userId = getStoredUserId();
   if (!userId) {
-    console.log('[SESSION] mode=none');
     return 'none';
   }
   
   const isGuest = getStoredIsGuest();
-  const mode = isGuest ? 'guest' : 'authed';
-  console.log('[SESSION] mode=', mode);
-  return mode;
+  return isGuest ? 'guest' : 'authed';
 };
 
 /**

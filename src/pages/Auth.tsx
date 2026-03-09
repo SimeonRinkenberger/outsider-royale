@@ -13,23 +13,9 @@ import { motion } from 'framer-motion';
 import { z } from 'zod';
 import { useTransition } from '@/contexts/TransitionContext';
 import { useAuth } from '@/contexts/AuthContext';
-
+import { passwordSchema, getPasswordRequirements, PASSWORD_REQUIREMENT_LABELS, sanitizeTextInput } from '@/lib/passwordValidation';
 
 const emailSchema = z.string().email('Please enter a valid email address');
-const passwordSchema = z.string()
-  .min(8, 'Password must be at least 8 characters')
-  .regex(/[a-z]/, 'Password must contain a lowercase letter')
-  .regex(/[A-Z]/, 'Password must contain an uppercase letter')
-  .regex(/[0-9]/, 'Password must contain a number')
-  .regex(/[^a-zA-Z0-9]/, 'Password must contain a special character');
-
-const getPasswordRequirements = (password: string) => ({
-  minLength: password.length >= 8,
-  hasLowercase: /[a-z]/.test(password),
-  hasUppercase: /[A-Z]/.test(password),
-  hasNumber: /[0-9]/.test(password),
-  hasSpecial: /[^a-zA-Z0-9]/.test(password),
-});
 
 const Auth = () => {
   const [mode, setMode] = useState<'signin' | 'signup'>('signin');
@@ -62,8 +48,11 @@ const Auth = () => {
       }
     }
 
-    if (mode === 'signup' && (!displayName.trim() || displayName.length > 50)) {
-      newErrors.displayName = 'Display name must be 1-50 characters';
+    if (mode === 'signup') {
+      const sanitized = sanitizeTextInput(displayName, 50);
+      if (!sanitized) {
+        newErrors.displayName = 'Display name must be 1-50 characters';
+      }
     }
 
     setErrors(newErrors);
@@ -107,7 +96,7 @@ const Auth = () => {
               .update({ 
                 auth_user_id: data.user.id,
                 is_guest: false,
-                display_name: displayName.trim()
+                display_name: sanitizeTextInput(displayName, 50)
               })
               .eq('id', guestProfileId)
               .select()
@@ -135,7 +124,7 @@ const Auth = () => {
           const { data: profile, error: profileError } = await supabase
             .from('profiles')
             .insert({ 
-              display_name: displayName.trim(),
+              display_name: sanitizeTextInput(displayName, 50),
               auth_user_id: data.user.id,
               is_guest: false
             })
@@ -331,14 +320,8 @@ const Auth = () => {
                 )}
                 {mode === 'signup' && password.length > 0 && (
                   <div className="space-y-1 text-xs">
-                    {[
-                      { key: 'minLength', label: 'At least 8 characters' },
-                      { key: 'hasLowercase', label: 'Lowercase letter' },
-                      { key: 'hasUppercase', label: 'Uppercase letter' },
-                      { key: 'hasNumber', label: 'Number' },
-                      { key: 'hasSpecial', label: 'Special character (!@#$...)' },
-                    ].map(({ key, label }) => {
-                      const met = getPasswordRequirements(password)[key as keyof ReturnType<typeof getPasswordRequirements>];
+                    {PASSWORD_REQUIREMENT_LABELS.map(({ key, label }) => {
+                      const met = getPasswordRequirements(password)[key];
                       return (
                         <div key={key} className={`flex items-center gap-1.5 ${met ? 'text-green-500' : 'text-muted-foreground'}`}>
                           {met ? <Check className="h-3 w-3" /> : <X className="h-3 w-3" />}

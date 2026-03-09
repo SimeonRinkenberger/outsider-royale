@@ -24,9 +24,14 @@ class ErrorBoundary extends Component<Props, State> {
   }
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
-    console.error('[ErrorBoundary] Caught error:', error);
-    console.error('[ErrorBoundary] Error info:', errorInfo);
-    console.error('[ErrorBoundary] Stack trace:', error.stack);
+    // Only log full details in development
+    if (import.meta.env.DEV) {
+      console.error('[ErrorBoundary] Caught error:', error);
+      console.error('[ErrorBoundary] Error info:', errorInfo);
+      console.error('[ErrorBoundary] Stack trace:', error.stack);
+    } else {
+      console.error('[ErrorBoundary]', error.message);
+    }
   }
 
   handleRetry = () => {
