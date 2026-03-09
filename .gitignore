@@ -1,6 +1,8 @@
-# Environment variables
-.env
-.env.*
+# Environment variables (keep .env.local and secrets out of git)
+# NOTE: .env is checked in because it only contains public Supabase anon
+# credentials that are safe (and required) for the Vite/Lovable build.
+.env.local
+.env.*.local
 
 # Logs
 logs
