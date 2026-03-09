@@ -16,6 +16,7 @@ import { syncCategories } from './lib/categoryCache';
 import { getEntitlement } from './services/purchases/purchaseService';
 import ErrorBoundary from './components/ErrorBoundary';
 import OfflineBanner from './components/OfflineBanner';
+import { CheckoutRedirectHandler } from './components/CheckoutRedirectHandler';
 
 import Menu from './pages/Menu';
 import Onboarding from './pages/Onboarding';
@@ -88,7 +89,7 @@ const App = () => {
                 
                 <BrowserRouter>
                   <TransitionProvider>
-                    
+                    <CheckoutRedirectHandler />
                     <Routes>
                     <Route path="/" element={<Menu />} />
                     <Route path="/menu" element={<Menu />} />

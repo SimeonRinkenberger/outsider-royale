@@ -9,6 +9,7 @@
 
 import { Capacitor } from '@capacitor/core';
 import { Preferences } from '@capacitor/preferences';
+import { supabase } from '@/integrations/supabase/client';
 
 // ─── Constants ────────────────────────────────────────────
 export const REVENUECAT_PUBLIC_KEY = 'appl_eZXUQDKifpGINqKHlaEQAXTvrdX';
@@ -181,19 +182,25 @@ function isCacheValid(ent: Entitlement): boolean {
 
 // ─── Web Entitlement Check (via Edge Function) ────────────
 
-async function checkEntitlementViaAPI(userId: string): Promise<Entitlement> {
+async function checkEntitlementViaAPI(_userId: string): Promise<Entitlement> {
   const validatedAt = nowIso();
   try {
     const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
     const supabaseKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
 
+    // Get the user's JWT for authenticated edge function calls
+    const { data: { session } } = await supabase.auth.getSession();
+    const token = session?.access_token;
+    if (!token) return freeEntitlement(validatedAt);
+
     const response = await fetch(`${supabaseUrl}/functions/v1/check-entitlement`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${supabaseKey}`,
+        'apikey': supabaseKey,
+        'Authorization': `Bearer ${token}`,
       },
-      body: JSON.stringify({ userId }),
+      body: JSON.stringify({}),
     });
 
     if (!response.ok) {
@@ -520,18 +527,24 @@ export async function restorePurchases(): Promise<RestoreResult> {
 
 // ─── Web Purchase (Stripe via RevenueCat) ─────────────────
 
-export async function getWebCheckoutUrl(userId: string, plan: 'monthly' | 'yearly' = 'yearly'): Promise<string | null> {
+export async function getWebCheckoutUrl(_userId: string, plan: 'monthly' | 'yearly' = 'yearly'): Promise<string | null> {
   try {
     const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
     const supabaseKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+
+    // Get the user's JWT for authenticated edge function calls
+    const { data: { session } } = await supabase.auth.getSession();
+    const token = session?.access_token;
+    if (!token) return null;
 
     const response = await fetch(`${supabaseUrl}/functions/v1/create-checkout`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${supabaseKey}`,
+        'apikey': supabaseKey,
+        'Authorization': `Bearer ${token}`,
       },
-      body: JSON.stringify({ userId, plan }),
+      body: JSON.stringify({ plan }),
     });
 
     if (!response.ok) return null;
@@ -601,11 +614,17 @@ async function getWebManagementUrl(): Promise<string | null> {
     const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
     const supabaseKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
 
+    // Get the user's JWT for authenticated edge function calls
+    const { data: { session } } = await supabase.auth.getSession();
+    const token = session?.access_token;
+    if (!token) return null;
+
     const response = await fetch(`${supabaseUrl}/functions/v1/create-portal-session`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${supabaseKey}`,
+        'apikey': supabaseKey,
+        'Authorization': `Bearer ${token}`,
       },
       body: JSON.stringify({}),
     });
