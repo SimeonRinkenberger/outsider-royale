@@ -6,6 +6,8 @@
 const ALLOWED_ORIGINS = [
   "https://outsiderroyale.lovable.app",
   "https://4b9de44f-1c68-4ee8-8e08-f7594c181759.lovableproject.com",
+  "https://outsiderroyale.com",
+  "https://www.outsiderroyale.com",
   "capacitor://localhost",
   "http://localhost:8080",
 ];
