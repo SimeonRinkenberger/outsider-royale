@@ -21,6 +21,7 @@ import { getAvatarById } from '@/components/AvatarPicker';
 import { User as UserIcon } from 'lucide-react';
 import { useTransition } from '@/contexts/TransitionContext';
 import { getCachedResultsData } from '@/lib/gamePreloadCache';
+import { KickPlayerDialog } from '@/components/KickPlayerDialog';
 
 const Results = () => {
   const { lobbyId } = useParams();
@@ -72,8 +73,27 @@ const Results = () => {
   const hasAnimatedResultRef = useRef<string | null>(null);
 
   const isHost = lobby?.host_user_id === userId;
+  const currentPlayer = players.find(p => p.user_id === userId);
   const outsiderPlayers = players.filter(p => outsiders.some(o => o.player_id === p.id));
   const maxImposters = Math.max(1, players.length - 1);
+
+  // Detect if current player was kicked (became spectator or removed from player list)
+  const wasSpectatorRef = useRef(currentPlayer?.is_spectator ?? false);
+  useEffect(() => {
+    const isSpectator = currentPlayer?.is_spectator ?? false;
+    if (isSpectator && !wasSpectatorRef.current && currentPlayer) {
+      toast.error('You were removed from the game by the host');
+      navigate('/home');
+    }
+    wasSpectatorRef.current = isSpectator;
+  }, [currentPlayer?.is_spectator, currentPlayer, navigate]);
+
+  useEffect(() => {
+    if (players.length > 0 && userId && !players.some(p => p.user_id === userId)) {
+      toast.error('You were removed from the lobby by the host');
+      navigate('/home');
+    }
+  }, [players, userId, navigate]);
 
   // Load previous game settings from localStorage
   useEffect(() => {
@@ -699,10 +719,15 @@ const Results = () => {
         title="Game Results"
         showBack={false} 
         rightContent={
-          <Button variant="ghost" size="sm" onClick={goHome} className="gap-1 text-muted-foreground">
-            <DoorOpen className="h-4 w-4" />
-            <span className="hidden sm:inline">Leave</span>
-          </Button>
+          <div className="flex items-center gap-2">
+            {isHost && lobbyId && (
+              <KickPlayerDialog players={players} lobbyId={lobbyId} useSpectatorMode />
+            )}
+            <Button variant="ghost" size="sm" onClick={goHome} className="gap-1 text-muted-foreground">
+              <DoorOpen className="h-4 w-4" />
+              <span className="hidden sm:inline">Leave</span>
+            </Button>
+          </div>
         }
       />
 

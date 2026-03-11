@@ -17,6 +17,7 @@ import { useAudio } from '@/contexts/AudioContext';
 import { useTransition } from '@/contexts/TransitionContext';
 import { motion, AnimatePresence } from 'framer-motion';
 import { getCachedGameData, preloadResultsData } from '@/lib/gamePreloadCache';
+import { KickPlayerDialog } from '@/components/KickPlayerDialog';
 interface CustomModifierData {
   id: string;
   label: string;
@@ -205,6 +206,26 @@ const Game = () => {
   }, [game?.id, activePlayers]);
   const currentPlayer = players.find(p => p.user_id === userId);
   const isSpectator = currentPlayer?.is_spectator ?? false;
+  const isHost = currentPlayer?.is_host ?? false;
+
+  // Track previous spectator state to detect mid-game kicks
+  const wasSpectatorRef = useRef(isSpectator);
+  useEffect(() => {
+    // If the player just became a spectator (was not spectator before), they were kicked
+    if (isSpectator && !wasSpectatorRef.current && currentPlayer) {
+      toast.error('You were removed from the game by the host');
+      navigate('/home');
+    }
+    wasSpectatorRef.current = isSpectator;
+  }, [isSpectator, currentPlayer, navigate]);
+
+  // Also detect full removal from the player list (e.g. lobby kick during game)
+  useEffect(() => {
+    if (players.length > 0 && userId && !players.some(p => p.user_id === userId)) {
+      toast.error('You were removed from the lobby by the host');
+      navigate('/home');
+    }
+  }, [players, userId, navigate]);
 
   // Check if current player is an outsider (using outsiders array)
   const isOutsider = outsiders.some(o => o.player_id === currentPlayer?.id);
@@ -790,6 +811,9 @@ const Game = () => {
                   <FastForward className="h-4 w-4" />
                   <span className="hidden sm:inline">Skip</span>
                 </Button>}
+              {isHost && lobbyId && (
+                <KickPlayerDialog players={players} lobbyId={lobbyId} useSpectatorMode />
+              )}
               <MusicControls />
               <Button variant="ghost" size="icon" onClick={e => {
                 const rect = e.currentTarget.getBoundingClientRect();
@@ -1183,6 +1207,9 @@ const Game = () => {
               </p>
             </div>
             <div className="flex items-center gap-2">
+              {isHost && lobbyId && (
+                <KickPlayerDialog players={players} lobbyId={lobbyId} useSpectatorMode />
+              )}
               <MusicControls />
               <Button variant="ghost" size="icon" onClick={e => {
                 const rect = e.currentTarget.getBoundingClientRect();
