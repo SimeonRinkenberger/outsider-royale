@@ -186,7 +186,7 @@ export async function resetAIGenerationState(): Promise<void> {
 export const debugAIGeneration = {
   getState: () => ({ ...cachedState }),
   setUsage: async (usage: number) => {
-    if (process.env.NODE_ENV !== 'production') {
+    if (import.meta.env.DEV) {
       await updateState({
         ...cachedState,
         aiGenerationsUsed: usage,

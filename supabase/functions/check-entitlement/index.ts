@@ -89,7 +89,7 @@ serve(async (req) => {
       if (!entError && entitlement) {
         const productKey = (entitlement as any).products?.product_key;
         // Any active subscription-type entitlement counts as pro
-        if (productKey === "premium_subscription" || productKey === "premium_monthly" || productKey === "premium_yearly") {
+        if (productKey === "premium_subscription" || productKey === "premium_monthly" || productKey === "premium_yearly" || productKey === "pro_lifetime") {
           return new Response(
             JSON.stringify({
               isPro: true,
