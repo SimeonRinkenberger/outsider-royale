@@ -8,9 +8,19 @@ import { useCustomContent } from '@/hooks/useCustomContent';
 import { getStoredUserId } from '@/lib/gameUtils';
 import { getFreeCategoryIds } from '@/lib/entitlements';
 import { toast } from 'sonner';
-import { Copy, Users, Crown, Play, X, Settings, ChevronDown, HelpCircle } from 'lucide-react';
+import { Copy, Users, Crown, Play, X, Settings, ChevronDown, HelpCircle, UserX } from 'lucide-react';
 import lobbyFoxImg from '@/assets/lobby_fox.png';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { GameMode } from '@/types/game';
 import { GameConfigPanel, GameConfig, getActiveModifierLabels } from '@/components/GameConfigPanel';
 import GameHeader from '@/components/GameHeader';
@@ -52,6 +62,7 @@ const Lobby = () => {
   const [previousPlayers, setPreviousPlayers] = useState<Map<string, string>>(new Map());
   const [isInitialLoad, setIsInitialLoad] = useState(true);
   const [copyAnimating, setCopyAnimating] = useState(false);
+  const [kickTarget, setKickTarget] = useState<{ id: string; name: string } | null>(null);
   const [gameConfig, setGameConfig] = useState<GameConfig>({
     selectedCategories: getFreeCategoryIds(),
     selectedCustomCategories: [],
@@ -266,6 +277,37 @@ const Lobby = () => {
         toast.success('Left lobby');
       }
     });
+  };
+
+  // Detect if current user was kicked (their player record disappeared)
+  useEffect(() => {
+    // Skip on initial load or if no players yet
+    if (isInitialLoad || players.length === 0 || !userId) return;
+    // If the current user is no longer in the player list, they were kicked
+    const stillInLobby = players.some(p => p.user_id === userId);
+    if (!stillInLobby) {
+      toast.error('You were removed from the lobby by the host');
+      navigate('/home');
+    }
+  }, [players, userId, isInitialLoad, navigate]);
+
+  const kickPlayer = async (playerId: string) => {
+    if (!isHost || !lobbyId) return;
+
+    try {
+      const { error } = await supabase
+        .from('lobby_players')
+        .delete()
+        .eq('id', playerId)
+        .eq('lobby_id', lobbyId);
+
+      if (error) throw error;
+
+      toast.success('Player removed from lobby');
+    } catch (error) {
+      console.error('Error kicking player:', error);
+      toast.error('Failed to remove player');
+    }
   };
 
   const startGame = async (event?: React.MouseEvent<HTMLButtonElement>) => {
@@ -694,6 +736,16 @@ const Lobby = () => {
                             ) : (
                               <div className="w-2 h-2 rounded-full bg-gray-400" />
                             )}
+                            {isHost && !player.is_host && (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                                onClick={() => setKickTarget({ id: player.id, name: player.display_name })}
+                              >
+                                <UserX className="h-4 w-4" />
+                              </Button>
+                            )}
                           </div>
                         </div>
                       </Card>
@@ -796,6 +848,31 @@ const Lobby = () => {
         )}
       </main>
     </div>
+      {/* Kick Player Confirmation Dialog */}
+      <AlertDialog open={!!kickTarget} onOpenChange={(open) => !open && setKickTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remove player?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to kick <span className="font-semibold text-foreground">{kickTarget?.name}</span> from the lobby?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => {
+                if (kickTarget) {
+                  kickPlayer(kickTarget.id);
+                  setKickTarget(null);
+                }
+              }}
+            >
+              Remove
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 };
