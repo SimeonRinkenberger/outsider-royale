@@ -4,6 +4,8 @@
  */
 
 const ALLOWED_ORIGINS = [
+  "https://outsiderroyale.com",
+  "https://www.outsiderroyale.com",
   "https://outsiderroyale.lovable.app",
   "https://4b9de44f-1c68-4ee8-8e08-f7594c181759.lovableproject.com",
   "capacitor://localhost",
