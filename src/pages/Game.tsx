@@ -243,7 +243,7 @@ const Game = () => {
       event: 'metadata'
     }, payload => {
       if (payload.payload?.metadata) {
-        console.log('Received game metadata from host:', payload.payload.metadata);
+        if (import.meta.env.DEV) console.log('Received game metadata from host:', payload.payload.metadata);
         setGameMetadata(payload.payload.metadata);
       }
     });
@@ -338,7 +338,7 @@ const Game = () => {
 
     // Count unique voters (not total votes, since votesPerPlayer can be > 1)
     const uniqueVoters = new Set(votes.map(v => v.voter_player_id)).size;
-    console.log('Vote check:', {
+    if (import.meta.env.DEV) console.log('Vote check:', {
       gameStatus: game.status,
       votesCount: votes.length,
       uniqueVoters,
@@ -353,13 +353,13 @@ const Game = () => {
       // Use unique voters count since votesPerPlayer can be > 1
       const nonSpectatorCount = players.filter(p => !p.is_spectator).length;
       if (!isEliminationMode && game.status === 'voting' && uniqueVoters === nonSpectatorCount) {
-        console.log('Moving to results - classic mode');
+        if (import.meta.env.DEV) console.log('Moving to results - classic mode');
         moveToResults();
       }
 
       // For elimination mode: check if all active players voted (including skips)
       if (isEliminationMode && game.status === 'voting' && uniqueVoters === activePlayers.length) {
-        console.log('Processing elimination votes');
+        if (import.meta.env.DEV) console.log('Processing elimination votes');
         await processEliminationVotes();
       }
     }, 500);
@@ -489,12 +489,12 @@ const Game = () => {
 
     // Guard: prevent double trigger
     if (moveToResultsInProgressRef.current || hasNavigatedToResultsRef.current) {
-      console.log('[Game] moveToResults blocked - already in progress');
+      if (import.meta.env.DEV) console.log('[Game] moveToResults blocked - already in progress');
       return;
     }
     moveToResultsInProgressRef.current = true;
     hasNavigatedToResultsRef.current = true;
-    console.log('[Game] Host initiating moveToResults with startTransition');
+    if (import.meta.env.DEV) console.log('[Game] Host initiating moveToResults with startTransition');
 
     // Use startTransition with prepare() - single atomic transition
     startTransition(`/results/${lobbyId}`, {
@@ -713,13 +713,13 @@ const Game = () => {
     // Only non-hosts react to status change
     if (!currentPlayer?.is_host && game?.status === 'results' && !hasNavigatedToResultsRef.current && lobbyId) {
       hasNavigatedToResultsRef.current = true;
-      console.log('[Game] Non-host: Status changed to results, using startTransition');
+      if (import.meta.env.DEV) console.log('[Game] Non-host: Status changed to results, using startTransition');
       startTransition(`/results/${lobbyId}`, {
         loadingText: 'Tallying votes',
         reason: 'status-change-nonhost',
         prepare: async () => {
           // Preload results data for non-host too
-          console.log('[Game] Non-host: Preloading results data');
+          if (import.meta.env.DEV) console.log('[Game] Non-host: Preloading results data');
           await preloadResultsData(lobbyId, game.id);
         }
       });

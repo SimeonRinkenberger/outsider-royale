@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
+import React, { createContext, useContext, useEffect, useState, useCallback, useMemo } from 'react';
 import { audioManager, MusicState } from '@/lib/audioManager';
 
 interface AudioContextType {
@@ -64,20 +64,20 @@ export const AudioProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     audioManager.duck(amount, duration);
   }, []);
 
+  const value = useMemo<AudioContextType>(() => ({
+    musicState,
+    setMusicState,
+    volume,
+    setVolume,
+    isMuted,
+    setMuted,
+    toggleMute,
+    duck,
+    isReady,
+  }), [musicState, setMusicState, volume, setVolume, isMuted, setMuted, toggleMute, duck, isReady]);
+
   return (
-    <AudioContext.Provider
-      value={{
-        musicState,
-        setMusicState,
-        volume,
-        setVolume,
-        isMuted,
-        setMuted,
-        toggleMute,
-        duck,
-        isReady,
-      }}
-    >
+    <AudioContext.Provider value={value}>
       {children}
     </AudioContext.Provider>
   );

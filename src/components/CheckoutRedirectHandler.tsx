@@ -37,7 +37,7 @@ export function CheckoutRedirectHandler() {
     const cleanSearch = params.toString();
     const cleanPath = location.pathname + (cleanSearch ? `?${cleanSearch}` : '');
     navigate(cleanPath, { replace: true });
-  }, [location.search]);
+  }, [location.search, location.pathname, navigate, refreshEntitlement]);
 
   return null;
 }

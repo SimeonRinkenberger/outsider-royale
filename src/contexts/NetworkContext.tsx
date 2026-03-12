@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useMemo, useRef } from 'react';
 
 interface NetworkContextType {
   isOnline: boolean;
@@ -24,8 +24,13 @@ export const NetworkProvider: React.FC<NetworkProviderProps> = ({ children }) =>
   const [lastOnlineAt, setLastOnlineAt] = useState<Date | null>(
     navigator.onLine ? new Date() : null
   );
+  const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const handleOnline = useCallback(() => {
+    if (reconnectTimerRef.current) {
+      clearTimeout(reconnectTimerRef.current);
+      reconnectTimerRef.current = null;
+    }
     setIsReconnecting(false);
     setIsOnline(true);
     setLastOnlineAt(new Date());
@@ -36,10 +41,14 @@ export const NetworkProvider: React.FC<NetworkProviderProps> = ({ children }) =>
     setIsReconnecting(true);
     
     // After a short delay, stop showing "reconnecting" if still offline
-    setTimeout(() => {
+    if (reconnectTimerRef.current) {
+      clearTimeout(reconnectTimerRef.current);
+    }
+    reconnectTimerRef.current = setTimeout(() => {
       if (!navigator.onLine) {
         setIsReconnecting(false);
       }
+      reconnectTimerRef.current = null;
     }, 5000);
   }, []);
 
@@ -50,11 +59,20 @@ export const NetworkProvider: React.FC<NetworkProviderProps> = ({ children }) =>
     return () => {
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
+      if (reconnectTimerRef.current) {
+        clearTimeout(reconnectTimerRef.current);
+      }
     };
   }, [handleOnline, handleOffline]);
 
+  const value = useMemo<NetworkContextType>(() => ({
+    isOnline,
+    isReconnecting,
+    lastOnlineAt,
+  }), [isOnline, isReconnecting, lastOnlineAt]);
+
   return (
-    <NetworkContext.Provider value={{ isOnline, isReconnecting, lastOnlineAt }}>
+    <NetworkContext.Provider value={value}>
       {children}
     </NetworkContext.Provider>
   );

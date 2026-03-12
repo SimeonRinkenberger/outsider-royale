@@ -18,7 +18,7 @@ import {
 } from "@/components/ui/dialog";
 import wifiFoxImg from '@/assets/wifi_fox.png';
 
-console.log('Home mounted');
+if (import.meta.env.DEV) console.log('Home mounted');
 
 const Home = () => {
   const [joinCode, setJoinCode] = useState('');

@@ -6,7 +6,7 @@
  * Fail-closed: defaults to free on any error or stale cache.
  */
 
-import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
+import React, { createContext, useContext, useEffect, useState, useCallback, useMemo } from 'react';
 import { syncCategories } from '@/lib/categoryCache';
 import { useAuth } from '@/contexts/AuthContext';
 import {
@@ -162,8 +162,13 @@ export function EntitlementProvider({ children }: { children: React.ReactNode })
     }
   }, [profileId]);
 
-  const value: EntitlementContextValue = {
-    isPro: entitlement.isPro,
+  const isPro = entitlement.isPro;
+  const canPurchase = isIOSNative();
+  const canWebPurchase = !isIOSNative() && !!profileId;
+  const isIOSNativeVal = isIOSNative();
+
+  const value = useMemo<EntitlementContextValue>(() => ({
+    isPro,
     entitlement,
     isLoading,
     products,
@@ -174,10 +179,10 @@ export function EntitlementProvider({ children }: { children: React.ReactNode })
     refreshEntitlement: handleRefresh,
     openManageSubscription: openSubscriptionManagement,
     openWebCheckout: handleWebCheckout,
-    canPurchase: isIOSNative(),
-    canWebPurchase: !isIOSNative() && !!profileId,
-    isIOSNative: isIOSNative(),
-  };
+    canPurchase,
+    canWebPurchase,
+    isIOSNative: isIOSNativeVal,
+  }), [isPro, entitlement, isLoading, products, isLoadingProducts, handlePurchase, handlePurchaseConsumable, handleRestore, handleRefresh, openSubscriptionManagement, handleWebCheckout, canPurchase, canWebPurchase, isIOSNativeVal]);
 
   return (
     <EntitlementContext.Provider value={value}>

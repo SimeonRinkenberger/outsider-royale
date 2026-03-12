@@ -72,13 +72,13 @@ export const useGameState = (lobbyId: string | null) => {
   useEffect(() => {
     if (!lobbyId) return;
 
-    console.log('useGameState: Setting up for lobby', lobbyId);
+    if (import.meta.env.DEV) console.log('useGameState: Setting up for lobby', lobbyId);
 
     // Fetch initial data only if not already from cache
     const fetchData = async () => {
       // Skip initial fetch if we have valid cache data
       if (initializedFromCacheRef.current) {
-        console.log('useGameState: Using cached data, skipping initial fetch');
+        if (import.meta.env.DEV) console.log('useGameState: Using cached data, skipping initial fetch');
         initializedFromCacheRef.current = false; // Only skip once
         
         // But we still need to update currentRoundIdRef
@@ -203,7 +203,7 @@ export const useGameState = (lobbyId: string | null) => {
 
     // Set up real-time subscriptions with unique channel ID
     const channelId = `lobby-${lobbyId}-${Math.random().toString(36).substr(2, 9)}`;
-    console.log('Creating channel:', channelId);
+    if (import.meta.env.DEV) console.log('Creating channel:', channelId);
     
     const lobbyChannel = supabase
       .channel(channelId)
@@ -216,7 +216,7 @@ export const useGameState = (lobbyId: string | null) => {
           filter: `id=eq.${lobbyId}`
         },
         (payload) => {
-          console.log('Lobby update received:', payload);
+          if (import.meta.env.DEV) console.log('Lobby update received:', payload);
           if (payload.eventType === 'UPDATE') {
             setLobby(payload.new as Lobby);
           }
@@ -231,7 +231,7 @@ export const useGameState = (lobbyId: string | null) => {
           filter: `lobby_id=eq.${lobbyId}`
         },
         (payload) => {
-          console.log('Lobby player change received:', payload.eventType);
+          if (import.meta.env.DEV) console.log('Lobby player change received:', payload.eventType);
           
           // Apply payload directly instead of refetching
           if (payload.eventType === 'INSERT') {
@@ -252,7 +252,7 @@ export const useGameState = (lobbyId: string | null) => {
         }
       )
       .subscribe((status) => {
-        console.log('Lobby subscription status:', status);
+        if (import.meta.env.DEV) console.log('Lobby subscription status:', status);
       });
 
     return () => {
@@ -267,11 +267,11 @@ export const useGameState = (lobbyId: string | null) => {
     const fetchNewGame = async () => {
       // Check if we already have this game in cache
       if (game?.id === lobby.current_game_id) {
-        console.log('useGameState: Game already loaded, skipping refetch');
+        if (import.meta.env.DEV) console.log('useGameState: Game already loaded, skipping refetch');
         return;
       }
       
-      console.log('useGameState: Fetching game for current_game_id', lobby.current_game_id);
+      if (import.meta.env.DEV) console.log('useGameState: Fetching game for current_game_id', lobby.current_game_id);
       
       const { data: gameData } = await supabase
         .from('games')
@@ -355,7 +355,7 @@ export const useGameState = (lobbyId: string | null) => {
   useEffect(() => {
     if (!game?.id || !currentRound?.id) return;
 
-    console.log('useGameState: Setting up game subscriptions for', game.id, 'round', currentRound.id);
+    if (import.meta.env.DEV) console.log('useGameState: Setting up game subscriptions for', game.id, 'round', currentRound.id);
     
     // Update the ref for filter comparison
     currentRoundIdRef.current = currentRound.id;
@@ -372,7 +372,7 @@ export const useGameState = (lobbyId: string | null) => {
           filter: `id=eq.${game.id}`
         },
         async (payload) => {
-          console.log('Game update received:', payload.eventType);
+          if (import.meta.env.DEV) console.log('Game update received:', payload.eventType);
           if (payload.eventType === 'UPDATE') {
             const updatedGame = payload.new as Game;
             setGame(updatedGame);
@@ -404,7 +404,7 @@ export const useGameState = (lobbyId: string | null) => {
           filter: `round_id=eq.${currentRound.id}` // FILTERED to current round only
         },
         (payload) => {
-          console.log('Clue change received for current round:', payload.eventType);
+          if (import.meta.env.DEV) console.log('Clue change received for current round:', payload.eventType);
           
           // Apply payload directly instead of refetching
           if (payload.eventType === 'INSERT') {
@@ -444,7 +444,7 @@ export const useGameState = (lobbyId: string | null) => {
           filter: `game_id=eq.${game.id}`
         },
         (payload) => {
-          console.log('Vote change received:', payload.eventType);
+          if (import.meta.env.DEV) console.log('Vote change received:', payload.eventType);
           
           // Apply payload directly instead of refetching
           if (payload.eventType === 'INSERT') {
@@ -464,7 +464,7 @@ export const useGameState = (lobbyId: string | null) => {
         }
       )
       .subscribe((status) => {
-        console.log('Game subscription status:', status);
+        if (import.meta.env.DEV) console.log('Game subscription status:', status);
       });
 
     return () => {

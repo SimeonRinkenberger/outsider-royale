@@ -10,18 +10,18 @@ const RETURN_TO_TIMESTAMP_KEY = 'auth:returnToAt';
 export const setAuthReturnTo = (currentPath: string, force = false): void => {
   // Don't store /auth as a return destination
   if (currentPath === '/auth' || currentPath.startsWith('/auth')) {
-    console.log('[AUTH] not setting returnTo - already on auth page');
+    if (import.meta.env.DEV) console.log('[AUTH] not setting returnTo - already on auth page');
     return;
   }
 
   // Don't overwrite existing returnTo unless forced
   const existing = sessionStorage.getItem(RETURN_TO_KEY);
   if (existing && !force) {
-    console.log('[AUTH] returnTo already set:', existing, '- not overwriting');
+    if (import.meta.env.DEV) console.log('[AUTH] returnTo already set:', existing, '- not overwriting');
     return;
   }
 
-  console.log('[AUTH] setting returnTo=', currentPath);
+  if (import.meta.env.DEV) console.log('[AUTH] setting returnTo=', currentPath);
   sessionStorage.setItem(RETURN_TO_KEY, currentPath);
   sessionStorage.setItem(RETURN_TO_TIMESTAMP_KEY, Date.now().toString());
 };
@@ -38,11 +38,11 @@ export const getAndClearAuthReturnTo = (): string | null => {
   sessionStorage.removeItem(RETURN_TO_TIMESTAMP_KEY);
 
   if (returnTo && returnTo !== '/auth') {
-    console.log('[AUTH] success, redirecting to returnTo=', returnTo);
+    if (import.meta.env.DEV) console.log('[AUTH] success, redirecting to returnTo=', returnTo);
     return returnTo;
   }
 
-  console.log('[AUTH] no returnTo found, redirecting to menu');
+  if (import.meta.env.DEV) console.log('[AUTH] no returnTo found, redirecting to menu');
   return null;
 };
 

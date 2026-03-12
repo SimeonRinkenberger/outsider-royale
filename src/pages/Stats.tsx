@@ -14,9 +14,9 @@ import { AvatarPicker, getAvatarById } from '@/components/AvatarPicker';
 import { AccountSettings } from '@/components/AccountSettings';
 import { useTransition } from '@/contexts/TransitionContext';
 import { z } from 'zod';
+import { passwordSchema, sanitizeTextInput } from '@/lib/passwordValidation';
 
 const emailSchema = z.string().email('Please enter a valid email address');
-const passwordSchema = z.string().min(6, 'Password must be at least 6 characters');
 
 interface UserStats {
   games_played: number;
@@ -61,7 +61,7 @@ const Stats = () => {
   useEffect(() => {
     const fetchStats = async () => {
       const sessionMode = getSessionMode();
-      console.log('[GUARD] route=/stats mode=', sessionMode);
+      if (import.meta.env.DEV) console.log('[GUARD] route=/stats mode=', sessionMode);
       
       const { data: { session } } = await supabase.auth.getSession();
       

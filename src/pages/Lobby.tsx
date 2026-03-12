@@ -117,17 +117,6 @@ const Lobby = () => {
         }
   };
 
-  // Animation timing
-  const enterTransition = {
-    duration: 0.6,
-    ease: [0.2, 0.8, 0.2, 1] as const
-  };
-  
-  const exitTransition = {
-    duration: 0.7,
-    ease: [0.2, 0.8, 0.2, 1] as const
-  };
-
   // Container variants for stagger effect
   const containerVariants = {
     animate: {
@@ -140,7 +129,6 @@ const Lobby = () => {
 
   // Animation durations
   const animationDuration = 0.6;
-  const exitDuration = 0.7;
 
   // Track player joins/leaves and show toasts
   useEffect(() => {
@@ -570,7 +558,7 @@ const Lobby = () => {
   };
   // Debug log to verify single mount
   useEffect(() => {
-    console.log('Lobby mounted');
+    if (import.meta.env.DEV) console.log('Lobby mounted');
   }, []);
 
   return (
