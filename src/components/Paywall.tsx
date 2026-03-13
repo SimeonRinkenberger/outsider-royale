@@ -82,12 +82,17 @@ export function Paywall({ isOpen, onClose, trigger = 'menu' }: PaywallProps) {
     }
   };
 
+  const [isWebPurchasing, setIsWebPurchasing] = useState(false);
+
   const handleWebPurchase = async () => {
+    setIsWebPurchasing(true);
     try {
       await openWebCheckout(selectedPlan);
       toast.info('Complete your purchase in the new tab. Your Pro status will sync automatically.');
-    } catch {
-      toast.error('Failed to open checkout. Please try again.');
+    } catch (error: any) {
+      toast.error(error?.message || 'Failed to open checkout. Please try again.');
+    } finally {
+      setIsWebPurchasing(false);
     }
   };
 
@@ -345,11 +350,18 @@ export function Paywall({ isOpen, onClose, trigger = 'menu' }: PaywallProps) {
 
                   <Button
                     onClick={handleWebPurchase}
+                    disabled={isWebPurchasing || isLoading}
                     className="w-full h-14 text-lg font-semibold"
                     size="lg"
                   >
-                    <Globe className="h-5 w-5 mr-2" />
-                    Subscribe {selectedPlan === 'monthly' ? 'Monthly' : 'Yearly'}
+                    {isWebPurchasing ? (
+                      <Loader2 className="h-5 w-5 animate-spin" />
+                    ) : (
+                      <>
+                        <Globe className="h-5 w-5 mr-2" />
+                        Subscribe {selectedPlan === 'monthly' ? 'Monthly' : 'Yearly'}
+                      </>
+                    )}
                   </Button>
                 </>
               )}

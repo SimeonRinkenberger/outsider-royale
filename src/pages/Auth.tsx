@@ -18,7 +18,7 @@ import { passwordSchema, getPasswordRequirements, PASSWORD_REQUIREMENT_LABELS, s
 const emailSchema = z.string().email('Please enter a valid email address');
 
 const Auth = () => {
-  const [mode, setMode] = useState<'signin' | 'signup'>('signin');
+  const [mode, setMode] = useState<'signin' | 'signup' | 'reset'>('signin');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [displayName, setDisplayName] = useState('');
@@ -194,6 +194,34 @@ const Auth = () => {
     }
   };
 
+  const handleResetPassword = async () => {
+    // Validate email only
+    const newErrors: typeof errors = {};
+    try {
+      emailSchema.parse(email);
+    } catch (e) {
+      if (e instanceof z.ZodError) {
+        newErrors.email = e.errors[0].message;
+      }
+    }
+    setErrors(newErrors);
+    if (Object.keys(newErrors).length > 0) return;
+
+    setIsLoading(true);
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/auth`,
+      });
+      if (error) throw error;
+      toast.success('Password reset email sent! Check your inbox.');
+      setMode('signin');
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to send reset email. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const handleBack = (event: React.MouseEvent) => {
     const returnTo = peekAuthReturnTo();
     const historyLen = window.history.length;
@@ -241,7 +269,7 @@ const Auth = () => {
             <ArrowLeft className="h-5 w-5" />
           </Button>
           <h1 className="text-xl font-bold">
-            {mode === 'signin' ? 'Sign In' : 'Create Account'}
+            {mode === 'signin' ? 'Sign In' : mode === 'signup' ? 'Create Account' : 'Reset Password'}
           </h1>
         </div>
       </header>
@@ -253,6 +281,12 @@ const Auth = () => {
           transition={{ duration: 0.3 }}
         >
           <Card className="p-6 space-y-6">
+
+            {mode === 'reset' && (
+              <p className="text-sm text-muted-foreground text-center">
+                Enter your email and we'll send you a link to reset your password.
+              </p>
+            )}
 
             {/* Email Form */}
             <div className="space-y-4">
@@ -294,75 +328,113 @@ const Auth = () => {
                 )}
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="password">Password</Label>
-                <div className="relative">
-                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    id="password"
-                    type={showPassword ? "text" : "password"}
-                    placeholder="••••••••"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    className="pl-10 pr-10 h-12"
-                  />
+              {mode !== 'reset' && (
+                <div className="space-y-2">
+                  <Label htmlFor="password">Password</Label>
+                  <div className="relative">
+                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      id="password"
+                      type={showPassword ? "text" : "password"}
+                      placeholder="••••••••"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      className="pl-10 pr-10 h-12"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                      tabIndex={-1}
+                    >
+                      {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </button>
+                  </div>
+                  {errors.password && (
+                    <p className="text-sm text-destructive">{errors.password}</p>
+                  )}
+                  {mode === 'signup' && password.length > 0 && (
+                    <div className="space-y-1 text-xs">
+                      {PASSWORD_REQUIREMENT_LABELS.map(({ key, label }) => {
+                        const met = getPasswordRequirements(password)[key];
+                        return (
+                          <div key={key} className={`flex items-center gap-1.5 ${met ? 'text-green-500' : 'text-muted-foreground'}`}>
+                            {met ? <Check className="h-3 w-3" /> : <X className="h-3 w-3" />}
+                            <span>{label}</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {mode === 'signin' && (
+                <div className="flex justify-end -mt-2">
                   <button
                     type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-                    tabIndex={-1}
+                    className="text-sm text-primary hover:text-primary/80 transition-colors"
+                    onClick={() => { setMode('reset'); setErrors({}); }}
                   >
-                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    Forgot password?
                   </button>
                 </div>
-                {errors.password && (
-                  <p className="text-sm text-destructive">{errors.password}</p>
-                )}
-                {mode === 'signup' && password.length > 0 && (
-                  <div className="space-y-1 text-xs">
-                    {PASSWORD_REQUIREMENT_LABELS.map(({ key, label }) => {
-                      const met = getPasswordRequirements(password)[key];
-                      return (
-                        <div key={key} className={`flex items-center gap-1.5 ${met ? 'text-green-500' : 'text-muted-foreground'}`}>
-                          {met ? <Check className="h-3 w-3" /> : <X className="h-3 w-3" />}
-                          <span>{label}</span>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
+              )}
 
-              <Button
-                className="w-full h-12 text-base"
-                onClick={handleEmailAuth}
-                disabled={isLoading}
-              >
-                {isLoading ? (
-                  <Loader2 className="h-5 w-5 animate-spin" />
-                ) : mode === 'signin' ? (
-                  'Sign In'
-                ) : (
-                  'Create Account'
-                )}
-              </Button>
+              {mode === 'reset' ? (
+                <Button
+                  className="w-full h-12 text-base"
+                  onClick={handleResetPassword}
+                  disabled={isLoading}
+                >
+                  {isLoading ? (
+                    <Loader2 className="h-5 w-5 animate-spin" />
+                  ) : (
+                    'Send Reset Link'
+                  )}
+                </Button>
+              ) : (
+                <Button
+                  className="w-full h-12 text-base"
+                  onClick={handleEmailAuth}
+                  disabled={isLoading}
+                >
+                  {isLoading ? (
+                    <Loader2 className="h-5 w-5 animate-spin" />
+                  ) : mode === 'signin' ? (
+                    'Sign In'
+                  ) : (
+                    'Create Account'
+                  )}
+                </Button>
+              )}
             </div>
 
-            <div className="text-center">
-              <button
-                type="button"
-                className="text-sm text-muted-foreground hover:text-foreground transition-colors"
-                onClick={() => {
-                  setMode(mode === 'signin' ? 'signup' : 'signin');
-                  setErrors({});
-                }}
-              >
-                {mode === 'signin' ? (
-                  <>Don't have an account? <span className="text-primary font-medium">Sign up</span></>
-                ) : (
-                  <>Already have an account? <span className="text-primary font-medium">Sign in</span></>
-                )}
-              </button>
+            <div className="text-center space-y-2">
+              {mode === 'reset' ? (
+                <button
+                  type="button"
+                  className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+                  onClick={() => { setMode('signin'); setErrors({}); }}
+                >
+                  Back to <span className="text-primary font-medium">Sign in</span>
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+                  onClick={() => {
+                    setMode(mode === 'signin' ? 'signup' : 'signin');
+                    setErrors({});
+                  }}
+                >
+                  {mode === 'signin' ? (
+                    <>Don't have an account? <span className="text-primary font-medium">Sign up</span></>
+                  ) : (
+                    <>Already have an account? <span className="text-primary font-medium">Sign in</span></>
+                  )}
+                </button>
+              )}
             </div>
           </Card>
         </motion.div>

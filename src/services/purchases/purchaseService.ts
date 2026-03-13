@@ -527,32 +527,33 @@ export async function restorePurchases(): Promise<RestoreResult> {
 
 // ─── Web Purchase (Stripe via RevenueCat) ─────────────────
 
-export async function getWebCheckoutUrl(_userId: string, plan: 'monthly' | 'yearly' = 'yearly'): Promise<string | null> {
-  try {
-    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-    const supabaseKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+export async function getWebCheckoutUrl(_userId: string, plan: 'monthly' | 'yearly' = 'yearly'): Promise<string> {
+  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+  const supabaseKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
 
-    // Get the user's JWT for authenticated edge function calls
-    const { data: { session } } = await supabase.auth.getSession();
-    const token = session?.access_token;
-    if (!token) return null;
+  // Get the user's JWT for authenticated edge function calls
+  const { data: { session } } = await supabase.auth.getSession();
+  const token = session?.access_token;
+  if (!token) throw new Error('Please sign in to subscribe.');
 
-    const response = await fetch(`${supabaseUrl}/functions/v1/create-checkout`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'apikey': supabaseKey,
-        'Authorization': `Bearer ${token}`,
-      },
-      body: JSON.stringify({ plan }),
-    });
+  const response = await fetch(`${supabaseUrl}/functions/v1/create-checkout`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'apikey': supabaseKey,
+      'Authorization': `Bearer ${token}`,
+    },
+    body: JSON.stringify({ plan }),
+  });
 
-    if (!response.ok) return null;
-    const data = await response.json();
-    return data.url || null;
-  } catch {
-    return null;
+  if (!response.ok) {
+    const body = await response.text().catch(() => '');
+    throw new Error(body || 'Failed to create checkout session. Please try again.');
   }
+
+  const data = await response.json();
+  if (!data.url) throw new Error('Checkout is not configured. Please contact support.');
+  return data.url;
 }
 
 // ─── Getters / Listeners ─────────────────────────────────
