@@ -155,11 +155,9 @@ export function EntitlementProvider({ children }: { children: React.ReactNode })
   }, [profileId]);
 
   const handleWebCheckout = useCallback(async (plan: 'monthly' | 'yearly' = 'yearly'): Promise<void> => {
-    if (!profileId) return;
+    if (!profileId) throw new Error('Please sign in to subscribe.');
     const url = await getWebCheckoutUrl(profileId, plan);
-    if (url) {
-      window.open(url, '_blank');
-    }
+    window.open(url, '_blank');
   }, [profileId]);
 
   const isPro = entitlement.isPro;
