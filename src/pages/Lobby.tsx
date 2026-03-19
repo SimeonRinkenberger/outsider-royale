@@ -8,7 +8,7 @@ import { useCustomContent } from '@/hooks/useCustomContent';
 import { getStoredUserId } from '@/lib/gameUtils';
 import { getFreeCategoryIds } from '@/lib/entitlements';
 import { toast } from 'sonner';
-import { Copy, Users, Crown, Play, X, Settings, ChevronDown, HelpCircle, UserX } from 'lucide-react';
+import { Copy, Users, Crown, Play, X, Settings, ChevronDown, HelpCircle, UserX, Video } from 'lucide-react';
 import lobbyFoxImg from '@/assets/lobby_fox.png';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import {
@@ -170,8 +170,10 @@ const Lobby = () => {
   }, [players, userId, isInitialLoad]);
 
   const isHost = lobby?.host_user_id === userId;
-  const canStart = players.length >= 3;
-  const maxImposters = Math.max(1, players.length - 1);
+  const nonSpectatorPlayers = useMemo(() => players.filter(p => !p.is_spectator), [players]);
+  const spectatorPlayers = useMemo(() => players.filter(p => p.is_spectator), [players]);
+  const canStart = nonSpectatorPlayers.length >= 3;
+  const maxImposters = Math.max(1, nonSpectatorPlayers.length - 1);
 
   // Load saved game config from localStorage
   useEffect(() => {
@@ -295,6 +297,26 @@ const Lobby = () => {
     } catch (error) {
       console.error('Error kicking player:', error);
       toast.error('Failed to remove player');
+    }
+  };
+
+  const toggleSpectator = async (playerId: string, currentlySpectator: boolean) => {
+    if (!isHost || !lobbyId) return;
+
+    try {
+      const { error } = await supabase
+        .from('lobby_players')
+        .update({ is_spectator: !currentlySpectator })
+        .eq('id', playerId)
+        .eq('lobby_id', lobbyId);
+
+      if (error) throw error;
+
+      const player = players.find(p => p.id === playerId);
+      toast.success(`${player?.display_name} is now ${!currentlySpectator ? 'a spectator' : 'a player'}`);
+    } catch (error) {
+      console.error('Error toggling spectator:', error);
+      toast.error('Failed to update player');
     }
   };
 
@@ -470,9 +492,13 @@ const Lobby = () => {
         ? Math.floor(Math.random() * maxImposters) + 1
         : gameConfig.imposterCount;
 
-      // Pick random outsiders
-      const shuffledPlayers = [...players].sort(() => Math.random() - 0.5);
+      // Pick random outsiders (only from non-spectator players)
+      const eligiblePlayers = players.filter(p => !p.is_spectator);
+      const shuffledPlayers = [...eligiblePlayers].sort(() => Math.random() - 0.5);
       const selectedOutsiders = shuffledPlayers.slice(0, actualImposterCount);
+
+      // Track spectator player IDs for the metadata
+      const spectatorPlayerIds = players.filter(p => p.is_spectator).map(p => p.id);
 
       // Create game
       const { data: game, error: gameError } = await supabase
@@ -480,7 +506,7 @@ const Lobby = () => {
         .insert({
           lobby_id: lobbyId,
           secret_word_id: secretWordId,
-          outsider_player_id: selectedOutsiders[0]?.id || players[0].id,
+          outsider_player_id: selectedOutsiders[0]?.id || eligiblePlayers[0].id,
           imposter_word_id: imposterWordId,
           total_rounds: gameConfig.gameMode === 'elimination' ? 99 : gameConfig.roundCount,
           current_round_number: 1,
@@ -509,6 +535,7 @@ const Lobby = () => {
         votesPerPlayer: gameConfig.randomImposters ? players.length - 1 : gameConfig.votesPerPlayer,
         outsiderCount: selectedOutsiders.length,
         timedRoundDuration: gameConfig.timedRoundDuration,
+        hostAssignedSpectators: spectatorPlayerIds,
       };
       
       localStorage.setItem(`game-metadata-${game.id}`, JSON.stringify(gameMetadata));
@@ -662,7 +689,7 @@ const Lobby = () => {
             >
               <h3 className="text-sm font-semibold text-muted-foreground flex items-center gap-2">
                 <Users className="h-4 w-4" />
-                Players ({players.length})
+                Players ({nonSpectatorPlayers.length}){spectatorPlayers.length > 0 && <span className="text-xs font-normal flex items-center gap-1"><Video className="h-3 w-3" />{spectatorPlayers.length} spectator{spectatorPlayers.length !== 1 ? 's' : ''}</span>}
               </h3>
               <AnimatePresence mode="wait">
                 {!canStart && (
@@ -673,7 +700,7 @@ const Lobby = () => {
                     exit={{ opacity: 0, x: -10 }}
                     className="text-xs text-muted-foreground"
                   >
-                    Need {3 - players.length} more
+                    Need {3 - nonSpectatorPlayers.length} more player{3 - nonSpectatorPlayers.length !== 1 ? 's' : ''}
                   </motion.p>
                 )}
               </AnimatePresence>
@@ -705,12 +732,17 @@ const Lobby = () => {
                             </div>
                             <div>
                               <p className="font-medium">{player.display_name}</p>
-                              {player.is_host && (
+                              {player.is_host ? (
                                 <p className="text-xs text-primary flex items-center gap-1">
                                   <Crown className="h-3 w-3" />
                                   Host
                                 </p>
-                              )}
+                              ) : player.is_spectator ? (
+                                <p className="text-xs text-muted-foreground flex items-center gap-1">
+                                  <Video className="h-3 w-3" />
+                                  Spectator
+                                </p>
+                              ) : null}
                             </div>
                           </div>
                           <div className="flex items-center gap-2">
@@ -723,6 +755,17 @@ const Lobby = () => {
                               />
                             ) : (
                               <div className="w-2 h-2 rounded-full bg-gray-400" />
+                            )}
+                            {isHost && !player.is_host && (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className={`h-8 w-8 ${player.is_spectator ? 'text-primary hover:text-primary/80 hover:bg-primary/10' : 'text-muted-foreground hover:text-primary hover:bg-primary/10'}`}
+                                onClick={() => toggleSpectator(player.id, player.is_spectator)}
+                                title={player.is_spectator ? 'Make player' : 'Make spectator'}
+                              >
+                                <Video className="h-4 w-4" />
+                              </Button>
                             )}
                             {isHost && !player.is_host && (
                               <Button
@@ -828,7 +871,7 @@ const Lobby = () => {
                   exit={{ opacity: 0 }}
                   className="text-center text-sm text-muted-foreground"
                 >
-                  At least 3 players needed (4+ recommended)
+                  At least 3 players needed{spectatorPlayers.length > 0 ? ' (spectators don\'t count)' : ' (4+ recommended)'}
                 </motion.p>
               )}
             </AnimatePresence>

@@ -8,7 +8,7 @@ import { useGameState } from '@/hooks/useGameState';
 import { useCustomContent } from '@/hooks/useCustomContent';
 import { getStoredUserId } from '@/lib/gameUtils';
 import { toast } from 'sonner';
-import { Send, Eye, EyeOff, Users, CheckCircle2, DoorOpen, FastForward, ArrowRight, Lightbulb, User, Check } from 'lucide-react';
+import { Send, Eye, EyeOff, Users, CheckCircle2, DoorOpen, FastForward, ArrowRight, Lightbulb, User, Check, Video } from 'lucide-react';
 import { ActiveModifiersDisplay } from '@/components/ActiveModifiersDisplay';
 import { MusicControls } from '@/components/MusicControls';
 import { SpeedRoundTimer } from '@/components/SpeedRoundTimer';
@@ -33,6 +33,7 @@ interface GameMetadata {
   votesPerPlayer?: number;
   outsiderCount?: number;
   timedRoundDuration?: number;
+  hostAssignedSpectators?: string[]; // Player IDs of spectators assigned by host before game start
 }
 
 // Seeded random shuffle - ensures all clients get the same order for a given seed
@@ -208,16 +209,23 @@ const Game = () => {
   const isSpectator = currentPlayer?.is_spectator ?? false;
   const isHost = currentPlayer?.is_host ?? false;
 
+  // Check if this is a host-assigned spectator (set before game started, for recording)
+  const isHostAssignedSpectator = useMemo(() => {
+    if (!isSpectator || !currentPlayer?.id || !gameMetadata?.hostAssignedSpectators) return false;
+    return gameMetadata.hostAssignedSpectators.includes(currentPlayer.id);
+  }, [isSpectator, currentPlayer?.id, gameMetadata?.hostAssignedSpectators]);
+
   // Track previous spectator state to detect mid-game kicks
   const wasSpectatorRef = useRef(isSpectator);
   useEffect(() => {
     // If the player just became a spectator (was not spectator before), they were kicked
-    if (isSpectator && !wasSpectatorRef.current && currentPlayer) {
+    // BUT skip redirect for host-assigned spectators (they were already spectators before the game)
+    if (isSpectator && !wasSpectatorRef.current && currentPlayer && !isHostAssignedSpectator) {
       toast.error('You were removed from the game by the host');
       navigate('/home');
     }
     wasSpectatorRef.current = isSpectator;
-  }, [isSpectator, currentPlayer, navigate]);
+  }, [isSpectator, currentPlayer, navigate, isHostAssignedSpectator]);
 
   // Also detect full removal from the player list (e.g. lobby kick during game)
   useEffect(() => {
@@ -834,7 +842,7 @@ const Game = () => {
           </div>
         </header>
 
-        <main className="p-4 max-w-md mx-auto space-y-6 py-6 overflow-hidden">
+        <main className={`p-4 mx-auto space-y-6 py-6 overflow-hidden ${isHostAssignedSpectator ? 'max-w-[50vw]' : 'max-w-md'}`}>
           <motion.div 
             key={`round-content-${roundAnimationKey}`} 
             initial={{ opacity: 0, y: 20 }}
@@ -861,7 +869,18 @@ const Game = () => {
               duration: 0.3,
               ease: [0.4, 0, 0.2, 1]
             }}>
-            {isSpectator ? <Card className="p-6 bg-muted/50 border-border">
+            {isSpectator ? (isHostAssignedSpectator ? <Card className="p-6 bg-muted/50 border-border">
+                <div className="text-center space-y-2">
+                  <Video className="h-12 w-12 text-primary mx-auto" />
+                  <h2 className="text-xl font-bold text-primary">Spectating</h2>
+                  <p className="text-sm text-muted-foreground">
+                    Watch the game unfold!
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-2">
+                    Category: {gameMetadata?.customCategory || secretWord?.category || 'Unknown'}
+                  </p>
+                </div>
+              </Card> : <Card className="p-6 bg-muted/50 border-border">
                 <div className="text-center space-y-2">
                   <Eye className="h-12 w-12 text-muted-foreground mx-auto" />
                   <h2 className="text-xl font-bold text-muted-foreground">You're a Spectator</h2>
@@ -876,7 +895,7 @@ const Game = () => {
                     Outsider{outsiders.length > 1 ? 's' : ''}: {players.filter(p => outsiders.some(o => o.player_id === p.id)).map(p => p.display_name).join(', ')}
                   </p>
                 </div>
-              </Card> : isHiddenImposterMode ? <Card className="p-6 bg-gradient-primary text-white shadow-card border-0">
+              </Card>) : isHiddenImposterMode ? <Card className="p-6 bg-gradient-primary text-white shadow-card border-0">
                 <div className="text-center space-y-2">
                   <Eye className="h-8 w-8 mx-auto" />
                   <p className="text-white/80 text-sm">Your Word</p>
@@ -1230,7 +1249,7 @@ const Game = () => {
           </div>
         </header>
 
-        <main className="p-4 max-w-md mx-auto space-y-6 py-6 overflow-hidden">
+        <main className={`p-4 mx-auto space-y-6 py-6 overflow-hidden ${isHostAssignedSpectator ? 'max-w-[50vw]' : 'max-w-md'}`}>
           <motion.div key="voting-content" initial={{
             opacity: 0,
             x: 100
@@ -1241,7 +1260,45 @@ const Game = () => {
             duration: 0.4,
             ease: [0.4, 0, 0.2, 1]
           }} className="space-y-6">
-          {isSpectator ? <Card className="p-6 bg-muted/50 border-border text-center">
+          {isSpectator ? (isHostAssignedSpectator ? <>
+            <Card className="p-6 bg-muted/50 border-border text-center">
+              <Video className="h-12 w-12 text-primary mx-auto mb-2" />
+              <h3 className="font-bold text-lg mb-1">Spectating Voting</h3>
+              <p className="text-sm text-muted-foreground">
+                Watch as the players vote for who they think is the outsider.
+              </p>
+            </Card>
+            {/* Vote status tracker for host-assigned spectators */}
+            <Card className="p-4 border-border">
+              <h4 className="text-sm font-semibold text-muted-foreground mb-3 flex items-center gap-2">
+                <Users className="h-4 w-4" />
+                Vote Status
+              </h4>
+              <div className="space-y-2">
+                {(isEliminationMode ? activePlayers : players).filter(p => !p.is_spectator).map(player => {
+                  const playerHasVoted = votes.some(v => v.voter_player_id === player.id);
+                  const avatar = player.avatar_url ? getAvatarById(player.avatar_url) : null;
+                  return (
+                    <div key={player.id} className="flex items-center justify-between py-1">
+                      <div className="flex items-center gap-2">
+                        <div className={`w-6 h-6 rounded-full flex items-center justify-center text-sm ${avatar ? avatar.color : 'bg-muted'}`}>
+                          {avatar ? avatar.emoji : <User className="h-3 w-3 text-muted-foreground" />}
+                        </div>
+                        <span className="text-sm">{player.display_name}</span>
+                      </div>
+                      {playerHasVoted ? (
+                        <span className="text-xs text-primary flex items-center gap-1">
+                          <CheckCircle2 className="h-3.5 w-3.5" /> Voted
+                        </span>
+                      ) : (
+                        <span className="text-xs text-muted-foreground">Waiting...</span>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </Card>
+            </> : <Card className="p-6 bg-muted/50 border-border text-center">
               <Eye className="h-12 w-12 text-muted-foreground mx-auto mb-2" />
               <h3 className="font-bold text-lg mb-1">Spectating Voting</h3>
               <p className="text-sm text-muted-foreground">
@@ -1251,7 +1308,7 @@ const Game = () => {
               <p className="text-sm text-muted-foreground">
                 Outsider{outsiders.length > 1 ? 's' : ''}: {players.filter(p => outsiders.some(o => o.player_id === p.id)).map(p => p.display_name).join(', ')}
               </p>
-            </Card> : <>
+            </Card>) : <>
               <AnimatePresence mode="wait">
                 {!votesSubmitted ? <motion.div key="voting-ui" initial={{
                   opacity: 0,

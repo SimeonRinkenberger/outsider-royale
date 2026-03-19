@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef, useLayoutEffect } from 'react';
+import { useEffect, useState, useRef, useLayoutEffect, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -75,18 +75,26 @@ const Results = () => {
   const isHost = lobby?.host_user_id === userId;
   const currentPlayer = players.find(p => p.user_id === userId);
   const outsiderPlayers = players.filter(p => outsiders.some(o => o.player_id === p.id));
-  const maxImposters = Math.max(1, players.length - 1);
+  const nonSpectatorPlayers = useMemo(() => players.filter(p => !p.is_spectator), [players]);
+  const maxImposters = Math.max(1, nonSpectatorPlayers.length - 1);
+
+  // Check if this is a host-assigned spectator
+  const isHostAssignedSpectator = useMemo(() => {
+    if (!currentPlayer?.is_spectator || !currentPlayer?.id || !gameMetadata?.hostAssignedSpectators) return false;
+    return gameMetadata.hostAssignedSpectators.includes(currentPlayer.id);
+  }, [currentPlayer?.is_spectator, currentPlayer?.id, gameMetadata?.hostAssignedSpectators]);
 
   // Detect if current player was kicked (became spectator or removed from player list)
+  // Skip redirect for host-assigned spectators (they were already spectators before the game)
   const wasSpectatorRef = useRef(currentPlayer?.is_spectator ?? false);
   useEffect(() => {
     const isSpectator = currentPlayer?.is_spectator ?? false;
-    if (isSpectator && !wasSpectatorRef.current && currentPlayer) {
+    if (isSpectator && !wasSpectatorRef.current && currentPlayer && !isHostAssignedSpectator) {
       toast.error('You were removed from the game by the host');
       navigate('/home');
     }
     wasSpectatorRef.current = isSpectator;
-  }, [currentPlayer?.is_spectator, currentPlayer, navigate]);
+  }, [currentPlayer?.is_spectator, currentPlayer, navigate, isHostAssignedSpectator]);
 
   useEffect(() => {
     if (players.length > 0 && userId && !players.some(p => p.user_id === userId)) {
@@ -189,6 +197,7 @@ const Results = () => {
   const [gameMetadata, setGameMetadata] = useState<{
     outsiderGuessedCorrectly?: boolean;
     outsiderGuesser?: string;
+    hostAssignedSpectators?: string[];
   } | null>(null);
   
   useEffect(() => {
@@ -376,14 +385,33 @@ const Results = () => {
         const channel = supabase.channel(`new-game-transition-${lobbyId}`);
         
         try {
-          // Reset all spectators back to active players for the new game
-          const { error: resetError } = await supabase
+          // Reset only elimination spectators back to active players for the new game
+          // Host-assigned spectators (from gameMetadata.hostAssignedSpectators) should persist
+          const hostAssignedIds = gameMetadata?.hostAssignedSpectators || [];
+          
+          // Get all current spectators
+          const { data: currentSpectators } = await supabase
             .from('lobby_players')
-            .update({ is_spectator: false })
-            .eq('lobby_id', lobbyId);
+            .select('id')
+            .eq('lobby_id', lobbyId)
+            .eq('is_spectator', true);
 
-          if (resetError) {
-            console.error('Error resetting spectators:', resetError);
+          if (currentSpectators) {
+            // Only reset spectators that are NOT host-assigned
+            const eliminationSpectatorIds = currentSpectators
+              .filter(s => !hostAssignedIds.includes(s.id))
+              .map(s => s.id);
+
+            if (eliminationSpectatorIds.length > 0) {
+              const { error: resetError } = await supabase
+                .from('lobby_players')
+                .update({ is_spectator: false })
+                .in('id', eliminationSpectatorIds);
+
+              if (resetError) {
+                console.error('Error resetting spectators:', resetError);
+              }
+            }
           }
 
           // Save game config to localStorage for persistence
@@ -519,9 +547,13 @@ const Results = () => {
             ? Math.floor(Math.random() * maxImposters) + 1
             : gameConfig.imposterCount;
 
-          // Pick random outsiders from fresh player list
-          const shuffledPlayers = [...freshPlayers].sort(() => Math.random() - 0.5);
+          // Pick random outsiders from fresh player list (only from non-spectator players)
+          const eligiblePlayers = freshPlayers.filter((p: any) => !p.is_spectator);
+          const shuffledPlayers = [...eligiblePlayers].sort(() => Math.random() - 0.5);
           const selectedOutsiders = shuffledPlayers.slice(0, actualImposterCount);
+
+          // Track spectator IDs to persist in metadata
+          const spectatorPlayerIds = freshPlayers.filter((p: any) => p.is_spectator).map((p: any) => p.id);
 
           // Create new game
           const { data: newGame, error: gameError } = await supabase
@@ -529,7 +561,7 @@ const Results = () => {
             .insert({
               lobby_id: lobbyId,
               secret_word_id: secretWordId,
-              outsider_player_id: selectedOutsiders[0]?.id || freshPlayers[0].id,
+              outsider_player_id: selectedOutsiders[0]?.id || eligiblePlayers[0]?.id || freshPlayers[0].id,
               imposter_word_id: imposterWordId,
               total_rounds: gameConfig.gameMode === 'elimination' ? 99 : gameConfig.roundCount,
               current_round_number: 1,
@@ -558,9 +590,10 @@ const Results = () => {
             customModifiersData: selectedCustomModifiers,
             imposterCustomWord,
             showOutsiderCount: gameConfig.showOutsiderCount,
-            votesPerPlayer: gameConfig.randomImposters ? players.length - 1 : gameConfig.votesPerPlayer,
+            votesPerPlayer: gameConfig.randomImposters ? eligiblePlayers.length - 1 : gameConfig.votesPerPlayer,
             outsiderCount: selectedOutsiders.length,
             timedRoundDuration: gameConfig.timedRoundDuration,
+            hostAssignedSpectators: spectatorPlayerIds,
           };
           
           localStorage.setItem(`game-metadata-${newGame.id}`, JSON.stringify(gameMetadata));
@@ -731,7 +764,7 @@ const Results = () => {
         }
       />
 
-      <main className="p-4 max-w-md mx-auto space-y-6 py-6">
+      <main className={`p-4 mx-auto space-y-6 py-6 ${isHostAssignedSpectator ? 'max-w-[50vw]' : 'max-w-md'}`}>
         {(() => {
           const gameId = effectiveGame?.id ?? 'unknown';
           const shouldAnimate = hasAnimatedResultRef.current !== gameId;
@@ -918,7 +951,7 @@ const Results = () => {
             </CollapsibleTrigger>
             <CollapsibleContent className="mt-4">
               <GameConfigPanel
-                playerCount={players.length}
+                playerCount={nonSpectatorPlayers.length}
                 customCategories={customCategories}
                 customModifiers={customModifiers}
                 config={gameConfig}
